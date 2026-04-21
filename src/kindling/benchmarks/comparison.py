@@ -31,7 +31,8 @@ from kindling.benchmarks.baselines import (
 )
 from kindling.benchmarks.metrics import MetricReport, aggregate
 from kindling.engine import Engine
-from kindling.loaders import movielens
+from kindling.loaders import movielens, synthetic
+from kindling.loaders._base import DatasetSplit
 
 
 class Recommender(Protocol):
@@ -114,13 +115,29 @@ def _evaluate(
     )
 
 
+def _load_dataset(name: str, test_fraction: float) -> DatasetSplit:
+    if name == "movielens-1m":
+        return movielens.load_1m(test_fraction=test_fraction)
+    if name == "synthetic-grocery":
+        return synthetic.make_grocery(
+            n_entities=1500,
+            n_items_per_category=20,
+            n_categories=8,
+            n_sessions_per_entity=10,
+            items_per_session=6,
+            test_fraction=test_fraction,
+        )
+    raise ValueError(f"Unknown dataset: {name}")
+
+
 def run_comparison(
     k: int = 10,
     max_eval_entities: int = 2000,
     test_fraction: float = 0.1,
     include_als: bool = True,
+    dataset: str = "movielens-1m",
 ) -> dict[str, object]:
-    split = movielens.load_1m(test_fraction=test_fraction)
+    split = _load_dataset(dataset, test_fraction)
 
     train_items_by_entity = cast(
         pd.Series,
@@ -167,7 +184,7 @@ def run_comparison(
         results.append(res)
 
     return {
-        "dataset": "movielens-1m",
+        "dataset": dataset,
         "k": k,
         "n_eval_entities": len(eval_entities),
         "catalog_size": catalog_size,
@@ -180,7 +197,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Compare kindling against popularity, item-item kNN, and implicit ALS."
     )
-    parser.add_argument("--dataset", default="movielens-1m", choices=["movielens-1m"])
+    parser.add_argument(
+        "--dataset",
+        default="movielens-1m",
+        choices=["movielens-1m", "synthetic-grocery"],
+    )
     parser.add_argument("--k", type=int, default=10)
     parser.add_argument("--max-eval-entities", type=int, default=2000)
     parser.add_argument("--no-als", action="store_true", help="Skip the ALS baseline")
@@ -191,6 +212,7 @@ def main(argv: list[str] | None = None) -> int:
         k=args.k,
         max_eval_entities=args.max_eval_entities,
         include_als=not args.no_als,
+        dataset=args.dataset,
     )
     pretty = json.dumps(report, indent=2, default=str)
     if args.output is not None:
