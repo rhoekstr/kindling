@@ -1,0 +1,116 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "kindling"
+version = "0.0.1.dev0"
+description = "A hybrid recommender system that grows with your data"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.11"
+authors = [{ name = "Robert Hoekstra", email = "rhoekstr@gmail.com" }]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.1",
+    "scipy>=1.11",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "hypothesis>=6.100",
+    "ruff>=0.5",
+    "mypy>=1.11",
+    "pandas-stubs",
+    "types-toml",
+]
+bench = [
+    "requests>=2.31",
+    "tqdm>=4.66",
+]
+
+[project.urls]
+Homepage = "https://github.com/awrylabs/kindling"
+Issues = "https://github.com/awrylabs/kindling/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/kindling"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "W",   # pyflakes + pycodestyle
+    "I",              # isort
+    "B",              # bugbear
+    "UP",             # pyupgrade
+    "N",              # pep8-naming
+    "SIM",            # simplify
+    "RUF",            # ruff-specific
+    "PL",             # pylint subset
+    "PT",             # pytest
+]
+ignore = [
+    "PLR0913",   # too many args (common in recommenders)
+    "PLR2004",   # magic-value comparison (common in tests/bench)
+    "E501",      # long lines handled by formatter
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["PLR2004", "N802"]
+"src/kindling/benchmarks/**" = ["PLR2004"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unreachable = true
+disallow_untyped_defs = true
+files = ["src/kindling"]
+plugins = []
+
+[[tool.mypy.overrides]]
+module = [
+    "scipy.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+]
+markers = [
+    "slow: tests that take more than a few seconds",
+    "integration: end-to-end integration tests",
+    "bench: benchmark regression tests",
+]
+filterwarnings = [
+    "error",
+]
+
+[tool.coverage.run]
+source = ["src/kindling"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]

@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.Python
+build/
+dist/
+wheels/
+.eggs/
+*.so
+.venv/
+venv/
+env/
+
+# Tooling
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+
+# Data (user-supplied; never committed)
+data/
+datasets/
+*.ml-1m
+*.kndl
+*.arrow
+
+# Bench reports (commit only tagged-release reports)
+bench/reports/*.local.*
+
+# macOS/docx artifacts
+~$*.docx

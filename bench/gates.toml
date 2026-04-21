@@ -1,0 +1,26 @@
+# Benchmark regression gates for CI.
+#
+# Thresholds are expressed as the worst-acceptable relative change versus the
+# last tagged release. Values use the convention:
+#   positive metric (ndcg, recall, etc.) — regression = relative drop > limit.
+#   cost metric (latency, memory)        — regression = relative growth > limit.
+#
+# Thresholds are deliberately loose for Phase 1 because the underlying
+# algorithm is a placeholder. They tighten as the real signals come online
+# in Phase 2 and 3.
+
+[gates]
+ndcg_at_k_regression_limit      = 0.02   # max 2% relative drop
+recall_at_k_regression_limit    = 0.02
+intra_list_diversity_drop_limit = 0.05   # 5% relative drop at fixed temperature
+latency_p95_growth_limit        = 0.10   # 10% wall-time growth
+memory_footprint_growth_limit   = 0.10
+
+[baseline]
+# Phase 1 reference — placeholder until the first release tag exists.
+# Populated by the first successful bench run on main.
+ndcg_at_k              = 0.0
+recall_at_k            = 0.0
+intra_list_diversity   = 0.0
+latency_p95_seconds    = 0.0
+memory_footprint_bytes = 0
