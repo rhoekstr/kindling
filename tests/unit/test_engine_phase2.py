@@ -102,10 +102,11 @@ def test_engine_posterior_summary_populates() -> None:
     engine = Engine(vi_max_iter=50).fit(_PHASE3_DF)
     summary = engine.posterior_summary()
     assert summary["bayesian_blend_active"] is True
-    assert len(summary["signal_names"]) == 4  # type: ignore[arg-type]
-    assert len(summary["posterior_mean"]) == 4  # type: ignore[arg-type]
+    # Phase 5: 4 positive signals + 3 cost signals = 7.
+    assert len(summary["signal_names"]) == 7  # type: ignore[arg-type]
+    assert len(summary["posterior_mean"]) == 7  # type: ignore[arg-type]
     ci = summary["credible_interval"]
-    assert len(ci) == 4  # type: ignore[arg-type]
+    assert len(ci) == 7  # type: ignore[arg-type]
     assert "diagnostics" in summary
 
 

@@ -1,5 +1,6 @@
-"""Graph-backed structures: item graph, cost graph. Phase 1 is item graph only."""
+"""Graph-backed structures: item graph (positive) and cost graph (negative)."""
 
+from kindling.graph.cost_graph import CostGraph, build_cost_graph
 from kindling.graph.item_graph import ItemGraph
 
-__all__ = ["ItemGraph"]
+__all__ = ["CostGraph", "ItemGraph", "build_cost_graph"]

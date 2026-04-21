@@ -15,7 +15,9 @@ persists with the engine and applies verbatim at inference.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, cast
 
 import numpy as np
@@ -32,6 +34,7 @@ from kindling.blend.likelihoods import (
 from kindling.blend.outcome_builder import OutcomeBuildConfig, build_outcomes
 from kindling.blend.priors import DataFeatures, construct_prior
 from kindling.explain import Explanation
+from kindling.graph.cost_graph import CostGraph, build_cost_graph
 from kindling.graph.item_graph import ItemGraph, build_item_graph
 from kindling.ingest.contract import (
     InteractionSchema,
@@ -40,6 +43,8 @@ from kindling.ingest.contract import (
 )
 from kindling.ingest.sessions import SessionInference, infer_sessions
 from kindling.lifecycle.decay import DecayProtocol, ExponentialDecay
+from kindling.outcomes.log import OutcomeLog
+from kindling.outcomes.replay import replay_to_batch
 from kindling.path._sessions import sessions_from_interactions
 from kindling.path.basket_index import BasketIndex, BasketSimilarity, build_basket_index
 from kindling.path.path_tree import PathTree, build_path_tree
@@ -71,8 +76,21 @@ from kindling.retrieve.path_endpoint import PathEndpointRetriever
 from kindling.retrieve.protocol import Candidate
 
 DEFAULT_RETRIEVAL_BUDGET = 500
-# Fixed path-family-first signal order for decorrelation (PRD §6.2).
-SIGNAL_ORDER: tuple[str, ...] = ("path_full", "path_tail", "path_basket", "cooccurrence")
+# Fixed path-family-first signal order for decorrelation (PRD §6.2, §6.1).
+# Signals after ``cooccurrence`` are the "other" block; the Phase 5 cost
+# signals (PRD §3.6) are three negative-oriented entries. The feature
+# matrix stores -effective_cost so that positive Dirichlet weights
+# translate into penalties.
+SIGNAL_ORDER: tuple[str, ...] = (
+    "path_full",
+    "path_tail",
+    "path_basket",
+    "cooccurrence",
+    "cost_population",
+    "cost_entity",
+    "cost_context",
+)
+NEGATIVE_SIGNAL_MODES = frozenset({"positive_only", "explicit", "implicit_from_impressions"})
 # Cap the query basket at recommend time. Full-history users (ML-1M power
 # raters with 500+ ratings) otherwise trigger posting-list unions over
 # essentially every training observation, pushing basket scoring to minutes.
@@ -122,6 +140,10 @@ class Engine:
         item_metadata: pd.DataFrame | None = None,
         category_column: str = "category",
         diversity_kernel: SimilarityKernel | None = None,
+        # Phase 5 negative-signal configuration.
+        negative_signal_mode: str | None = None,
+        alpha_pop: float = 0.3,
+        outcome_log_path: str | None = None,
     ) -> None:
         self.retrieval_budget = retrieval_budget
         self.decay: DecayProtocol = (
@@ -171,6 +193,18 @@ class Engine:
         self._diversity_kernel: SimilarityKernel | None = None
         self._population_baselines: PopulationBaselines | None = None
         self._category_index: CategoryIndex | None = None
+
+        # Phase 5 negative-signal + outcome-log state.
+        if negative_signal_mode is not None and negative_signal_mode not in NEGATIVE_SIGNAL_MODES:
+            raise ValueError(
+                f"negative_signal_mode must be one of {sorted(NEGATIVE_SIGNAL_MODES)} "
+                f"or None (auto-detect), got {negative_signal_mode!r}"
+            )
+        self._user_negative_mode = negative_signal_mode
+        self.negative_signal_mode: str = "positive_only"  # resolved at fit time
+        self.alpha_pop = alpha_pop
+        self._cost_graph: CostGraph | None = None
+        self.outcome_log = OutcomeLog(path=outcome_log_path or ":memory:")
 
     # ---- fitting ----------------------------------------------------------
 
@@ -223,6 +257,18 @@ class Engine:
                 interactions=self._interactions,
                 item_metadata=self.item_metadata,
                 category_column=self.category_column,
+            )
+
+        # Phase 5 negative-signal state.
+        if self._user_negative_mode is None:
+            self.negative_signal_mode = "explicit" if schema.has_action_type else "positive_only"
+        else:
+            self.negative_signal_mode = self._user_negative_mode
+        if self.negative_signal_mode == "positive_only":
+            self._cost_graph = CostGraph(alpha_pop=self.alpha_pop)
+        else:
+            self._cost_graph = build_cost_graph(
+                interactions=self._interactions, alpha_pop=self.alpha_pop
             )
 
         path_basis = _fit_path_family_decorrelation(
@@ -329,6 +375,8 @@ class Engine:
             path_tree=self._path_tree,
             basket_index=self._basket_index,
             basket_similarity=self.basket_similarity,
+            cost_graph=self._cost_graph,
+            entity_id=entity,
         )
 
     # ---- introspection (PRD §10.2 power-user surface) ---------------------
@@ -455,6 +503,8 @@ class Engine:
             path_tree=self._path_tree,
             basket_index=self._basket_index,
             basket_similarity=self.basket_similarity,
+            cost_graph=self._cost_graph,
+            entity_id=entity_id,
         )
         # Stage 2: score via Bayesian posterior mean when available,
         # heuristic blend otherwise. Both operate on the same SignalFeatures.
@@ -613,7 +663,164 @@ class Engine:
                 "all_pass": self._diagnostics.all_pass,
                 "warnings": self._diagnostics.warnings(),
             }
+        # Phase 5: surface simple-reporter calibration degradation and
+        # negative-signal-mode context so production monitoring catches
+        # silent quality drift.
+        summary["negative_signal_mode"] = self.negative_signal_mode
+        summary["outcome_log_size"] = len(self.outcome_log)
+        diag = summary.get("diagnostics") or {}
+        warnings_list = (
+            list(diag["warnings"]) if isinstance(diag, dict) and "warnings" in diag else []
+        )
+        if self.outcome_log.has_simple_mode_records():
+            warnings_list.append(
+                "Simple-mode outcome reports in the log. Position-bias "
+                "correction is disabled for those rows; the resulting "
+                "posterior calibration is approximate. Use "
+                "engine.report_outcome(...) with impression tracking "
+                "for full calibration."
+            )
+        if warnings_list:
+            diag = summary.setdefault("diagnostics", {})
+            if isinstance(diag, dict):
+                diag["warnings"] = warnings_list
         return summary
+
+    # ---- Phase 5 outcome reporting + refit ---------------------------------
+
+    def report_outcome(
+        self,
+        *,
+        entity_id: object,
+        recommendation_id: str,
+        shown_items: list[object],
+        selected_items: list[object] | set[object] | None = None,
+        rejected_items: list[object] | set[object] | None = None,
+        positions: list[int] | None = None,
+        timestamp: datetime | None = None,
+    ) -> int:
+        """Precise-mode outcome report (PRD §6.6).
+
+        Returns the number of new rows inserted (duplicates are silently
+        deduped via the primary key).
+        """
+        self._require_fitted()
+        return self.outcome_log.report_precise(
+            entity_id=entity_id,
+            recommendation_id=recommendation_id,
+            shown_items=shown_items,
+            selected_items=selected_items,
+            rejected_items=rejected_items,
+            positions=positions,
+            timestamp=timestamp,
+        )
+
+    def report_interaction(
+        self,
+        *,
+        entity_id: object,
+        item_id: object,
+        action: str,
+        rating: float | None = None,
+        timestamp: datetime | None = None,
+    ) -> int:
+        """Simple-mode report (PRD §6.6). Position-bias correction is
+        disabled for these rows; posterior_summary() surfaces a warning
+        when any simple rows exist."""
+        self._require_fitted()
+        return self.outcome_log.report_simple(
+            entity_id=entity_id,
+            item_id=item_id,
+            action=action,
+            rating=rating,
+            timestamp=timestamp,
+        )
+
+    def report_outcome_correction(
+        self,
+        *,
+        entity_id: object,
+        recommendation_id: str,
+        item_id: object,
+        shown: bool,
+        selected: bool,
+        rejected: bool = False,
+        rating: float | None = None,
+        position: int = 1,
+        timestamp: datetime | None = None,
+    ) -> None:
+        """Supersede a prior row. See OutcomeLog.report_correction."""
+        self._require_fitted()
+        self.outcome_log.report_correction(
+            entity_id=entity_id,
+            recommendation_id=recommendation_id,
+            item_id=item_id,
+            shown=shown,
+            selected=selected,
+            rejected=rejected,
+            rating=rating,
+            position=position,
+            timestamp=timestamp,
+        )
+
+    def refit_posterior(self, max_iter: int | None = None) -> DiagnosticsReport | None:
+        """Re-fit the Bayesian posterior from the current outcome log.
+
+        Returns the updated DiagnosticsReport (or None when there is no
+        Bayesian blend). Use this after a batch of ``report_outcome``
+        calls to incorporate fresh feedback into the posterior. Phase 6
+        will add scheduled / continuous refit options; Phase 5 is
+        on-demand.
+        """
+        self._require_fitted()
+        if self._bayesian_blend is None:
+            return None
+        if len(self.outcome_log) == 0:
+            return self._diagnostics
+
+        batch = replay_to_batch(self.outcome_log, self._build_signal_row_for_outcome)
+        if batch.n_outcomes == 0:
+            return self._diagnostics
+        self._bayesian_blend.fit_posterior(
+            batch=batch,
+            likelihood=self.likelihood,
+            rng=np.random.default_rng(self.seed),
+            max_iter=max_iter if max_iter is not None else self.vi_max_iter,
+        )
+        self._diagnostics = run_diagnostics(
+            blend=self._bayesian_blend,
+            batch=batch,
+            likelihood=self.likelihood,
+            rng=np.random.default_rng(self.seed + 1),
+        )
+        return self._diagnostics
+
+    def _build_signal_row_for_outcome(
+        self,
+        entity: object,
+        item: object,
+    ) -> np.ndarray | None:
+        """Replay hook: signal vector for (entity, item) under current
+        fitted state. Returns None when either is unknown.
+
+        The outcome log stores ids as strings for a uniform primary key;
+        this method resolves back to the original id types used by the
+        item graph and owned-set dict.
+        """
+        resolved_entity = _resolve_id(entity, self._owned_by_entity)
+        if resolved_entity is None:
+            return None
+        owned_arr = self._owned_by_entity[resolved_entity]
+        assert self._item_graph is not None
+        resolved_item = _resolve_id(item, self._item_graph.item_index)
+        if resolved_item is None:
+            return None
+        features = self._build_features_for_outcome(
+            entity=resolved_entity,
+            items=[resolved_item],
+            owned_arr=owned_arr,
+        )
+        return np.asarray(features.matrix[0].copy(), dtype=np.float64)
 
     # ---- internals --------------------------------------------------------
 
@@ -625,6 +832,28 @@ class Engine:
 # ---------------------------------------------------------------------------
 # Module-level helpers
 # ---------------------------------------------------------------------------
+
+
+def _resolve_id(raw: object, mapping: Mapping[object, object]) -> object | None:
+    """Outcome-log entries store ids as strings; the item graph and owned-
+    sets use the original types. Try the raw value, then int, then float
+    conversion before giving up."""
+    if raw in mapping:
+        return raw
+    if isinstance(raw, str):
+        try:
+            as_int = int(raw)
+            if as_int in mapping:
+                return as_int
+        except ValueError:
+            pass
+        try:
+            as_float = float(raw)
+            if as_float in mapping:
+                return as_float
+        except ValueError:
+            pass
+    return None
 
 
 def _approx_clustering_coefficient(item_graph: ItemGraph) -> float:
@@ -708,6 +937,8 @@ def _compute_signal_features(
     path_tree: PathTree,
     basket_index: BasketIndex,
     basket_similarity: BasketSimilarity,
+    cost_graph: CostGraph | None = None,
+    entity_id: object = None,
 ) -> SignalFeatures:
     """Compute the (N_candidates, K_signals) feature matrix in SIGNAL_ORDER."""
     n = len(candidates)
@@ -725,6 +956,15 @@ def _compute_signal_features(
     # Using the retriever's max-score would let the path_endpoint retriever's
     # score leak into this feature for candidates it won via dedup.
     matrix[:, 3] = _cooccurrence_signal(cand_ids, owned_items, item_graph)
+
+    # Cost signals (PRD §3.6). Store as negative values so positive
+    # Dirichlet weights translate into penalties. Zero when no cost graph
+    # is active (positive_only mode).
+    if cost_graph is not None:
+        owned_set = frozenset(owned_items.tolist()) if owned_items.size else frozenset()
+        matrix[:, 4] = -cost_graph.population_costs_many(cand_ids)
+        matrix[:, 5] = -cost_graph.entity_costs_many(cand_ids, entity_id)
+        matrix[:, 6] = -cost_graph.context_costs_many(cand_ids, owned_set)
 
     return SignalFeatures(matrix=matrix, signal_names=SIGNAL_ORDER)
 
