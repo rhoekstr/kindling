@@ -21,6 +21,10 @@ def _default_features(**overrides: float) -> DataFeatures:
         "session_density": 0.0,
         "catalog_to_entity_ratio": 1.0,
         "n_interactions": 10_000,
+        # Default-on so the session_stiffness rule doesn't fire and the
+        # "all-zero features == baseline prior" test stays meaningful.
+        # Tests exercising stiffness set this to False explicitly.
+        "has_explicit_sessions": True,
     }
     defaults.update(overrides)
     return DataFeatures(**defaults)  # type: ignore[arg-type]
@@ -79,3 +83,34 @@ def test_priors_toml_loads() -> None:
     coefs = load_prior_coefficients()
     assert "baseline" in coefs
     assert "graph_density" in coefs
+
+
+def test_session_stiffness_shrinks_path_priors_when_no_explicit_sessions() -> None:
+    """Ratings-like input (no session_id column) should shrink the path
+    priors so the blend leans on cooccurrence."""
+    features = _default_features(
+        graph_density=0.01,
+        session_density=20.0,  # would normally boost path priors
+        has_explicit_sessions=False,
+    )
+    signals = ("path_full", "path_tail", "path_basket", "cooccurrence")
+    alpha = construct_prior(signal_names=signals, features=features)
+    # All three path priors clipped to MIN_ALPHA; cooc above baseline
+    # because graph_density still applies.
+    assert alpha[0] == alpha[1] == alpha[2] == 0.5  # MIN_ALPHA
+    assert alpha[3] > 1.0
+
+
+def test_session_stiffness_skipped_when_explicit_sessions() -> None:
+    """Explicit sessions means path priors keep their session_density boost."""
+    features = _default_features(
+        graph_density=0.01,
+        session_density=20.0,
+        has_explicit_sessions=True,
+    )
+    signals = ("path_full", "path_tail", "path_basket", "cooccurrence")
+    alpha = construct_prior(signal_names=signals, features=features)
+    # Path priors boosted far above baseline.
+    assert alpha[0] > 10.0
+    assert alpha[1] > 5.0
+    assert alpha[2] > 3.0

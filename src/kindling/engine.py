@@ -376,12 +376,17 @@ class Engine:
         # exact clustering is only needed if we ever learn the coefficient.
         clustering = _approx_clustering_coefficient(self._item_graph)
         session_density = n_interactions / max(sessions_count, 1)
+        # Flag explicit-session input so the prior builder can shrink path
+        # priors when sessions were GMM-inferred from timestamps on ratings-
+        # style data. See blend/priors.toml [session_stiffness].
+        has_explicit_sessions = bool("session_id" in self._interactions.columns)
         return DataFeatures(
             graph_density=float(density),
             clustering_coefficient=float(clustering),
             session_density=float(session_density),
             catalog_to_entity_ratio=float(n_items) / max(n_entities, 1),
             n_interactions=n_interactions,
+            has_explicit_sessions=has_explicit_sessions,
         )
 
     def _build_features_for_outcome(
