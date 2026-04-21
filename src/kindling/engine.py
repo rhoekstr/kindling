@@ -18,6 +18,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import Any, cast
 
 import numpy as np
@@ -841,6 +842,39 @@ class Engine:
         )
         return np.asarray(features.matrix[0].copy(), dtype=np.float64)
 
+    # ---- Phase 10 persistence --------------------------------------------
+
+    def save(self, path: "str | Path") -> None:
+        """Write the fitted engine state to a gzipped file (PRD §10.4)."""
+        from kindling.persist import save_engine
+
+        save_engine(self, path)
+
+    @classmethod
+    def load(
+        cls,
+        path: "str | Path",
+        registry: "dict[str, Any] | None" = None,
+    ) -> Engine:
+        """Reconstruct a fitted engine from a saved file.
+
+        ``registry`` maps qualified plugin names to factory callables,
+        used when the saved manifest references a user-supplied
+        pluggable component (retriever, DPP kernel, etc.). Built-in
+        kindling plugins are resolved automatically.
+        """
+        from kindling.persist import load_engine
+
+        return load_engine(path, registry=registry)
+
+    def export_arrow(self, path: "str | Path") -> None:
+        """Export item graph + posterior params as Apache Arrow IPC
+        files for cross-language consumption (PRD §10.4). Requires
+        the optional ``pyarrow`` dependency."""
+        from kindling.persist import export_arrow
+
+        export_arrow(self, path)
+
     # ---- Phase 6 lifecycle surface ----------------------------------------
 
     def prune(self) -> list[PreservedAggregate]:
@@ -902,7 +936,10 @@ class Engine:
     # ---- internals --------------------------------------------------------
 
     def _require_fitted(self) -> None:
-        if self._interactions is None:
+        # A fitted engine has at minimum an item graph + owned-set
+        # caches. We don't require ``self._interactions`` because
+        # persistence drops the raw DataFrame to keep save files small.
+        if self._item_graph is None:
             raise EngineNotFittedError("Engine.fit must be called before use")
 
 

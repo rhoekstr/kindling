@@ -10,12 +10,19 @@ from __future__ import annotations
 
 import numpy as np
 
+from kindling._native import NATIVE_AVAILABLE, kindling_native
 from kindling.graph.item_graph import ItemGraph
 from kindling.retrieve.protocol import Candidate
 
 
 class CoOccurrenceRetriever:
-    """Return items that co-occur strongly with the entity's owned set."""
+    """Return items that co-occur strongly with the entity's owned set.
+
+    Routes through ``kindling_native.cooccurrence_retrieve`` when the
+    Rust extension is present - that path folds the CSR row-sum,
+    owned-item exclusion, and top-k selection into a single pass.
+    Pure-Python fallback keeps the reference behavior.
+    """
 
     name = "cooccurrence"
 
@@ -35,7 +42,25 @@ class CoOccurrenceRetriever:
         if not owned_indices:
             return []
 
-        # Sum the rows of owned items — each column is the total
+        if NATIVE_AVAILABLE and kindling_native is not None:
+            adj = self.graph.adjacency
+            indices, scores = kindling_native.cooccurrence_retrieve(
+                adj.data.astype(np.float32, copy=False),
+                adj.indices.astype(np.int32, copy=False),
+                adj.indptr.astype(np.int32, copy=False),
+                owned_indices,
+                int(budget),
+            )
+            return [
+                Candidate(
+                    item_id=self.graph.item_ids[i],
+                    score=float(s),
+                    source=self.name,
+                )
+                for i, s in zip(indices, scores, strict=True)
+            ]
+
+        # Sum the rows of owned items - each column is the total
         # co-occurrence of that candidate across the owned set.
         summed = self.graph.adjacency[owned_indices].sum(axis=0)
         scores = np.asarray(summed).ravel()
@@ -43,14 +68,14 @@ class CoOccurrenceRetriever:
         # Exclude the owned items themselves.
         scores[owned_indices] = 0.0
 
-        if budget >= self.graph.n_items:
-            ranked = np.argsort(-scores)
-        else:
-            top_k = min(budget, int((scores > 0).sum()))
-            if top_k == 0:
-                return []
-            part = np.argpartition(-scores, top_k - 1)[:top_k]
-            ranked = part[np.argsort(-scores[part])]
+        # Deterministic ordering: positives first, sort descending by
+        # score with ties broken on idx ascending. Matches the Rust
+        # path exactly for differential testing.
+        positives = np.where(scores > 0.0)[0]
+        if positives.size == 0:
+            return []
+        order = np.lexsort((positives, -scores[positives]))
+        ranked = positives[order][:budget]
 
         return [
             Candidate(
@@ -59,5 +84,4 @@ class CoOccurrenceRetriever:
                 source=self.name,
             )
             for i in ranked
-            if scores[i] > 0.0
-        ][:budget]
+        ]

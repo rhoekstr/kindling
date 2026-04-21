@@ -24,6 +24,36 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+def test_cooccurrence_retrieve_matches_python() -> None:
+    """Rust retriever path returns the same (item_id, score) list as the
+    pure-Python fallback on the same graph + owned set."""
+    import kindling.retrieve.cooccurrence as mod
+    from kindling.retrieve.cooccurrence import CoOccurrenceRetriever
+
+    rng = np.random.default_rng(17)
+    interactions = pd.DataFrame(
+        {
+            "entity_id": rng.integers(0, 30, size=400),
+            "item_id": rng.integers(0, 60, size=400),
+        }
+    )
+    graph = build_item_graph(interactions)
+    owned = np.array(list(graph.item_index.keys())[:10])
+
+    rust = CoOccurrenceRetriever(graph).retrieve(owned, budget=20)
+
+    original = mod.NATIVE_AVAILABLE
+    try:
+        mod.NATIVE_AVAILABLE = False
+        py = CoOccurrenceRetriever(graph).retrieve(owned, budget=20)
+    finally:
+        mod.NATIVE_AVAILABLE = original
+
+    assert [c.item_id for c in rust] == [c.item_id for c in py]
+    for r, p in zip(rust, py, strict=True):
+        assert r.score == pytest.approx(p.score, rel=1e-6)
+
+
 def test_cooccurrence_signal_matches_python() -> None:
     rng = np.random.default_rng(42)
     interactions = pd.DataFrame(

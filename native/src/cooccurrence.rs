@@ -58,7 +58,69 @@ fn cooccurrence_signal<'py>(
     out
 }
 
+/// Full retriever kernel: row-sum + exclude-owned + partial top-k.
+/// Returns two parallel vecs: (item_indices, scores) sorted descending
+/// by score, length <= budget, with score > 0 and not in owned_indices.
+#[pyfunction]
+fn cooccurrence_retrieve(
+    data: PyReadonlyArray1<'_, f32>,
+    indices: PyReadonlyArray1<'_, i32>,
+    indptr: PyReadonlyArray1<'_, i32>,
+    owned_indices: Vec<usize>,
+    budget: usize,
+) -> (Vec<i64>, Vec<f64>) {
+    if budget == 0 {
+        return (Vec::new(), Vec::new());
+    }
+    let data = data.as_slice().expect("data contiguous");
+    let indices = indices.as_slice().expect("indices contiguous");
+    let indptr = indptr.as_slice().expect("indptr contiguous");
+
+    let n_items = indptr.len().saturating_sub(1);
+    let mut summed = vec![0.0_f64; n_items];
+    for &row in &owned_indices {
+        let start = indptr[row] as usize;
+        let end = indptr[row + 1] as usize;
+        for k in start..end {
+            let col = indices[k] as usize;
+            summed[col] += data[k] as f64;
+        }
+    }
+    // Zero out owned positions so the entity never recommends its own items.
+    for &row in &owned_indices {
+        summed[row] = 0.0;
+    }
+
+    // Collect (score, idx) for positives, then do a partial sort up
+    // to ``budget``. For moderate budgets this is faster than a full
+    // argsort over n_items. Tie-break on idx for determinism.
+    let effective_budget = budget.min(n_items);
+    let mut positives: Vec<(f64, usize)> = summed
+        .iter()
+        .enumerate()
+        .filter_map(|(idx, &s)| if s > 0.0 { Some((s, idx)) } else { None })
+        .collect();
+    let take = effective_budget.min(positives.len());
+    if take < positives.len() {
+        positives.select_nth_unstable_by(take - 1, |a, b| {
+            b.0.partial_cmp(&a.0)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then(a.1.cmp(&b.1))
+        });
+        positives.truncate(take);
+    }
+    positives.sort_by(|a, b| {
+        b.0.partial_cmp(&a.0)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then(a.1.cmp(&b.1))
+    });
+    let ids: Vec<i64> = positives.iter().map(|(_, i)| *i as i64).collect();
+    let scores: Vec<f64> = positives.into_iter().map(|(s, _)| s).collect();
+    (ids, scores)
+}
+
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(cooccurrence_signal, m)?)?;
+    m.add_function(wrap_pyfunction!(cooccurrence_retrieve, m)?)?;
     Ok(())
 }
