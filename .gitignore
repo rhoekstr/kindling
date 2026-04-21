@@ -44,3 +44,4 @@ bench/reports/*.local.*
 # macOS/docx artifacts
 ~$*.docx
 .claude/
+native/target/

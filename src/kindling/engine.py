@@ -23,6 +23,7 @@ from typing import Any, cast
 import numpy as np
 import pandas as pd
 
+from kindling._native import NATIVE_AVAILABLE, kindling_native
 from kindling.blend.bayesian import BayesianBlend
 from kindling.blend.decorrelate import DecorrelationBasis, fit_decorrelation
 from kindling.blend.diagnostics import DiagnosticsReport, run_diagnostics
@@ -1050,12 +1051,30 @@ def _cooccurrence_signal(
     owned_items: np.ndarray,
     item_graph: ItemGraph,
 ) -> np.ndarray:
-    """Sum of item-graph edges between each candidate and the owned set."""
+    """Sum of item-graph edges between each candidate and the owned set.
+
+    Routes to the Rust extension when available. The native path folds
+    the row-sum and per-candidate gather into one pass over selected
+    rows, skipping the intermediate ``np.asarray(sum(axis=0))``.
+    """
     if item_graph.n_items == 0 or owned_items.size == 0:
         return np.zeros(len(cand_ids), dtype=np.float64)
     owned_indices = [item_graph.item_index[i] for i in owned_items if i in item_graph.item_index]
     if not owned_indices:
         return np.zeros(len(cand_ids), dtype=np.float64)
+
+    if NATIVE_AVAILABLE and kindling_native is not None:
+        cand_slot_indices = [item_graph.item_index.get(cid, -1) for cid in cand_ids]
+        adj = item_graph.adjacency
+        result = kindling_native.cooccurrence_signal(
+            adj.data.astype(np.float32, copy=False),
+            adj.indices.astype(np.int32, copy=False),
+            adj.indptr.astype(np.int32, copy=False),
+            owned_indices,
+            cand_slot_indices,
+        )
+        return np.asarray(result, dtype=np.float64)
+
     summed = np.asarray(item_graph.adjacency[owned_indices].sum(axis=0)).ravel()
     out = np.zeros(len(cand_ids), dtype=np.float64)
     for i, cid in enumerate(cand_ids):
