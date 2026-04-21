@@ -5,5 +5,12 @@ from kindling.ingest.contract import (
     canonicalize,
     validate_interactions,
 )
+from kindling.ingest.sessions import SessionInference, infer_sessions
 
-__all__ = ["InteractionSchema", "canonicalize", "validate_interactions"]
+__all__ = [
+    "InteractionSchema",
+    "SessionInference",
+    "canonicalize",
+    "infer_sessions",
+    "validate_interactions",
+]

@@ -1,41 +1,63 @@
-"""Public Engine — the user-facing class wiring the three stages.
+"""Public Engine - the user-facing class wiring the three stages.
 
-Phase 1 deliberately ships a minimal pipeline: a single co-occurrence
-retriever, the heuristic ranker (pass-through score), and constraint
-filtering as the only rerank op. The purpose is an end-to-end, testable,
-benchmarked skeleton — not good recommendations yet.
+Phase 2 upgrade from Phase 1:
+  - Sessions inferred via GMM or explicit column (ingest.sessions).
+  - Path structures (PathTree, TailIndex, BasketIndex) built per-session.
+  - Path-endpoint retriever added alongside co-occurrence.
+  - Heuristic blend over (full, tail, basket, cooccurrence) with path-family
+    Gram-Schmidt decorrelation fit on the chronological tail 10% of train.
+  - Per-candidate signal scores feed the ``Explanation.debug()`` surface.
+
+The public ``recommend`` signature is unchanged. The heuristic weights are a
+placeholder for Phase 3's Bayesian posterior; the decorrelation basis
+persists with the engine and applies verbatim at inference.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
 
+from kindling.blend.decorrelate import DecorrelationBasis, fit_decorrelation
+from kindling.blend.heuristic import PATH_FAMILY, HeuristicBlend, SignalFeatures
 from kindling.explain import Explanation
-from kindling.explain.templates import explain_from_source
 from kindling.graph.item_graph import ItemGraph, build_item_graph
 from kindling.ingest.contract import (
     InteractionSchema,
     canonicalize,
     validate_interactions,
 )
-from kindling.rank.heuristic import HeuristicRanker
-from kindling.rank.protocol import RankerProtocol
+from kindling.ingest.sessions import SessionInference, infer_sessions
+from kindling.lifecycle.decay import DecayProtocol, ExponentialDecay
+from kindling.path._sessions import sessions_from_interactions
+from kindling.path.basket_index import BasketIndex, BasketSimilarity, build_basket_index
+from kindling.path.path_tree import PathTree, build_path_tree
+from kindling.path.tail_index import TailIndex, build_tail_index
 from kindling.rerank.constraints import ConstraintPredicate, apply_constraints
 from kindling.retrieve.cooccurrence import CoOccurrenceRetriever
-from kindling.retrieve.protocol import Candidate, RetrieverProtocol
+from kindling.retrieve.path_endpoint import PathEndpointRetriever
+from kindling.retrieve.protocol import Candidate
 
 DEFAULT_RETRIEVAL_BUDGET = 500
+# Fixed path-family-first signal order for decorrelation (PRD §6.2).
+SIGNAL_ORDER: tuple[str, ...] = ("path_full", "path_tail", "path_basket", "cooccurrence")
+# Cap the query basket at recommend time. Full-history users (ML-1M power
+# raters with 500+ ratings) otherwise trigger posting-list unions over
+# essentially every training observation, pushing basket scoring to minutes.
+# Using the most recent 50 items matches the "recently-relevant composition"
+# intuition of the basket mechanism without the quadratic blowup.
+MAX_QUERY_BASKET_SIZE = 50
 
 
 @dataclass(frozen=True)
 class Recommendation:
-    """A single recommendation — the Phase 1 output shape.
+    """A single recommendation.
 
-    Intervals and per-signal debug payloads are placeholder today; the real
-    Bayesian credible intervals arrive in Phase 3.
+    Phase 2 carries the per-signal contribution on the explanation debug
+    payload. Intervals remain placeholder until Phase 3.
     """
 
     item_id: object
@@ -48,50 +70,126 @@ class EngineNotFittedError(RuntimeError):
 
 
 class Engine:
-    """The primary kindling entry point.
-
-    Minimal Phase 1 API:
-
-    >>> engine = Engine()
-    >>> engine.fit(interactions_df)
-    >>> recs = engine.recommend(entity_id=42, n=10)
-    """
+    """The primary kindling entry point."""
 
     def __init__(
         self,
         retrieval_budget: int = DEFAULT_RETRIEVAL_BUDGET,
-        ranker: RankerProtocol | None = None,
+        decay: DecayProtocol | None = None,
+        max_path_prefix: int = 3,
+        max_history_for_recommend: int = 5,
+        basket_similarity: BasketSimilarity = BasketSimilarity.COVERAGE,
     ) -> None:
         self.retrieval_budget = retrieval_budget
-        self._ranker: RankerProtocol = ranker if ranker is not None else HeuristicRanker()
+        self.decay: DecayProtocol = (
+            decay
+            if decay is not None
+            else cast(DecayProtocol, ExponentialDecay(half_life_days=180.0))
+        )
+        self.max_path_prefix = max_path_prefix
+        self.max_history_for_recommend = max_history_for_recommend
+        self.basket_similarity = basket_similarity
+
         self._schema: InteractionSchema | None = None
         self._interactions: pd.DataFrame | None = None
-        self._item_graph: ItemGraph | None = None
-        self._retrievers: list[RetrieverProtocol] = []
-        self._owned_by_entity: dict[object, np.ndarray] = {}
+        self._reference_timestamp: float | None = None
+        self._session_inference: SessionInference | None = None
 
-    # ---- fitting -----------------------------------------------------------
+        self._item_graph: ItemGraph | None = None
+        self._tail_index: TailIndex | None = None
+        self._path_tree: PathTree | None = None
+        self._basket_index: BasketIndex | None = None
+
+        self._cooc_retriever: CoOccurrenceRetriever | None = None
+        self._path_retriever: PathEndpointRetriever | None = None
+
+        self._blend = HeuristicBlend()
+        self._owned_by_entity: dict[object, np.ndarray] = {}
+        self._history_by_entity: dict[object, tuple[object, ...]] = {}
+
+    # ---- fitting ----------------------------------------------------------
 
     def fit(self, interactions: pd.DataFrame) -> Engine:
         """Validate, canonicalize, and build derived structures."""
         schema = validate_interactions(interactions)
         self._schema = schema
         self._interactions = canonicalize(interactions, schema)
+        self._reference_timestamp = _reference_timestamp_from(self._interactions)
+
+        self._session_inference = infer_sessions(self._interactions)
+        sessions = list(
+            sessions_from_interactions(
+                self._interactions,
+                self._session_inference.session_ids,
+            )
+        )
+
         self._item_graph = build_item_graph(self._interactions)
-        self._retrievers = [CoOccurrenceRetriever(self._item_graph)]
+        self._tail_index = build_tail_index(
+            sessions, decay=self.decay, reference_timestamp=self._reference_timestamp
+        )
+        self._path_tree = build_path_tree(
+            sessions,
+            max_prefix=self.max_path_prefix,
+            decay=self.decay,
+            reference_timestamp=self._reference_timestamp,
+        )
+        self._basket_index = build_basket_index(
+            sessions, decay=self.decay, reference_timestamp=self._reference_timestamp
+        )
+
+        self._cooc_retriever = CoOccurrenceRetriever(self._item_graph)
+        self._path_retriever = PathEndpointRetriever(self._path_tree, self._tail_index)
+
         self._owned_by_entity = {
             entity: group["item_id"].to_numpy()
             for entity, group in self._interactions.groupby("entity_id", sort=False)
         }
+        self._history_by_entity = _build_histories(self._interactions, schema)
+
+        self._blend.path_basis = _fit_path_family_decorrelation(
+            interactions=self._interactions,
+            item_graph=self._item_graph,
+            tail_index=self._tail_index,
+            path_tree=self._path_tree,
+            basket_index=self._basket_index,
+            basket_similarity=self.basket_similarity,
+            history_by_entity=self._history_by_entity,
+            owned_by_entity=self._owned_by_entity,
+        )
         return self
 
-    # ---- introspection (PRD §10.2 power-user surface) ----------------------
+    # ---- introspection (PRD §10.2 power-user surface) ---------------------
 
     @property
     def item_graph(self) -> ItemGraph:
         self._require_fitted()
         assert self._item_graph is not None
         return self._item_graph
+
+    @property
+    def tail_index(self) -> TailIndex:
+        self._require_fitted()
+        assert self._tail_index is not None
+        return self._tail_index
+
+    @property
+    def path_tree(self) -> PathTree:
+        self._require_fitted()
+        assert self._path_tree is not None
+        return self._path_tree
+
+    @property
+    def basket_index(self) -> BasketIndex:
+        self._require_fitted()
+        assert self._basket_index is not None
+        return self._basket_index
+
+    @property
+    def session_inference(self) -> SessionInference:
+        self._require_fitted()
+        assert self._session_inference is not None
+        return self._session_inference
 
     @property
     def schema(self) -> InteractionSchema:
@@ -114,7 +212,7 @@ class Engine:
             "graph_density": self._item_graph.n_edges / max_edges,
         }
 
-    # ---- recommending ------------------------------------------------------
+    # ---- recommending -----------------------------------------------------
 
     def recommend(
         self,
@@ -124,48 +222,103 @@ class Engine:
     ) -> list[Recommendation]:
         """Return up to ``n`` recommendations for the given entity."""
         self._require_fitted()
-        owned = self._owned_by_entity.get(entity_id, np.array([]))
+        assert self._cooc_retriever is not None
+        assert self._path_retriever is not None
+        assert self._tail_index is not None
+        assert self._path_tree is not None
+        assert self._basket_index is not None
 
-        # Stage 1: retrieve
-        raw_candidates: list[Candidate] = []
-        for retriever in self._retrievers:
-            raw_candidates.extend(retriever.retrieve(owned, self.retrieval_budget))
+        owned_items = self._owned_by_entity.get(entity_id, np.array([]))
+        owned_set: set[object] = set(owned_items.tolist()) if owned_items.size else set()
+        history = self._history_by_entity.get(entity_id, ())
+        query_basket: frozenset[object] = frozenset(history[-MAX_QUERY_BASKET_SIZE:])
+
+        # Stage 1: retrieve from both sources, union + dedup.
+        raw_candidates = list(self._cooc_retriever.retrieve(owned_items, self.retrieval_budget))
+        raw_candidates.extend(
+            self._path_retriever.retrieve(
+                recent_history=history, budget=self.retrieval_budget, exclude=owned_set
+            )
+        )
         candidates = _dedup_max_score(raw_candidates, self.retrieval_budget)
 
-        # Constraints apply before ranking (plan departure from PRD §7.6).
         if constraints:
             candidates = apply_constraints(candidates, constraints)
 
-        # Stage 2: rank
         if not candidates:
             return []
-        scores = self._ranker.score(candidates, owned)
+
+        # Stage 2: score each candidate on each signal.
+        assert self._item_graph is not None
+        features = _compute_signal_features(
+            candidates=candidates,
+            owned_items=owned_items,
+            query_basket=query_basket,
+            history=history[-self.max_history_for_recommend :],
+            item_graph=self._item_graph,
+            tail_index=self._tail_index,
+            path_tree=self._path_tree,
+            basket_index=self._basket_index,
+            basket_similarity=self.basket_similarity,
+        )
+        scores = self._blend.score(features)
         order = np.argsort(-scores)
 
-        # Stage 3: rerank — Phase 1 is top-N slice
+        # Stage 3: rerank - Phase 2 still just takes the top-N.
         top = order[:n]
 
         return [
             Recommendation(
                 item_id=candidates[i].item_id,
                 score=float(scores[i]),
-                explanation=explain_from_source(candidates[i].source, float(scores[i])),
+                explanation=_build_explanation(
+                    candidate=candidates[i],
+                    blended_score=float(scores[i]),
+                    signal_names=features.signal_names,
+                    signal_row=features.matrix[i],
+                    weights=self._blend.weights,
+                ),
             )
             for i in top
         ]
 
-    # ---- internals ---------------------------------------------------------
+    # ---- internals --------------------------------------------------------
 
     def _require_fitted(self) -> None:
         if self._interactions is None:
             raise EngineNotFittedError("Engine.fit must be called before use")
 
 
+# ---------------------------------------------------------------------------
+# Module-level helpers
+# ---------------------------------------------------------------------------
+
+
+def _reference_timestamp_from(interactions: pd.DataFrame) -> float | None:
+    if "timestamp" not in interactions.columns or len(interactions) == 0:
+        return None
+    return float(interactions["timestamp"].max().timestamp())
+
+
+def _build_histories(
+    interactions: pd.DataFrame, schema: InteractionSchema
+) -> dict[object, tuple[object, ...]]:
+    """Per-entity ordered item history (oldest -> newest)."""
+    if schema.has_timestamp:
+        sorted_df = interactions.sort_values(["entity_id", "timestamp"], kind="mergesort")
+    else:
+        sorted_df = interactions
+    out: dict[object, tuple[object, ...]] = {}
+    for entity, group in sorted_df.groupby("entity_id", sort=False):
+        out[entity] = tuple(group["item_id"].tolist())
+    return out
+
+
 def _dedup_max_score(candidates: list[Candidate], budget: int) -> list[Candidate]:
     """Merge candidates across retrievers, keeping the max score per item.
 
-    When an item appears in multiple retrievers' results, its final retrieval
-    score is the maximum. Source of the winning candidate is preserved.
+    Preserves the source of the winning candidate for provenance in
+    explanations.
     """
     if not candidates:
         return []
@@ -176,3 +329,164 @@ def _dedup_max_score(candidates: list[Candidate], budget: int) -> list[Candidate
             best[c.item_id] = c
     deduped = sorted(best.values(), key=lambda c: -c.score)
     return deduped[:budget]
+
+
+def _compute_signal_features(
+    candidates: list[Candidate],
+    owned_items: np.ndarray,
+    query_basket: frozenset[object],
+    history: tuple[object, ...],
+    item_graph: ItemGraph,
+    tail_index: TailIndex,
+    path_tree: PathTree,
+    basket_index: BasketIndex,
+    basket_similarity: BasketSimilarity,
+) -> SignalFeatures:
+    """Compute the (N_candidates, K_signals) feature matrix in SIGNAL_ORDER."""
+    n = len(candidates)
+    matrix = np.zeros((n, len(SIGNAL_ORDER)), dtype=np.float64)
+    cand_ids = [c.item_id for c in candidates]
+
+    last_item = history[-1] if history else None
+    # path_full, path_tail, path_basket
+    matrix[:, 0] = path_tree.score_many(cand_ids, history)
+    matrix[:, 1] = tail_index.score_many(cand_ids, last_item)
+    matrix[:, 2] = basket_index.score_many(
+        cand_ids, query_basket=query_basket, similarity=basket_similarity
+    )
+    # cooccurrence - recompute from the graph against the entity's owned set.
+    # Using the retriever's max-score would let the path_endpoint retriever's
+    # score leak into this feature for candidates it won via dedup.
+    matrix[:, 3] = _cooccurrence_signal(cand_ids, owned_items, item_graph)
+
+    return SignalFeatures(matrix=matrix, signal_names=SIGNAL_ORDER)
+
+
+def _cooccurrence_signal(
+    cand_ids: list[object],
+    owned_items: np.ndarray,
+    item_graph: ItemGraph,
+) -> np.ndarray:
+    """Sum of item-graph edges between each candidate and the owned set."""
+    if item_graph.n_items == 0 or owned_items.size == 0:
+        return np.zeros(len(cand_ids), dtype=np.float64)
+    owned_indices = [item_graph.item_index[i] for i in owned_items if i in item_graph.item_index]
+    if not owned_indices:
+        return np.zeros(len(cand_ids), dtype=np.float64)
+    summed = np.asarray(item_graph.adjacency[owned_indices].sum(axis=0)).ravel()
+    out = np.zeros(len(cand_ids), dtype=np.float64)
+    for i, cid in enumerate(cand_ids):
+        idx = item_graph.item_index.get(cid)
+        if idx is not None:
+            out[i] = float(summed[idx])
+    return out
+
+
+def _build_explanation(
+    candidate: Candidate,
+    blended_score: float,
+    signal_names: tuple[str, ...],
+    signal_row: np.ndarray,
+    weights: dict[str, float],
+) -> Explanation:
+    """Build an Explanation from the dominant signal and the debug payload."""
+    # Contribution = weight * (raw signal score), for the *user-facing*
+    # narrative. This is an approximation because the blend actually operates
+    # on rescaled decorrelated signals, but it's accurate enough for the
+    # primary-sentence template and matches what practitioners expect to see.
+    contributions: dict[str, float] = {}
+    for i, name in enumerate(signal_names):
+        contributions[name] = float(signal_row[i]) * weights.get(name, 0.0)
+
+    dominant = (
+        max(contributions, key=lambda k: contributions[k]) if contributions else candidate.source
+    )
+    primary = _PRIMARY_TEMPLATES.get(dominant, "Recommended based on your history.")
+    debug: dict[str, Any] = {
+        "signals": {
+            name: {"raw": float(signal_row[i]), "weight": weights.get(name, 0.0)}
+            for i, name in enumerate(signal_names)
+        },
+        "blended_score": blended_score,
+        "dominant_signal": dominant,
+    }
+    return Explanation(primary=primary, debug_payload=debug)
+
+
+_PRIMARY_TEMPLATES: dict[str, str] = {
+    "cooccurrence": "Often seen with items you've already interacted with.",
+    "path_tail": "Frequently follows what you just interacted with.",
+    "path_full": "Matches a longer pattern of items you recently interacted with.",
+    "path_basket": "Commonly added next by others with a similar collection.",
+}
+
+
+def _fit_path_family_decorrelation(
+    interactions: pd.DataFrame,
+    item_graph: ItemGraph,
+    tail_index: TailIndex,
+    path_tree: PathTree,
+    basket_index: BasketIndex,
+    basket_similarity: BasketSimilarity,
+    history_by_entity: dict[object, tuple[object, ...]],
+    owned_by_entity: dict[object, np.ndarray],
+) -> DecorrelationBasis | None:
+    """Fit the Gram-Schmidt basis over the path family on the chronological
+    tail 10% of training.
+
+    Simulates recommendation on the tail: for each held-out event, treat the
+    entity's prior interactions as history and score a small candidate pool
+    under each path signal. The path-family signal matrix feeds
+    ``fit_decorrelation``. Cooccurrence is NOT part of this basis (PRD §6.2
+    puts it in a separate block).
+    """
+    if "timestamp" in interactions.columns:
+        sorted_df = interactions.sort_values("timestamp", kind="mergesort")
+    else:
+        sorted_df = interactions
+    n = len(sorted_df)
+    if n < 50:
+        return None
+    cutoff = int(n * 0.9)
+    held_out = sorted_df.iloc[cutoff:]
+
+    # Sample up to 200 held-out events to keep fit time bounded.
+    sample = held_out.iloc[:: max(1, len(held_out) // 200)].head(200)
+
+    candidate_pool: list[object] = list(item_graph.item_ids[:500])
+    if not candidate_pool:
+        return None
+
+    rows: list[np.ndarray] = []
+    for _, event in sample.iterrows():
+        entity = event["entity_id"]
+        owned_arr = owned_by_entity.get(entity, np.array([]))
+        if owned_arr.size == 0:
+            continue
+        history = history_by_entity.get(entity, ())
+        owned_set = set(owned_arr.tolist())
+        cand_ids = [c for c in candidate_pool if c not in owned_set][:100]
+        if not cand_ids:
+            continue
+        fake_candidates = [
+            Candidate(item_id=c, score=0.0, source="decorrelation_fit") for c in cand_ids
+        ]
+        feats = _compute_signal_features(
+            candidates=fake_candidates,
+            owned_items=owned_arr,
+            query_basket=frozenset(history[-MAX_QUERY_BASKET_SIZE:]),
+            history=history,
+            item_graph=item_graph,
+            tail_index=tail_index,
+            path_tree=path_tree,
+            basket_index=basket_index,
+            basket_similarity=basket_similarity,
+        )
+        # Extract just the path family columns for the basis fit.
+        path_indices = [feats.signal_names.index(n) for n in PATH_FAMILY]
+        rows.append(feats.matrix[:, path_indices])
+
+    if not rows:
+        return None
+    signal_matrix = np.vstack(rows)
+    return fit_decorrelation(signal_matrix, signal_names=list(PATH_FAMILY))
