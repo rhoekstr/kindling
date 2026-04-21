@@ -43,6 +43,8 @@ from kindling.ingest.contract import (
 )
 from kindling.ingest.sessions import SessionInference, infer_sessions
 from kindling.lifecycle.decay import DecayProtocol, ExponentialDecay
+from kindling.lifecycle.drift import DriftReport, DriftTracker
+from kindling.lifecycle.pruning import PreservedAggregate, PruningConfig
 from kindling.outcomes.log import OutcomeLog
 from kindling.outcomes.replay import replay_to_batch
 from kindling.path._sessions import sessions_from_interactions
@@ -144,6 +146,8 @@ class Engine:
         negative_signal_mode: str | None = None,
         alpha_pop: float = 0.3,
         outcome_log_path: str | None = None,
+        # Phase 6 lifecycle configuration.
+        pruning_config: PruningConfig | None = None,
     ) -> None:
         self.retrieval_budget = retrieval_budget
         self.decay: DecayProtocol = (
@@ -205,6 +209,13 @@ class Engine:
         self.alpha_pop = alpha_pop
         self._cost_graph: CostGraph | None = None
         self.outcome_log = OutcomeLog(path=outcome_log_path or ":memory:")
+
+        # Phase 6 lifecycle state.
+        self.pruning_config: PruningConfig = (
+            pruning_config if pruning_config is not None else PruningConfig()
+        )
+        self._preserved_aggregates: list[PreservedAggregate] = []
+        self._drift_tracker = DriftTracker()
 
     # ---- fitting ----------------------------------------------------------
 
@@ -282,6 +293,13 @@ class Engine:
             owned_by_entity=self._owned_by_entity,
         )
         self._heuristic_blend.path_basis = path_basis
+
+        # Phase 6: prune at retrain-time per PRD §3.5. Ordering per the
+        # plan: decay is already baked into the stored weights, so prune
+        # happens before the posterior refit so the Bayesian blend sees
+        # the pruned structures.
+        if self.pruning_config.enabled and self.pruning_config.schedule == "retrain":
+            self.prune()
 
         # Bayesian blend: prior from data features + VI fit on the
         # chronological tail.
@@ -821,6 +839,64 @@ class Engine:
             owned_arr=owned_arr,
         )
         return np.asarray(features.matrix[0].copy(), dtype=np.float64)
+
+    # ---- Phase 6 lifecycle surface ----------------------------------------
+
+    def prune(self) -> list[PreservedAggregate]:
+        """Apply the configured pruning policy to all derived structures.
+
+        Returns a list of ``PreservedAggregate`` records describing what
+        was dropped, one per structure. Safe to call repeatedly; the
+        second call is a near-no-op (pruning is idempotent).
+        """
+        self._require_fitted()
+        if not self.pruning_config.enabled:
+            return []
+        threshold = self.pruning_config.support_threshold
+        aggregates: list[PreservedAggregate] = []
+
+        for name, structure in (
+            ("tail_index", self._tail_index),
+            ("path_tree", self._path_tree),
+            ("basket_index", self._basket_index),
+            ("item_graph", self._item_graph),
+            ("cost_graph", self._cost_graph),
+        ):
+            if structure is None:
+                continue
+            n, weight = structure.prune_below(threshold)
+            if n > 0:
+                aggregates.append(
+                    PreservedAggregate(
+                        structure_name=name,
+                        n_pruned_entries=n,
+                        total_pruned_weight=weight,
+                        config=self.pruning_config,
+                    )
+                )
+        self._preserved_aggregates.extend(aggregates)
+        return aggregates
+
+    def drift_report(self) -> dict[str, object]:
+        """Compute drift metrics against the training interactions (PRD
+        §3.5). Updates the drift tracker's baseline on the first call
+        and compares subsequent calls against it."""
+        self._require_fitted()
+        assert self._interactions is not None
+        report = self._drift_tracker.compute(self._interactions)
+        return report.to_dict()
+
+    @property
+    def last_drift_report(self) -> DriftReport | None:
+        """Most recent drift report, or ``None`` if not computed yet."""
+        return self._drift_tracker.last_report
+
+    @property
+    def preserved_aggregates(self) -> list[PreservedAggregate]:
+        """All pruning aggregates recorded since fit. Used by the
+        Bayesian blend to account for data the posterior should know
+        exists but has had its detail dropped."""
+        return list(self._preserved_aggregates)
 
     # ---- internals --------------------------------------------------------
 

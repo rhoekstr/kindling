@@ -98,6 +98,29 @@ class PathTree:
     def n_prefixes(self) -> int:
         return len(self.counts)
 
+    def prune_below(self, support_threshold: float) -> tuple[int, float]:
+        """Remove (prefix, successor) entries whose stored weight is
+        below ``support_threshold``. Returns ``(n_pruned, pruned_weight)``."""
+        if support_threshold <= 0.0 or not self.counts:
+            return 0, 0.0
+        pruned_count = 0
+        pruned_weight = 0.0
+        for prefix, row in list(self.counts.items()):
+            keep: dict[object, float] = {}
+            for item, weight in row.items():
+                if weight < support_threshold:
+                    pruned_count += 1
+                    pruned_weight += weight
+                else:
+                    keep[item] = weight
+            if keep:
+                self.counts[prefix] = keep
+                self.row_totals[prefix] = sum(keep.values())
+            else:
+                del self.counts[prefix]
+                self.row_totals.pop(prefix, None)
+        return pruned_count, pruned_weight
+
 
 def build_path_tree(
     sessions: Iterable[SessionSequence],

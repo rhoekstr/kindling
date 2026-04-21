@@ -74,6 +74,34 @@ class TailIndex:
     def n_pairs(self) -> int:
         return sum(len(row) for row in self.counts.values())
 
+    def prune_below(self, support_threshold: float) -> tuple[int, float]:
+        """Remove (anchor, successor) entries whose stored weight is below
+        ``support_threshold``. Returns ``(n_pruned, total_pruned_weight)``
+        for preserved-aggregate bookkeeping.
+
+        Empty rows (anchors whose entire successor list was pruned) are
+        dropped, and row_totals is refreshed to stay consistent.
+        """
+        if support_threshold <= 0.0 or not self.counts:
+            return 0, 0.0
+        pruned_count = 0
+        pruned_weight = 0.0
+        for anchor, row in list(self.counts.items()):
+            keep: dict[object, float] = {}
+            for item, weight in row.items():
+                if weight < support_threshold:
+                    pruned_count += 1
+                    pruned_weight += weight
+                else:
+                    keep[item] = weight
+            if keep:
+                self.counts[anchor] = keep
+                self.row_totals[anchor] = sum(keep.values())
+            else:
+                del self.counts[anchor]
+                self.row_totals.pop(anchor, None)
+        return pruned_count, pruned_weight
+
 
 def build_tail_index(
     sessions: Iterable[SessionSequence],

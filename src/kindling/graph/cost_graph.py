@@ -107,6 +107,32 @@ class CostGraph:
             out[i] = self.alpha_pop * pop + ent + ctx
         return out
 
+    def prune_below(self, support_threshold: float) -> tuple[int, float]:
+        """Drop cost entries whose weight is below ``support_threshold``.
+        Returns ``(n_pruned, total_pruned_weight)`` across all three
+        layers. Mutates the dicts in place despite the frozen dataclass
+        because the dict contents are mutable."""
+        if support_threshold <= 0.0:
+            return 0, 0.0
+        total_pruned = 0
+        total_weight = 0.0
+        for pop_key, weight in list(self.population_cost.items()):
+            if weight < support_threshold:
+                del self.population_cost[pop_key]
+                total_pruned += 1
+                total_weight += weight
+        for key, weight in list(self.entity_cost.items()):
+            if weight < support_threshold:
+                del self.entity_cost[key]
+                total_pruned += 1
+                total_weight += weight
+        for key, weight in list(self.context_cost.items()):
+            if weight < support_threshold:
+                del self.context_cost[key]
+                total_pruned += 1
+                total_weight += weight
+        return total_pruned, total_weight
+
     def population_costs_many(self, items: list[object]) -> np.ndarray:
         return np.asarray([self.population_cost.get(i, 0.0) for i in items], dtype=np.float64)
 

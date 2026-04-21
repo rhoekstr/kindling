@@ -83,6 +83,35 @@ class BasketIndex:
     def n_items_indexed(self) -> int:
         return len(self.postings)
 
+    def prune_below(self, support_threshold: float) -> tuple[int, float]:
+        """Remove low-weight observations and rebuild the posting lists.
+        Returns ``(n_pruned_observations, total_pruned_weight)``."""
+        if support_threshold <= 0.0 or not self.observations:
+            return 0, 0.0
+        kept: list[_Observation] = []
+        keep_indices: list[int] = []
+        pruned_count = 0
+        pruned_weight = 0.0
+        for idx, obs in enumerate(self.observations):
+            if obs.weight < support_threshold:
+                pruned_count += 1
+                pruned_weight += obs.weight
+                continue
+            keep_indices.append(idx)
+            kept.append(obs)
+        if pruned_count == 0:
+            return 0, 0.0
+        # Rebuild postings from the surviving observations.
+        old_to_new = {old: new for new, old in enumerate(keep_indices)}
+        new_postings: dict[object, list[int]] = {}
+        for item, posting_list in self.postings.items():
+            new_list = [old_to_new[old] for old in posting_list if old in old_to_new]
+            if new_list:
+                new_postings[item] = new_list
+        self.observations = kept
+        self.postings = new_postings
+        return pruned_count, pruned_weight
+
     def score(
         self,
         candidate: object,

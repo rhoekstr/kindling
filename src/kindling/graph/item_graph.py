@@ -50,6 +50,24 @@ class ItemGraph:
         is n_edges / 2 since the matrix is symmetric."""
         return int(self.adjacency.nnz)
 
+    def prune_below(self, support_threshold: float) -> tuple[int, float]:
+        """Drop edges whose weight is below ``support_threshold``. Returns
+        ``(n_pruned_edges, total_pruned_weight)``. Mutates ``adjacency``
+        in place via the underlying CSR data array (compatible with the
+        frozen dataclass)."""
+        if support_threshold <= 0.0 or self.adjacency.nnz == 0:
+            return 0, 0.0
+        data = self.adjacency.data
+        mask = data < support_threshold
+        n_pruned = int(mask.sum())
+        if n_pruned == 0:
+            return 0, 0.0
+        pruned_weight = float(data[mask].sum())
+        # Zero out pruned entries; eliminate_zeros compacts the CSR.
+        data[mask] = 0.0
+        self.adjacency.eliminate_zeros()
+        return n_pruned, pruned_weight
+
     def neighbors(self, item_id: object, top_k: int | None = None) -> pd.DataFrame:
         """Return the top-k co-occurring neighbors of an item by weight.
 
