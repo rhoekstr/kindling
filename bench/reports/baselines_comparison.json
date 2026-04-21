@@ -1,0 +1,77 @@
+{
+  "dataset": "movielens-1m",
+  "k": 10,
+  "n_eval_entities": 1157,
+  "catalog_size": 3489,
+  "kindling_version": "0.0.1.dev0",
+  "results": [
+    {
+      "name": "kindling",
+      "fit_seconds": 105.60228975000791,
+      "recommend_p50_ms": 200.33254195004702,
+      "recommend_p95_ms": 246.6489077778533,
+      "metrics": {
+        "precision_at_k": 0.1676750216076059,
+        "recall_at_k": 0.049430781990266764,
+        "ndcg_at_k": 0.18201681619703616,
+        "mrr": 0.3178043242649984,
+        "hit_rate": 0.581676750216076,
+        "coverage": 0.06248208655775294,
+        "intra_list_diversity": 1.0,
+        "n_entities_evaluated": 1157,
+        "k": 10
+      }
+    },
+    {
+      "name": "popularity",
+      "fit_seconds": 0.10658370901364833,
+      "recommend_p50_ms": 0.0019579892978072166,
+      "recommend_p95_ms": 0.005891826003789905,
+      "metrics": {
+        "precision_at_k": 0.16369922212618843,
+        "recall_at_k": 0.04557940249707402,
+        "ndcg_at_k": 0.1775839644686133,
+        "mrr": 0.312214127944465,
+        "hit_rate": 0.5635263612791702,
+        "coverage": 0.027515047291487533,
+        "intra_list_diversity": 1.0,
+        "n_entities_evaluated": 1157,
+        "k": 10
+      }
+    },
+    {
+      "name": "item_item_knn",
+      "fit_seconds": 0.4083006250439212,
+      "recommend_p50_ms": 0.09820796549320221,
+      "recommend_p95_ms": 0.18902481533586982,
+      "metrics": {
+        "precision_at_k": 0.18098530682800343,
+        "recall_at_k": 0.05299223597609856,
+        "ndcg_at_k": 0.1966172800939235,
+        "mrr": 0.33955186511366287,
+        "hit_rate": 0.5946413137424373,
+        "coverage": 0.061335626253940956,
+        "intra_list_diversity": 1.0,
+        "n_entities_evaluated": 1157,
+        "k": 10
+      }
+    },
+    {
+      "name": "implicit_als",
+      "fit_seconds": 1.4449729169718921,
+      "recommend_p50_ms": 0.039458973333239555,
+      "recommend_p95_ms": 0.05374946631491186,
+      "metrics": {
+        "precision_at_k": 0.14399308556611928,
+        "recall_at_k": 0.051191324248965255,
+        "ndcg_at_k": 0.15891444753042291,
+        "mrr": 0.2947616989751821,
+        "hit_rate": 0.5799481417458946,
+        "coverage": 0.1817139581541989,
+        "intra_list_diversity": 1.0,
+        "n_entities_evaluated": 1157,
+        "k": 10
+      }
+    }
+  ]
+}

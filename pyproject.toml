@@ -38,6 +38,9 @@ bench = [
     "requests>=2.31",
     "tqdm>=4.66",
 ]
+baselines = [
+    "implicit>=0.7",
+]
 
 [project.urls]
 Homepage = "https://github.com/awrylabs/kindling"
