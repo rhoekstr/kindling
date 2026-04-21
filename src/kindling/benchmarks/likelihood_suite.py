@@ -45,7 +45,8 @@ from kindling.blend.likelihoods import (
     PairwiseBradleyTerry,
 )
 from kindling.engine import Engine
-from kindling.loaders import movielens
+from kindling.loaders import movielens, synthetic
+from kindling.loaders._base import DatasetSplit
 
 
 @dataclass(frozen=True)
@@ -99,14 +100,14 @@ def _brier_score(probs: np.ndarray, outcomes: np.ndarray) -> float:
     return float(np.mean((probs - outcomes.astype(np.float64)) ** 2))
 
 
-def run_likelihood_suite_movielens(
+def run_likelihood_suite(
+    split: DatasetSplit,
     k: int = 10,
     max_eval_entities: int = 500,
     vi_max_iter: int = 200,
     seed: int = 0,
 ) -> list[LikelihoodResult]:
-    """Run the four-likelihood comparison on ML-1M."""
-    split = movielens.load_1m(test_fraction=0.1)
+    """Run the four-likelihood comparison on any DatasetSplit."""
     train_items = split.train.groupby("entity_id", sort=False)["item_id"].apply(
         lambda s: set(s.tolist())
     )
@@ -202,9 +203,30 @@ def default_decision(results: list[LikelihoodResult]) -> str:
     )
 
 
+def _load_split(dataset: str) -> DatasetSplit:
+    """Resolve a dataset name to a loaded DatasetSplit."""
+    if dataset == "movielens-1m":
+        return movielens.load_1m(test_fraction=0.1)
+    if dataset == "synthetic-grocery":
+        return synthetic.make_grocery()
+    if dataset == "synthetic-ratings":
+        return synthetic.make_ratings()
+    raise SystemExit(
+        f"Unknown dataset {dataset!r}. Supported here: movielens-1m, "
+        "synthetic-grocery, synthetic-ratings. Use the Instacart / Amazon "
+        "/ RetailRocket loaders directly from Python code and pass the "
+        "DatasetSplit to run_likelihood_suite()."
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Run the Phase 3 critical-path likelihood comparison."
+        description="Run the critical-path likelihood comparison on a dataset."
+    )
+    parser.add_argument(
+        "--dataset",
+        default="movielens-1m",
+        choices=["movielens-1m", "synthetic-grocery", "synthetic-ratings"],
     )
     parser.add_argument("--k", type=int, default=10)
     parser.add_argument("--max-eval-entities", type=int, default=500)
@@ -213,7 +235,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", type=Path, default=None)
     args = parser.parse_args(argv)
 
-    results = run_likelihood_suite_movielens(
+    split = _load_split(args.dataset)
+    results = run_likelihood_suite(
+        split=split,
         k=args.k,
         max_eval_entities=args.max_eval_entities,
         vi_max_iter=args.vi_max_iter,
@@ -222,7 +246,8 @@ def main(argv: list[str] | None = None) -> int:
     decision = default_decision(results)
     report = {
         "engine_version": __version__,
-        "dataset": "movielens-1m",
+        "dataset": split.name,
+        "dataset_description": split.description,
         "decision": decision,
         "results": [asdict(r) for r in results],
     }

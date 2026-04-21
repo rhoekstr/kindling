@@ -31,7 +31,8 @@ from pathlib import Path
 from kindling import __version__
 from kindling.benchmarks.metrics import aggregate
 from kindling.engine import Engine
-from kindling.loaders import movielens
+from kindling.loaders import movielens, synthetic
+from kindling.loaders._base import DatasetSplit
 
 
 @dataclass(frozen=True)
@@ -102,13 +103,13 @@ def _coverage(
     return len(seen) / max(catalog_size, 1)
 
 
-def run_temperature_suite_movielens(
+def run_temperature_suite(
+    split: DatasetSplit,
     k: int = 10,
     max_eval_entities: int = 300,
     vi_max_iter: int = 100,
     seed: int = 0,
 ) -> TemperatureSuiteReport:
-    split = movielens.load_1m(test_fraction=0.1)
     train_items = (
         split.train.groupby("entity_id", sort=False)["item_id"]
         .apply(lambda s: set(s.tolist()))
@@ -204,7 +205,7 @@ def run_temperature_suite_movielens(
 
     return TemperatureSuiteReport(
         engine_version=__version__,
-        dataset="movielens-1m",
+        dataset=split.name,
         solver_comparison=solver_rows,
         temperature_curve=curve,
         per_position_validation=PerPositionResult(
@@ -263,8 +264,23 @@ def summarise(report: TemperatureSuiteReport) -> list[str]:
     return lines
 
 
+def _load_split(dataset: str) -> DatasetSplit:
+    if dataset == "movielens-1m":
+        return movielens.load_1m(test_fraction=0.1)
+    if dataset == "synthetic-grocery":
+        return synthetic.make_grocery()
+    if dataset == "synthetic-ratings":
+        return synthetic.make_ratings()
+    raise SystemExit(f"Unknown dataset {dataset!r}")
+
+
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Phase 4 temperature benchmark suite.")
+    parser = argparse.ArgumentParser(description="Temperature benchmark suite.")
+    parser.add_argument(
+        "--dataset",
+        default="movielens-1m",
+        choices=["movielens-1m", "synthetic-grocery", "synthetic-ratings"],
+    )
     parser.add_argument("--k", type=int, default=10)
     parser.add_argument("--max-eval-entities", type=int, default=300)
     parser.add_argument("--vi-max-iter", type=int, default=100)
@@ -272,7 +288,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", type=Path, default=None)
     args = parser.parse_args(argv)
 
-    report = run_temperature_suite_movielens(
+    split = _load_split(args.dataset)
+    report = run_temperature_suite(
+        split=split,
         k=args.k,
         max_eval_entities=args.max_eval_entities,
         vi_max_iter=args.vi_max_iter,

@@ -1,0 +1,117 @@
+{
+  "engine_version": "0.0.1.dev0",
+  "dataset": "synthetic-ratings",
+  "dataset_description": "Synthetic ratings-style dataset: 200 entities, 100 items, ~30 interactions/entity, no session structure. Co-occurrence should dominate.",
+  "decision": "keep: listwise_calibration wins on calibration (Brier, ECE) and matches on NDCG",
+  "results": [
+    {
+      "likelihood": "listwise_calibration",
+      "ndcg_at_k": 0.6419511030007606,
+      "precision_at_k": 0.22333333333333333,
+      "recall_at_k": 0.7473412698412699,
+      "mrr": 0.7373015873015873,
+      "hit_rate": 0.9466666666666667,
+      "brier": 0.7766666666665216,
+      "ece": 0.7766666666665731,
+      "posterior_mean": [
+        0.2512792575349697,
+        0.15534931303742247,
+        0.10850725073306901,
+        0.3113245621763231,
+        0.058341923201470115,
+        0.0569261855263089,
+        0.05827150779043674
+      ],
+      "credible_width_mean": 0.23847950952044686,
+      "diagnostic_all_pass": false,
+      "diagnostic_warnings": [
+        "Posterior predictive check failed (actual Brier 0.7994 vs simulated 0.0003, deviation 100.0%). The fitted posterior does not match the data well.",
+        "Variational effective sample size ratio 1.09% below 10%. Consider a richer variational family."
+      ],
+      "fit_seconds": 0.3814337500371039,
+      "recommend_seconds": 0.07666058302856982
+    },
+    {
+      "likelihood": "binary_independent",
+      "ndcg_at_k": 0.6406889636689308,
+      "precision_at_k": 0.22333333333333333,
+      "recall_at_k": 0.7473412698412699,
+      "mrr": 0.7315238095238095,
+      "hit_rate": 0.9466666666666667,
+      "brier": 0.7766666666665216,
+      "ece": 0.7766666666665731,
+      "posterior_mean": [
+        0.29208239211839737,
+        0.19777115274002127,
+        0.13364131394405732,
+        0.16480736994807427,
+        0.07444147899382951,
+        0.08295940035774975,
+        0.05429689189787068
+      ],
+      "credible_width_mean": 0.2265659188990766,
+      "diagnostic_all_pass": false,
+      "diagnostic_warnings": [
+        "Posterior predictive check failed (actual Brier 0.7986 vs simulated 0.0010, deviation 99.9%). The fitted posterior does not match the data well.",
+        "Variational effective sample size ratio 0.78% below 10%. Consider a richer variational family."
+      ],
+      "fit_seconds": 0.44978829205501825,
+      "recommend_seconds": 0.07363108301069587
+    },
+    {
+      "likelihood": "pairwise_bradley_terry",
+      "ndcg_at_k": 0.6406438037847768,
+      "precision_at_k": 0.22333333333333333,
+      "recall_at_k": 0.7473412698412699,
+      "mrr": 0.7315238095238095,
+      "hit_rate": 0.9466666666666667,
+      "brier": 0.7766666666665216,
+      "ece": 0.7766666666665731,
+      "posterior_mean": [
+        0.2748159633311026,
+        0.19140360175050206,
+        0.14124657341805902,
+        0.17506739353693124,
+        0.08457448517581499,
+        0.07419166720483558,
+        0.0587003155827545
+      ],
+      "credible_width_mean": 0.2273765523907227,
+      "diagnostic_all_pass": false,
+      "diagnostic_warnings": [
+        "ELBO trajectory non-monotonic (final=-2087.519, peak=-1915.215). Consider a different random seed or a lower learning rate.",
+        "Posterior predictive check failed (actual Brier 0.7987 vs simulated 0.0010, deviation 99.9%). The fitted posterior does not match the data well.",
+        "Variational effective sample size ratio 0.78% below 10%. Consider a richer variational family."
+      ],
+      "fit_seconds": 8.90778379200492,
+      "recommend_seconds": 0.07422837498597801
+    },
+    {
+      "likelihood": "multinomial_softmax",
+      "ndcg_at_k": 0.6406708578467205,
+      "precision_at_k": 0.22333333333333333,
+      "recall_at_k": 0.7473412698412699,
+      "mrr": 0.7315238095238095,
+      "hit_rate": 0.9466666666666667,
+      "brier": 0.7766666666665216,
+      "ece": 0.7766666666665731,
+      "posterior_mean": [
+        0.27564200944995965,
+        0.1905358535072276,
+        0.14250484238233593,
+        0.17442838394543408,
+        0.07548057217488544,
+        0.08139213677983236,
+        0.06001620176032507
+      ],
+      "credible_width_mean": 0.2272720500046371,
+      "diagnostic_all_pass": false,
+      "diagnostic_warnings": [
+        "Posterior predictive check failed (actual Brier 0.7987 vs simulated 0.0009, deviation 99.9%). The fitted posterior does not match the data well.",
+        "Variational effective sample size ratio 0.78% below 10%. Consider a richer variational family."
+      ],
+      "fit_seconds": 8.353937790961936,
+      "recommend_seconds": 0.07620299991685897
+    }
+  ]
+}

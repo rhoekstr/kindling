@@ -19,6 +19,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from kindling.loaders._base import DatasetSplit
+
 ML_1M_URL = "https://files.grouplens.org/datasets/movielens/ml-1m.zip"
 # Pinned after first local download on 2026-04-20.
 # Set KINDLING_SKIP_CHECKSUM=1 to skip verification during offline dev.
@@ -139,10 +141,25 @@ def chronological_split(
     return sorted_df.iloc[:cutoff].copy(), sorted_df.iloc[cutoff:].copy()
 
 
-def load_1m(cache_dir: Path | None = None, test_fraction: float = 0.1) -> MovieLensSplit:
-    """Load ML-1M as a chronological train/test split in canonical format."""
+def load_1m(cache_dir: Path | None = None, test_fraction: float = 0.1) -> DatasetSplit:
+    """Load ML-1M as a chronological train/test split in canonical format.
+
+    Returns a ``DatasetSplit`` (Phase 7 refactor). The Phase 1 legacy
+    attributes (train / test / items) remain on the returned object.
+    """
     ratings, movies = load_raw(cache_dir=cache_dir)
     interactions = to_interactions(ratings)
     train, test = chronological_split(interactions, test_fraction=test_fraction)
     items = movies.rename(columns={"movie_id": "item_id"})
-    return MovieLensSplit(train=train, test=test, items=items)
+    # Genre is the natural category for calibration on ML-1M.
+    items = items.assign(category=items["genres"].str.split("|").str[0])
+    return DatasetSplit(
+        name="movielens-1m",
+        train=train,
+        test=test,
+        items=items,
+        description=(
+            "MovieLens 1M ratings (ratings>=4 treated as positive "
+            "implicit feedback). Primary genre as calibration category."
+        ),
+    )
