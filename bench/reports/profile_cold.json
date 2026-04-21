@@ -1,0 +1,73 @@
+{
+  "engine_version": "0.0.1.dev0",
+  "runs": [
+    {
+      "regime": "cold",
+      "n_items": 4195,
+      "n_entities": 500,
+      "n_interactions": 5400,
+      "fit_seconds": 1.53304324997589,
+      "recommend": {
+        "n_samples": 500,
+        "p50_ms": 1.4831874868832529,
+        "p95_ms": 2.1584920119494186,
+        "p99_ms": 2.3703398450743403,
+        "max_ms": 2.6106250006705523,
+        "mean_ms": 1.5218350652139634
+      },
+      "memory": {
+        "peak_rss_mb": 155.09375,
+        "peak_tracemalloc_mb": 10.24337387084961
+      },
+      "hot_paths": [
+        [
+          "kindling:455(recommend)",
+          0.30279221300000003
+        ],
+        [
+          "kindling:1006(_compute_signal_features)",
+          0.105601913
+        ],
+        [
+          "retrieve:26(retrieve)",
+          0.09787791800000001
+        ],
+        [
+          "kindling:1048(_cooccurrence_signal)",
+          0.06551504600000001
+        ],
+        [
+          "sparse:29(__getitem__)",
+          0.052431046
+        ],
+        [
+          "kindling:1068(_build_explanation)",
+          0.035207376000000006
+        ],
+        [
+          ":0(<method 'get' of 'dict' objects>)",
+          0.033536673
+        ],
+        [
+          "sparse:492(sum)",
+          0.033142951000000004
+        ],
+        [
+          "sparse:1286(sum)",
+          0.032350371
+        ],
+        [
+          "sparse:30(__init__)",
+          0.026911721000000003
+        ]
+      ],
+      "engine_version": "0.0.1.dev0"
+    }
+  ],
+  "prd_checks": {
+    "cold": {
+      "latency_p95_under_50ms": true,
+      "fit_under_60s": true
+    }
+  }
+}
