@@ -76,6 +76,7 @@ ignore = [
 "tests/**" = ["PLR2004", "N802"]
 "src/kindling/benchmarks/**" = ["PLR2004"]
 "src/kindling/blend/outcome_builder.py" = ["PLR0915"]
+"src/kindling/engine.py" = ["PLR0915"]
 
 [tool.mypy]
 python_version = "3.11"

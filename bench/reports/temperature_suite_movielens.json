@@ -1,0 +1,75 @@
+{
+  "engine_version": "0.0.1.dev0",
+  "dataset": "movielens-1m",
+  "solver_comparison": [
+    {
+      "solver": "greedy",
+      "temperature": 0.5,
+      "ndcg_at_k": 0.1353944774464643,
+      "intra_list_diversity": 1.0,
+      "recommend_seconds": 30.355304540949874
+    },
+    {
+      "solver": "beam",
+      "temperature": 0.5,
+      "ndcg_at_k": 0.13634462955383317,
+      "intra_list_diversity": 1.0,
+      "recommend_seconds": 30.094847499975003
+    }
+  ],
+  "temperature_curve": [
+    {
+      "temperature": 0.0,
+      "ndcg_at_k": 0.17519576440314896,
+      "intra_list_diversity": 1.0,
+      "coverage": 0.021782745772427628
+    },
+    {
+      "temperature": 0.25,
+      "ndcg_at_k": 0.18067767822972455,
+      "intra_list_diversity": 1.0,
+      "coverage": 0.024935511607910577
+    },
+    {
+      "temperature": 0.5,
+      "ndcg_at_k": 0.13634462955383317,
+      "intra_list_diversity": 1.0,
+      "coverage": 0.046145027228432216
+    },
+    {
+      "temperature": 0.75,
+      "ndcg_at_k": 0.11756875578873177,
+      "intra_list_diversity": 1.0,
+      "coverage": 0.043852106620808254
+    },
+    {
+      "temperature": 1.0,
+      "ndcg_at_k": 0.11337861287325011,
+      "intra_list_diversity": 1.0,
+      "coverage": 0.04299226139294927
+    }
+  ],
+  "per_position_validation": {
+    "uniform_items_first_user": [
+      "1923",
+      "1089",
+      "223",
+      "590",
+      "32"
+    ],
+    "staged_items_first_user": [
+      "1196",
+      "593",
+      "1923",
+      "1089",
+      "590"
+    ],
+    "overlap_in_top5": 3
+  },
+  "temperature_curve_monotonic": false,
+  "decisions": [
+    "SOLVER: beam \u2248 greedy within MC noise (+0.0010 NDCG). Keep beam as default on qualitative grounds (better when positions compete for overlapping items).",
+    "CURVE: coverage NOT monotonic in temperature. Investigate - the temperature API should produce strictly more novel items as tau grows.",
+    "PER-POSITION: [0,0,0.5,1,1] vs uniform 0.6 differ in 2/5 items. Per-position API justified."
+  ]
+}

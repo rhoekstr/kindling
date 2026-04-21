@@ -44,7 +44,28 @@ from kindling.path._sessions import sessions_from_interactions
 from kindling.path.basket_index import BasketIndex, BasketSimilarity, build_basket_index
 from kindling.path.path_tree import PathTree, build_path_tree
 from kindling.path.tail_index import TailIndex, build_tail_index
+from kindling.rerank.calibration import (
+    CategoryIndex,
+    apply_calibration,
+    build_category_index,
+)
 from kindling.rerank.constraints import ConstraintPredicate, apply_constraints
+from kindling.rerank.dpp import (
+    CooccurrenceCosineKernel,
+    DPPGreedy,
+    SimilarityKernel,
+)
+from kindling.rerank.lift import (
+    PopulationBaselines,
+    apply_lift,
+    compute_population_baselines,
+)
+from kindling.rerank.temperature import (
+    TemperatureInput,
+    TemperatureObjective,
+    resolve_temperature,
+)
+from kindling.rerank.temperature import solve as solve_temperature
 from kindling.retrieve.cooccurrence import CoOccurrenceRetriever
 from kindling.retrieve.path_endpoint import PathEndpointRetriever
 from kindling.retrieve.protocol import Candidate
@@ -97,6 +118,10 @@ class Engine:
         credible_coverage: float = 0.9,
         seed: int = 0,
         vi_max_iter: int = 300,
+        # Phase 4 re-rank configuration.
+        item_metadata: pd.DataFrame | None = None,
+        category_column: str = "category",
+        diversity_kernel: SimilarityKernel | None = None,
     ) -> None:
         self.retrieval_budget = retrieval_budget
         self.decay: DecayProtocol = (
@@ -139,6 +164,14 @@ class Engine:
         self._owned_by_entity: dict[object, np.ndarray] = {}
         self._history_by_entity: dict[object, tuple[object, ...]] = {}
 
+        # Phase 4 re-rank state.
+        self.item_metadata = item_metadata
+        self.category_column = category_column
+        self._diversity_kernel_override = diversity_kernel
+        self._diversity_kernel: SimilarityKernel | None = None
+        self._population_baselines: PopulationBaselines | None = None
+        self._category_index: CategoryIndex | None = None
+
     # ---- fitting ----------------------------------------------------------
 
     def fit(self, interactions: pd.DataFrame) -> Engine:
@@ -178,6 +211,19 @@ class Engine:
             for entity, group in self._interactions.groupby("entity_id", sort=False)
         }
         self._history_by_entity = _build_histories(self._interactions, schema)
+
+        # Phase 4 re-rank state.
+        self._population_baselines = compute_population_baselines(self._interactions)
+        if self._diversity_kernel_override is not None:
+            self._diversity_kernel = self._diversity_kernel_override
+        else:
+            self._diversity_kernel = CooccurrenceCosineKernel(item_graph=self._item_graph)
+        if self.item_metadata is not None:
+            self._category_index = build_category_index(
+                interactions=self._interactions,
+                item_metadata=self.item_metadata,
+                category_column=self.category_column,
+            )
 
         path_basis = _fit_path_family_decorrelation(
             interactions=self._interactions,
@@ -345,8 +391,31 @@ class Engine:
         entity_id: object,
         n: int = 10,
         constraints: list[ConstraintPredicate] | None = None,
+        # Phase 4 re-rank parameters.
+        diversity: float = 0.0,
+        temperature: TemperatureInput = 0.0,
+        temperature_solver: str = "beam",
+        temperature_beam_width: int = 10,
+        calibration_weight: float = 0.0,
+        emphasis: str | None = None,
+        lift_weight: float = 1.0,
     ) -> list[Recommendation]:
-        """Return up to ``n`` recommendations for the given entity."""
+        """Return up to ``n`` recommendations for the given entity.
+
+        Phase 4 adds re-rank controls layered on top of the Bayesian score:
+
+        * ``diversity`` in ``[0, 1]``: DPP diversity weight.
+        * ``temperature``: per-position novelty control (scalar / list /
+          named profile / dict per PRD §7.3).
+        * ``temperature_solver``: ``"beam"`` (default), ``"greedy"``, or
+          ``"dpp"``.
+        * ``calibration_weight`` in ``[0, 1]``: Steck 2018 category
+          calibration. Requires ``item_metadata`` at construction.
+        * ``emphasis``: ``"distinctive"`` activates lift emphasis using
+          population baselines cached at fit time.
+        * ``lift_weight`` in ``[0, 1]``: strength of the lift boost when
+          ``emphasis="distinctive"``.
+        """
         self._require_fitted()
         assert self._cooc_retriever is not None
         assert self._path_retriever is not None
@@ -410,8 +479,81 @@ class Engine:
             ci_lower, ci_upper = None, None
             weights_for_explanation = dict(self._heuristic_blend.weights)
 
-        order = np.argsort(-scores)
-        top = order[:n]
+        # Stage 3 re-rank pipeline: lift -> diversity (DPP) -> calibration
+        # -> temperature -> top-N. Each step transforms the score or the
+        # candidate ordering. Constraints already applied before ranking
+        # (plan departure from PRD §7.6). Order matches PRD §7.1 except
+        # lift moves first so it influences diversity and calibration.
+        item_ids_all = [c.item_id for c in candidates]
+
+        # 1. Lift emphasis.
+        if emphasis == "distinctive" and self._population_baselines is not None:
+            scores = apply_lift(
+                scores=scores,
+                item_ids=item_ids_all,
+                baselines=self._population_baselines,
+                weight=lift_weight,
+            )
+
+        # 2. Starting order from the current (possibly lift-adjusted) scores.
+        ordered_indices: list[int] = list(np.argsort(-scores))
+
+        # 3. Diversity re-rank (DPP).
+        if diversity > 0.0 and self._diversity_kernel is not None:
+            dpp = DPPGreedy(kernel=self._diversity_kernel, diversity_weight=diversity)
+            dpp_k = min(max(n * 3, n), len(candidates))
+            dpp_order = dpp.rerank(
+                item_ids=item_ids_all,
+                qualities=np.maximum(scores, 0.0),
+                k=dpp_k,
+            )
+            if dpp_order:
+                ordered_indices = dpp_order + [i for i in ordered_indices if i not in dpp_order]
+
+        # 4. Calibration (Steck).
+        if calibration_weight > 0.0 and self._category_index is not None:
+            ordered_indices = apply_calibration(
+                ordered_indices=ordered_indices,
+                item_ids=item_ids_all,
+                scores=scores,
+                entity_id=entity_id,
+                index=self._category_index,
+                weight=calibration_weight,
+                k=max(len(ordered_indices), n),
+            )
+
+        # 5. Temperature optimization (per-position novelty control).
+        temps = resolve_temperature(temperature, n=n)
+        if float(np.max(temps)) > 0.0:
+            # Novelty: inverse of population baseline (rare = novel).
+            if self._population_baselines is not None:
+                baseline_vec = self._population_baselines.lookup_many(item_ids_all)
+                novelty = 1.0 / np.maximum(baseline_vec, 1e-9)
+            else:
+                novelty = np.ones_like(scores)
+            # Restrict to the pre-temperature candidate pool to keep
+            # computations bounded.
+            pool = ordered_indices[: min(len(ordered_indices), max(50, n * 5))]
+            pool_ids = [item_ids_all[i] for i in pool]
+            pool_scores = np.asarray([max(scores[i], 1e-9) for i in pool], dtype=np.float64)
+            pool_novelty = np.asarray([novelty[i] for i in pool], dtype=np.float64)
+            objective = TemperatureObjective(scores=pool_scores, novelty=pool_novelty)
+            chosen_local = solve_temperature(
+                objective=objective,
+                temperatures=temps,
+                n_positions=n,
+                solver=temperature_solver,
+                beam_width=temperature_beam_width,
+                item_ids=pool_ids,
+                kernel_dpp=(
+                    DPPGreedy(kernel=self._diversity_kernel, diversity_weight=diversity)
+                    if temperature_solver == "dpp" and self._diversity_kernel is not None
+                    else None
+                ),
+            )
+            ordered_indices = [pool[j] for j in chosen_local]
+
+        top = ordered_indices[:n]
 
         return [
             Recommendation(
