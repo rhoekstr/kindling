@@ -31,12 +31,18 @@ def test_recommend_respects_n(tiny_interactions: pd.DataFrame) -> None:
     assert len(recs) <= 2
 
 
-def test_recommend_unknown_entity_returns_empty(
+def test_recommend_unknown_entity_gets_cold_start_fallback(
     tiny_interactions: pd.DataFrame,
 ) -> None:
+    """Contract (post ADR-growth-curves): unknown entities get a
+    popularity-ranked fallback, not an empty list. See tests/unit/
+    test_cold_start.py for the full fallback contract."""
     engine = Engine().fit(tiny_interactions)
-    # No co-occurrence signal available, so the retriever returns nothing.
-    assert engine.recommend(entity_id="unknown_entity", n=5) == []
+    recs = engine.recommend(entity_id="unknown_entity", n=5)
+    assert recs, "cold-start fallback should return a non-empty list"
+    assert all(
+        r.explanation.debug_payload.get("fallback") == "popularity" for r in recs
+    )
 
 
 def test_recommend_with_constraint(tiny_interactions: pd.DataFrame) -> None:

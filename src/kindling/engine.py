@@ -135,6 +135,7 @@ class Engine:
         max_path_prefix: int = 3,
         max_history_for_recommend: int = 5,
         basket_similarity: BasketSimilarity = BasketSimilarity.COVERAGE,
+        basket_scan_cap: int | None = 10_000,
         use_bayesian_blend: bool = True,
         likelihood: LikelihoodProtocol | None = None,
         credible_coverage: float = 0.9,
@@ -160,6 +161,7 @@ class Engine:
         self.max_path_prefix = max_path_prefix
         self.max_history_for_recommend = max_history_for_recommend
         self.basket_similarity = basket_similarity
+        self.basket_scan_cap = basket_scan_cap
 
         # Bayesian blend configuration (Phase 3).
         self.use_bayesian_blend = use_bayesian_blend
@@ -410,6 +412,8 @@ class Engine:
             basket_similarity=self.basket_similarity,
             cost_graph=self._cost_graph,
             entity_id=entity,
+            basket_scan_cap=self.basket_scan_cap,
+            rng=self._rng,
         )
 
     # ---- introspection (PRD §10.2 power-user surface) ---------------------
@@ -545,6 +549,8 @@ class Engine:
             basket_similarity=self.basket_similarity,
             cost_graph=self._cost_graph,
             entity_id=entity_id,
+            basket_scan_cap=self.basket_scan_cap,
+            rng=self._rng,
         )
         # Stage 2: score via Bayesian posterior mean when available,
         # heuristic blend otherwise. Both operate on the same SignalFeatures.
@@ -1115,6 +1121,8 @@ def _compute_signal_features(
     basket_similarity: BasketSimilarity,
     cost_graph: CostGraph | None = None,
     entity_id: object = None,
+    basket_scan_cap: int | None = None,
+    rng: np.random.Generator | None = None,
 ) -> SignalFeatures:
     """Compute the (N_candidates, K_signals) feature matrix in SIGNAL_ORDER."""
     n = len(candidates)
@@ -1126,7 +1134,11 @@ def _compute_signal_features(
     matrix[:, 0] = path_tree.score_many(cand_ids, history)
     matrix[:, 1] = tail_index.score_many(cand_ids, last_item)
     matrix[:, 2] = basket_index.score_many(
-        cand_ids, query_basket=query_basket, similarity=basket_similarity
+        cand_ids,
+        query_basket=query_basket,
+        similarity=basket_similarity,
+        scan_cap=basket_scan_cap,
+        rng=rng,
     )
     # cooccurrence - recompute from the graph against the entity's owned set.
     # Using the retriever's max-score would let the path_endpoint retriever's

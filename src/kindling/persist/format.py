@@ -269,6 +269,15 @@ def _restore(
     engine._bayesian_blend = state.bayesian_blend
     engine._diagnostics = state.diagnostics
     engine._population_baselines = state.population_baselines
+    # Rebuild the cold-start popularity ranking from the restored baselines.
+    if engine._population_baselines is not None and engine._population_baselines.item_to_baseline:
+        engine._popular_items_ranked = sorted(
+            engine._population_baselines.item_to_baseline,
+            key=lambda i: engine._population_baselines.item_to_baseline[i],  # type: ignore[union-attr]
+            reverse=True,
+        )
+    else:
+        engine._popular_items_ranked = []
     engine._category_index = state.category_index
     engine._drift_tracker = state.drift_tracker
 
@@ -289,6 +298,7 @@ def _restore(
     engine.max_path_prefix = 3
     engine.max_history_for_recommend = 5
     engine.basket_similarity = BasketSimilarity.COVERAGE
+    engine.basket_scan_cap = 10_000
     engine.use_bayesian_blend = state.bayesian_blend is not None
 
     from kindling.blend.likelihoods import ListwiseCalibration

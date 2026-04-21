@@ -155,8 +155,17 @@ class BasketIndex:
         candidates: Iterable[object],
         query_basket: frozenset[object] | set[object] | tuple[object, ...],
         similarity: BasketSimilarity = BasketSimilarity.COVERAGE,
+        scan_cap: int | None = None,
+        rng: "np.random.Generator | None" = None,
     ) -> np.ndarray:
-        """Vectorized basket signal for a list of candidates."""
+        """Vectorized basket signal for a list of candidates.
+
+        ``scan_cap``: when set, if the per-query observation overlap exceeds
+        this value, uniformly subsample to ``scan_cap``. The weighted-mean
+        estimator converges as O(1/sqrt(N)), so 10k samples of a 200k-obs
+        overlap preserves the signal to within ~1% error while bounding
+        latency. ``rng`` seeds the subsample for reproducibility.
+        """
         cand_list = list(candidates)
         cand_to_idx = {c: i for i, c in enumerate(cand_list)}
         out = np.zeros(len(cand_list), dtype=np.float64)
@@ -184,6 +193,15 @@ class BasketIndex:
                 overlap_ids.update(self.postings.get(item, ()))
         if not overlap_ids:
             return out
+
+        # Scan cap: when the overlap set is huge (popular pairs on
+        # ratings-style data), uniformly subsample to bound the kernel
+        # scan. MC weighted-mean estimator converges at O(1/sqrt(N)).
+        if scan_cap is not None and len(overlap_ids) > scan_cap:
+            rng_use = rng if rng is not None else np.random.default_rng(0)
+            overlap_arr = np.fromiter(overlap_ids, dtype=np.int64, count=len(overlap_ids))
+            sampled = rng_use.choice(overlap_arr, size=scan_cap, replace=False)
+            overlap_ids = set(int(i) for i in sampled)
 
         # Native coverage kernel: 10-30x speedup on hot paths. Gated on
         # integer ids and the default COVERAGE similarity - IDF/Jaccard/
