@@ -198,6 +198,8 @@ class Engine:
         self._diversity_kernel_override = diversity_kernel
         self._diversity_kernel: SimilarityKernel | None = None
         self._population_baselines: PopulationBaselines | None = None
+        # Popularity ranking cached at fit time for O(N) cold-start fallback.
+        self._popular_items_ranked: list[object] = []
         self._category_index: CategoryIndex | None = None
 
         # Phase 5 negative-signal + outcome-log state.
@@ -261,6 +263,17 @@ class Engine:
 
         # Phase 4 re-rank state.
         self._population_baselines = compute_population_baselines(self._interactions)
+        # Cold-start fallback ranking (plan ADR-growth-curves.md §1):
+        # items sorted by popularity descending. Used when retrieval returns
+        # empty candidates for an entity (unseen or new).
+        if self._population_baselines is not None and self._population_baselines.item_to_baseline:
+            self._popular_items_ranked = sorted(
+                self._population_baselines.item_to_baseline,
+                key=lambda i: self._population_baselines.item_to_baseline[i],  # type: ignore[union-attr]
+                reverse=True,
+            )
+        else:
+            self._popular_items_ranked = []
         if self._diversity_kernel_override is not None:
             self._diversity_kernel = self._diversity_kernel_override
         else:
@@ -509,7 +522,14 @@ class Engine:
             candidates = apply_constraints(candidates, constraints)
 
         if not candidates:
-            return []
+            # Cold-start / empty-retrieval fallback: rank by global popularity,
+            # drop items the entity already owns, apply constraints. Returns
+            # minimal-signal recommendations (no credible interval, trivial
+            # explanation) rather than failing with []. Single largest
+            # accuracy win on unseen-entity traffic per ADR-growth-curves.
+            return self._cold_start_fallback(
+                owned_set=owned_set, constraints=constraints, n=n
+            )
 
         # Stage 2: score each candidate on each signal.
         assert self._item_graph is not None
@@ -644,6 +664,48 @@ class Engine:
                 credible_coverage=(self.credible_coverage if ci_lower is not None else None),
             )
             for i in top
+        ]
+
+    def _cold_start_fallback(
+        self,
+        owned_set: set[object],
+        constraints: list[ConstraintPredicate] | None,
+        n: int,
+    ) -> list[Recommendation]:
+        """Popularity-ranked fallback for entities that produced no
+        candidates in retrieval. Applied when an entity is unseen (no
+        history in training) or when retrievers returned nothing.
+
+        The explanation surfaces the fallback transparently so consumers
+        can distinguish cold-start recommendations from signal-driven
+        ones.
+        """
+        if not self._popular_items_ranked:
+            return []
+        picks: list[object] = []
+        for item in self._popular_items_ranked:
+            if item in owned_set:
+                continue
+            if constraints and not all(p(item) for p in constraints):
+                continue
+            picks.append(item)
+            if len(picks) >= n:
+                break
+        if not picks:
+            return []
+        baseline = self._population_baselines
+        return [
+            Recommendation(
+                item_id=item,
+                score=float(baseline.item_to_baseline.get(item, 0.0)) if baseline else 0.0,
+                explanation=Explanation(
+                    primary="cold-start: ranked by population popularity.",
+                    debug_payload={"fallback": "popularity"},
+                ),
+                credible_interval=None,
+                credible_coverage=None,
+            )
+            for item in picks
         ]
 
     # ---- Phase 3 introspection --------------------------------------------
