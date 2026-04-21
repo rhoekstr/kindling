@@ -127,6 +127,18 @@ def _load_dataset(name: str, test_fraction: float) -> DatasetSplit:
             items_per_session=6,
             test_fraction=test_fraction,
         )
+    if name == "synthetic-grocery-deep":
+        # Longer sessions (10 items) give the path signals enough sequential
+        # depth to separate from item-item cosine. Matches the "real session"
+        # shape of grocery / e-commerce baskets.
+        return synthetic.make_grocery(
+            n_entities=1500,
+            n_items_per_category=25,
+            n_categories=8,
+            n_sessions_per_entity=12,
+            items_per_session=10,
+            test_fraction=test_fraction,
+        )
     raise ValueError(f"Unknown dataset: {name}")
 
 
@@ -200,7 +212,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--dataset",
         default="movielens-1m",
-        choices=["movielens-1m", "synthetic-grocery"],
+        choices=["movielens-1m", "synthetic-grocery", "synthetic-grocery-deep"],
     )
     parser.add_argument("--k", type=int, default=10)
     parser.add_argument("--max-eval-entities", type=int, default=2000)

@@ -151,7 +151,10 @@ def test_basket_score_many_matches_python() -> None:
         SessionSequence(1, "b", (1, 2, 5, 6), None),
         SessionSequence(2, "c", (3, 4, 5), None),
     ]
-    idx = build_basket_index(sessions)
+    # Compare Rust against the item-posting path explicitly - the pair-index
+    # fast path uses a stricter overlap rule (>=2 items shared) which is a
+    # separate semantic, not a kernel correctness question.
+    idx = build_basket_index(sessions, build_pair_index=False)
     query = frozenset({1, 2})
     candidates = [3, 4, 5, 6, 7]
     py_scores = idx.score_many(

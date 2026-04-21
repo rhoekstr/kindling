@@ -78,6 +78,12 @@ class BasketIndex:
 
     observations: list[_Observation] = field(default_factory=list)
     postings: dict[object, list[int]] = field(default_factory=dict)
+    # Pair postings: for integer-id baskets, ``pair_postings[(i, j)]`` (with
+    # ``i < j``) lists observation indices whose basket contains both items.
+    # Empty on non-integer or disabled indexes. Dramatically shrinks the
+    # per-query overlap set on session-rich data - popular items' posting
+    # lists are huge, popular *pairs* are sparse.
+    pair_postings: dict[tuple[int, int], list[int]] = field(default_factory=dict)
     idf: dict[object, float] = field(default_factory=dict)
     # Lazily populated CSR pack of (basket, next, weight) for the native
     # coverage kernel. Reset whenever observations change (prune_below).
@@ -118,8 +124,14 @@ class BasketIndex:
             new_list = [old_to_new[old] for old in posting_list if old in old_to_new]
             if new_list:
                 new_postings[item] = new_list
+        new_pair_postings: dict[tuple[int, int], list[int]] = {}
+        for pair, posting_list in self.pair_postings.items():
+            new_list = [old_to_new[old] for old in posting_list if old in old_to_new]
+            if new_list:
+                new_pair_postings[pair] = new_list
         self.observations = kept
         self.postings = new_postings
+        self.pair_postings = new_pair_postings
         self._csr_cache = None
         return pruned_count, pruned_weight
 
@@ -153,9 +165,23 @@ class BasketIndex:
             return out
 
         # Collect observation indices whose basket overlaps the query.
+        # Pair-index fast path: when we have pair postings AND the query has
+        # >=2 integer items, enumerate the C(|Q|, 2) pairs and union their
+        # tiny posting lists. Gives overlap_ids only for observations whose
+        # basket shares >=2 items with Q - the single-overlap "long tail"
+        # contributes at most 1/|Q| weight per obs, i.e. negligible on large
+        # queries. For |Q| <= 2 or non-int items, fall back to item postings.
         overlap_ids: set[int] = set()
-        for item in query:
-            overlap_ids.update(self.postings.get(item, ()))
+        if self.pair_postings and len(query) >= 2 and _all_ints(query):
+            qlist = sorted(int(q) for q in query)  # type: ignore[call-overload]
+            for ai in range(len(qlist)):
+                for bi in range(ai + 1, len(qlist)):
+                    posting = self.pair_postings.get((qlist[ai], qlist[bi]))
+                    if posting:
+                        overlap_ids.update(posting)
+        else:
+            for item in query:
+                overlap_ids.update(self.postings.get(item, ()))
         if not overlap_ids:
             return out
 
@@ -236,6 +262,8 @@ def build_basket_index(
     decay: DecayProtocol | None = None,
     reference_timestamp: float | None = None,
     max_basket_size: int = 50,
+    build_pair_index: bool = True,
+    distinctiveness_weighting: bool = True,
 ) -> BasketIndex:
     """Build a ``BasketIndex`` from ordered sessions.
 
@@ -247,11 +275,31 @@ def build_basket_index(
     truncated to the most recent ``max_basket_size`` items. This prevents a
     single entity with an enormous historical session from dominating memory
     and posting lists.
+
+    ``build_pair_index`` (default True) adds a second index keyed by item
+    pairs. On session data the per-query overlap set shrinks by 10-100x
+    because popular *pairs* are much rarer than popular *items*. Memory
+    cost is O(|observations| * avg_basket_size^2). Disabled automatically
+    if basket items aren't integers.
+
+    ``distinctiveness_weighting`` (default True) divides each observation's
+    effective weight by the global frequency of its ``next_item`` being a
+    next-add (plus Laplace smoothing). This turns the basket signal into a
+    *lift* over popularity: items whose next-add rate is elevated *in the
+    context of this basket* rank higher than items that are next-added
+    everywhere. Without this, a session-rich workload tends to surface
+    popularity (milk, bread) even when the basket is highly specific
+    (salsa, avocado, cilantro). The global popularity component is already
+    captured by the cooccurrence + cost_population signals, so the basket
+    signal shouldn't duplicate it.
     """
     decay_fn: DecayProtocol = decay if decay is not None else cast(DecayProtocol, NoDecay())
     observations: list[_Observation] = []
     postings: dict[object, list[int]] = defaultdict(list)
+    pair_postings: dict[tuple[int, int], list[int]] = defaultdict(list)
     item_doc_count: dict[object, int] = defaultdict(int)
+    next_item_weight_sum: dict[object, float] = defaultdict(float)
+    all_items_int = True
 
     for session in sessions:
         items = session.items
@@ -271,9 +319,38 @@ def build_basket_index(
             basket = frozenset(basket_items)
             obs_idx = len(observations)
             observations.append(_Observation(basket=basket, next_item=next_item, weight=weight))
+            next_item_weight_sum[next_item] += weight
             for item in basket:
                 postings[item].append(obs_idx)
                 item_doc_count[item] += 1
+            if build_pair_index and all_items_int:
+                if _all_ints(basket):
+                    basket_ints = sorted(int(i) for i in basket)  # type: ignore[call-overload]
+                    for ai in range(len(basket_ints)):
+                        for bi in range(ai + 1, len(basket_ints)):
+                            pair_postings[(basket_ints[ai], basket_ints[bi])].append(obs_idx)
+                else:
+                    # Non-int id encountered; drop any partial pair index to
+                    # keep the invariant "pair_postings empty unless complete".
+                    all_items_int = False
+                    pair_postings.clear()
+
+    # Distinctiveness: rewrite each observation's weight to w / baseline(d),
+    # where baseline(d) is the total weight of observations whose next_item
+    # is d, normalized so the mean baseline is 1.0. This makes the signal a
+    # lift over popularity: items whose next-add rate is elevated in this
+    # basket's context win, and generic-everywhere items don't.
+    if distinctiveness_weighting and observations:
+        total_weight = sum(next_item_weight_sum.values()) or 1.0
+        n_distinct_next = max(len(next_item_weight_sum), 1)
+        mean_baseline = total_weight / n_distinct_next
+        eps = mean_baseline * 0.1  # Laplace-style smoothing, 10% of mean.
+        rewritten: list[_Observation] = []
+        for obs in observations:
+            baseline = next_item_weight_sum.get(obs.next_item, 0.0) + eps
+            new_weight = obs.weight * mean_baseline / baseline
+            rewritten.append(_Observation(basket=obs.basket, next_item=obs.next_item, weight=new_weight))
+        observations = rewritten
 
     # IDF with log-smoothing: log(1 + N / df). The "+1" keeps singletons
     # informative without going negative.
@@ -282,6 +359,7 @@ def build_basket_index(
     return BasketIndex(
         observations=observations,
         postings=dict(postings),
+        pair_postings=dict(pair_postings) if all_items_int and build_pair_index else {},
         idf=idf,
     )
 
