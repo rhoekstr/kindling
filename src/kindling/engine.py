@@ -21,8 +21,16 @@ from typing import Any, cast
 import numpy as np
 import pandas as pd
 
+from kindling.blend.bayesian import BayesianBlend
 from kindling.blend.decorrelate import DecorrelationBasis, fit_decorrelation
+from kindling.blend.diagnostics import DiagnosticsReport, run_diagnostics
 from kindling.blend.heuristic import PATH_FAMILY, HeuristicBlend, SignalFeatures
+from kindling.blend.likelihoods import (
+    LikelihoodProtocol,
+    ListwiseCalibration,
+)
+from kindling.blend.outcome_builder import OutcomeBuildConfig, build_outcomes
+from kindling.blend.priors import DataFeatures, construct_prior
 from kindling.explain import Explanation
 from kindling.graph.item_graph import ItemGraph, build_item_graph
 from kindling.ingest.contract import (
@@ -56,13 +64,18 @@ MAX_QUERY_BASKET_SIZE = 50
 class Recommendation:
     """A single recommendation.
 
-    Phase 2 carries the per-signal contribution on the explanation debug
-    payload. Intervals remain placeholder until Phase 3.
+    Phase 3 surfaces a Bayesian credible interval on the score. The
+    interval is derived from the Dirichlet posterior over blend weights
+    and is labelled ``credible_interval`` - not ``confidence_interval`` -
+    because it is a Bayesian credible interval, not a frequentist
+    coverage guarantee. Conformal prediction (v1.x) will add the latter.
     """
 
     item_id: object
     score: float
     explanation: Explanation
+    credible_interval: tuple[float, float] | None = None
+    credible_coverage: float | None = None
 
 
 class EngineNotFittedError(RuntimeError):
@@ -79,6 +92,11 @@ class Engine:
         max_path_prefix: int = 3,
         max_history_for_recommend: int = 5,
         basket_similarity: BasketSimilarity = BasketSimilarity.COVERAGE,
+        use_bayesian_blend: bool = True,
+        likelihood: LikelihoodProtocol | None = None,
+        credible_coverage: float = 0.9,
+        seed: int = 0,
+        vi_max_iter: int = 300,
     ) -> None:
         self.retrieval_budget = retrieval_budget
         self.decay: DecayProtocol = (
@@ -89,6 +107,18 @@ class Engine:
         self.max_path_prefix = max_path_prefix
         self.max_history_for_recommend = max_history_for_recommend
         self.basket_similarity = basket_similarity
+
+        # Bayesian blend configuration (Phase 3).
+        self.use_bayesian_blend = use_bayesian_blend
+        self.likelihood: LikelihoodProtocol = (
+            likelihood
+            if likelihood is not None
+            else cast(LikelihoodProtocol, ListwiseCalibration())
+        )
+        self.credible_coverage = credible_coverage
+        self.seed = seed
+        self._rng = np.random.default_rng(seed)
+        self.vi_max_iter = vi_max_iter
 
         self._schema: InteractionSchema | None = None
         self._interactions: pd.DataFrame | None = None
@@ -103,7 +133,9 @@ class Engine:
         self._cooc_retriever: CoOccurrenceRetriever | None = None
         self._path_retriever: PathEndpointRetriever | None = None
 
-        self._blend = HeuristicBlend()
+        self._heuristic_blend = HeuristicBlend()
+        self._bayesian_blend: BayesianBlend | None = None
+        self._diagnostics: DiagnosticsReport | None = None
         self._owned_by_entity: dict[object, np.ndarray] = {}
         self._history_by_entity: dict[object, tuple[object, ...]] = {}
 
@@ -147,7 +179,7 @@ class Engine:
         }
         self._history_by_entity = _build_histories(self._interactions, schema)
 
-        self._blend.path_basis = _fit_path_family_decorrelation(
+        path_basis = _fit_path_family_decorrelation(
             interactions=self._interactions,
             item_graph=self._item_graph,
             tail_index=self._tail_index,
@@ -157,7 +189,101 @@ class Engine:
             history_by_entity=self._history_by_entity,
             owned_by_entity=self._owned_by_entity,
         )
+        self._heuristic_blend.path_basis = path_basis
+
+        # Bayesian blend: prior from data features + VI fit on the
+        # chronological tail.
+        if self.use_bayesian_blend:
+            self._fit_bayesian_blend(path_basis, sessions_count=len(sessions))
+
         return self
+
+    def _fit_bayesian_blend(
+        self,
+        path_basis: DecorrelationBasis | None,
+        sessions_count: int,
+    ) -> None:
+        """Construct the data-adaptive prior and run VI on the tail outcomes."""
+        assert self._interactions is not None
+        assert self._item_graph is not None
+        features = self._compute_data_features(sessions_count)
+        alpha = construct_prior(signal_names=SIGNAL_ORDER, features=features)
+        self._bayesian_blend = BayesianBlend.from_prior(
+            signal_names=SIGNAL_ORDER,
+            prior_alpha=alpha,
+            path_basis=path_basis,
+        )
+
+        outcomes = build_outcomes(
+            interactions=self._interactions,
+            compute_signals=self._build_features_for_outcome,
+            config=OutcomeBuildConfig(),
+            rng=self._rng,
+        )
+        if outcomes.n_outcomes == 0:
+            return
+
+        self._bayesian_blend.fit_posterior(
+            batch=outcomes,
+            likelihood=self.likelihood,
+            rng=np.random.default_rng(self.seed),
+            max_iter=self.vi_max_iter,
+        )
+        self._diagnostics = run_diagnostics(
+            blend=self._bayesian_blend,
+            batch=outcomes,
+            likelihood=self.likelihood,
+            rng=np.random.default_rng(self.seed + 1),
+        )
+
+    def _compute_data_features(self, sessions_count: int) -> DataFeatures:
+        assert self._interactions is not None
+        assert self._item_graph is not None
+        n_items = self._item_graph.n_items
+        n_entities = int(self._interactions["entity_id"].nunique())
+        n_interactions = len(self._interactions)
+        max_edges = max(n_items * (n_items - 1), 1)
+        density = self._item_graph.n_edges / max_edges
+        # Clustering coefficient estimate: use the fraction of edges that
+        # share a neighbor. Cheap-enough approximation for prior construction;
+        # exact clustering is only needed if we ever learn the coefficient.
+        clustering = _approx_clustering_coefficient(self._item_graph)
+        session_density = n_interactions / max(sessions_count, 1)
+        return DataFeatures(
+            graph_density=float(density),
+            clustering_coefficient=float(clustering),
+            session_density=float(session_density),
+            catalog_to_entity_ratio=float(n_items) / max(n_entities, 1),
+            n_interactions=n_interactions,
+        )
+
+    def _build_features_for_outcome(
+        self,
+        entity: object,
+        items: list[object],
+        owned_arr: np.ndarray,
+    ) -> SignalFeatures:
+        """Used by outcome_builder to materialize signals for a (positive +
+        negatives) training list."""
+        assert self._item_graph is not None
+        assert self._tail_index is not None
+        assert self._path_tree is not None
+        assert self._basket_index is not None
+        history = tuple(owned_arr.tolist())
+        # Pseudo-candidates: outcome_builder just needs one feature row per
+        # item; the score/source fields don't matter here.
+        fake_cands = [Candidate(item_id=i, score=0.0, source="outcome") for i in items]
+        return _compute_signal_features(
+            candidates=fake_cands,
+            owned_items=owned_arr,
+            query_basket=frozenset(history[-MAX_QUERY_BASKET_SIZE:]),
+            history=history[-self.max_history_for_recommend :],
+            item_graph=self._item_graph,
+            tail_index=self._tail_index,
+            path_tree=self._path_tree,
+            basket_index=self._basket_index,
+            basket_similarity=self.basket_similarity,
+        )
 
     # ---- introspection (PRD §10.2 power-user surface) ---------------------
 
@@ -261,10 +387,30 @@ class Engine:
             basket_index=self._basket_index,
             basket_similarity=self.basket_similarity,
         )
-        scores = self._blend.score(features)
-        order = np.argsort(-scores)
+        # Stage 2: score via Bayesian posterior mean when available,
+        # heuristic blend otherwise. Both operate on the same SignalFeatures.
+        ci_lower: np.ndarray | None
+        ci_upper: np.ndarray | None
+        if self._bayesian_blend is not None and self.use_bayesian_blend:
+            mean, lower, upper = self._bayesian_blend.score_with_uncertainty(
+                features, coverage=self.credible_coverage
+            )
+            weights_for_explanation = {
+                name: float(w)
+                for name, w in zip(
+                    self._bayesian_blend.signal_names,
+                    self._bayesian_blend.posterior_mean,
+                    strict=True,
+                )
+            }
+            scores = mean
+            ci_lower, ci_upper = lower, upper
+        else:
+            scores = self._heuristic_blend.score(features)
+            ci_lower, ci_upper = None, None
+            weights_for_explanation = dict(self._heuristic_blend.weights)
 
-        # Stage 3: rerank - Phase 2 still just takes the top-N.
+        order = np.argsort(-scores)
         top = order[:n]
 
         return [
@@ -276,11 +422,56 @@ class Engine:
                     blended_score=float(scores[i]),
                     signal_names=features.signal_names,
                     signal_row=features.matrix[i],
-                    weights=self._blend.weights,
+                    weights=weights_for_explanation,
                 ),
+                credible_interval=(
+                    (float(ci_lower[i]), float(ci_upper[i]))
+                    if ci_lower is not None and ci_upper is not None
+                    else None
+                ),
+                credible_coverage=(self.credible_coverage if ci_lower is not None else None),
             )
             for i in top
         ]
+
+    # ---- Phase 3 introspection --------------------------------------------
+
+    def posterior_summary(self) -> dict[str, object]:
+        """Posterior statistics and diagnostics (PRD §6.7).
+
+        Returns per-signal posterior mean, credible interval, prior alpha,
+        and the convergence diagnostic report. Use this in production
+        monitoring dashboards to catch VI failures early.
+        """
+        self._require_fitted()
+        if self._bayesian_blend is None:
+            return {"bayesian_blend_active": False}
+        blend = self._bayesian_blend
+        ci = blend.credible_interval(coverage=self.credible_coverage)
+        summary = {
+            "bayesian_blend_active": True,
+            "signal_names": list(blend.signal_names),
+            "posterior_mean": blend.posterior_mean.tolist(),
+            "posterior_variance": blend.posterior_variance.tolist(),
+            "credible_interval": ci.tolist(),
+            "credible_coverage": self.credible_coverage,
+            "prior_alpha": blend.prior_alpha.tolist(),
+            "elbo_trace_length": len(blend.elbo_trace),
+            "likelihood": self.likelihood.name,
+        }
+        if self._diagnostics is not None:
+            summary["diagnostics"] = {
+                "elbo_monotonic": self._diagnostics.elbo_monotonic,
+                "elbo_final": self._diagnostics.elbo_final,
+                "elbo_peak": self._diagnostics.elbo_peak,
+                "ppc_deviation": self._diagnostics.ppc_deviation,
+                "ppc_passes": self._diagnostics.ppc_passes,
+                "ess_ratio": self._diagnostics.ess_ratio,
+                "ess_passes": self._diagnostics.ess_passes,
+                "all_pass": self._diagnostics.all_pass,
+                "warnings": self._diagnostics.warnings(),
+            }
+        return summary
 
     # ---- internals --------------------------------------------------------
 
@@ -292,6 +483,40 @@ class Engine:
 # ---------------------------------------------------------------------------
 # Module-level helpers
 # ---------------------------------------------------------------------------
+
+
+def _approx_clustering_coefficient(item_graph: ItemGraph) -> float:
+    """Cheap clustering-coefficient proxy for prior construction.
+
+    The classical local clustering coefficient requires enumerating
+    triangles per node - O(sum(deg^2)) which is too expensive at fit time
+    on moderate graphs. For prior construction we only need a scalar in
+    [0, 1] that correlates with "does this graph have meaningful
+    communities." We use the normalized density of the second-hop
+    adjacency - the sparsity of ``A @ A`` vs. the full matrix.
+    """
+    adj = item_graph.adjacency
+    n = item_graph.n_items
+    if n < 3:
+        return 0.0
+    # Sample-based estimate: pick up to 200 items, count triangles per node.
+    sample_size = min(200, n)
+    rng = np.random.default_rng(seed=0)
+    idxs = rng.choice(n, size=sample_size, replace=False)
+    ratios: list[float] = []
+    for i in idxs:
+        row = adj.getrow(i).toarray().ravel()
+        neighbors = np.where(row > 0)[0]
+        deg = len(neighbors)
+        if deg < 2:
+            continue
+        # Triangles at node i = number of neighbor pairs that are themselves
+        # connected. Upper bound deg * (deg - 1) / 2.
+        sub = adj[neighbors][:, neighbors]
+        triangles = float(sub.sum()) / 2.0
+        possible = deg * (deg - 1) / 2.0
+        ratios.append(triangles / possible if possible > 0 else 0.0)
+    return float(np.mean(ratios)) if ratios else 0.0
 
 
 def _reference_timestamp_from(interactions: pd.DataFrame) -> float | None:

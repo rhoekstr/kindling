@@ -1,0 +1,52 @@
+# Data-characteristic prior coefficients (PRD §6.7).
+#
+# These are the ~17 coefficients the PRD calls out as "starting values that
+# need empirical validation." Living here rather than in code so they can
+# be tuned without a code change and so users can override per-domain.
+#
+# Each entry is a multiplicative adjustment to a signal's Dirichlet
+# concentration alpha_k. The baseline is alpha_k = 1.0 for all signals
+# (uninformative). After all adjustments, alpha is clipped to [0.5, 100]
+# to prevent pathologically sharp or flat priors.
+#
+# The "why" for each coefficient:
+#   - graph_density -> cooccurrence: a dense graph means co-occurrence is a
+#     strong signal; we want the prior to reflect that.
+#   - clustering_coefficient -> community / graph_topology: high clustering
+#     = meaningful communities, so those signals deserve more prior mass.
+#   - session_density -> path_full, path_tail: if users have many
+#     multi-item sessions, the sequential signals have data to work with.
+#   - catalog_to_entity_ratio: severity of cold-start; high ratio =
+#     broaden priors across all signals (divide by 2).
+#
+# All coefficients are placeholders pending Phase 7 tuning against
+# MovieLens, Instacart, Amazon, RetailRocket. Updates happen via PR.
+
+[baseline]
+alpha = 1.0
+
+[graph_density]
+# alpha[cooccurrence] *= (1 + coefficient * density)
+target = "cooccurrence"
+coefficient = 5.0
+
+[clustering_coefficient]
+targets = ["community", "graph_topology"]
+coefficient = 3.0
+
+[session_density_full]
+target = "path_full"
+coefficient = 2.0
+
+[session_density_tail]
+target = "path_tail"
+coefficient = 1.0
+
+[session_density_basket]
+target = "path_basket"
+coefficient = 0.5
+
+[catalog_to_entity_ratio]
+# When ratio > threshold, divide all alphas by shrink_factor (broader prior).
+threshold = 10.0
+shrink_factor = 2.0

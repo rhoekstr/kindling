@@ -1,11 +1,17 @@
-"""Phase 2 Engine integration: path structures surface on the public API and
-the debug payload carries per-signal information."""
+"""Phase 2/3 Engine integration: path structures surface on the public API,
+the debug payload carries per-signal information, and the Bayesian posterior
+surfaces credible intervals and diagnostics."""
 
 from __future__ import annotations
 
 import pandas as pd
 
 from kindling import Engine
+from kindling.blend.likelihoods import (
+    BinaryIndependent,
+    MultinomialSoftmax,
+    PairwiseBradleyTerry,
+)
 
 
 def test_engine_fits_with_timestamps() -> None:
@@ -79,6 +85,51 @@ def test_recommendations_carry_debug_signal_payload() -> None:
         "path_basket",
         "cooccurrence",
     }
+
+
+_PHASE3_DF = pd.DataFrame(
+    {
+        "entity_id": ["a"] * 6 + ["b"] * 6 + ["c"] * 6,
+        "item_id": [1, 2, 3, 4, 5, 6, 1, 2, 4, 7, 8, 9, 2, 3, 5, 8, 10, 11],
+        "timestamp": pd.to_datetime([f"2026-01-{i:02d}" for i in range(1, 7)] * 3),
+    }
+)
+
+
+def test_engine_posterior_summary_populates() -> None:
+    """After fit, posterior_summary() returns Bayesian blend stats and
+    diagnostic results."""
+    engine = Engine(vi_max_iter=50).fit(_PHASE3_DF)
+    summary = engine.posterior_summary()
+    assert summary["bayesian_blend_active"] is True
+    assert len(summary["signal_names"]) == 4  # type: ignore[arg-type]
+    assert len(summary["posterior_mean"]) == 4  # type: ignore[arg-type]
+    ci = summary["credible_interval"]
+    assert len(ci) == 4  # type: ignore[arg-type]
+    assert "diagnostics" in summary
+
+
+def test_recommendation_carries_credible_interval() -> None:
+    engine = Engine(vi_max_iter=50).fit(_PHASE3_DF)
+    recs = engine.recommend(entity_id="a", n=3)
+    assert recs
+    for r in recs:
+        assert r.credible_interval is not None
+        lower, upper = r.credible_interval
+        assert lower <= upper
+        assert r.credible_coverage == 0.9
+
+
+def test_engine_accepts_alternative_likelihoods() -> None:
+    """Engine should fit with any of the four likelihoods."""
+    for likelihood in (
+        BinaryIndependent(),
+        PairwiseBradleyTerry(),
+        MultinomialSoftmax(),
+    ):
+        engine = Engine(likelihood=likelihood, vi_max_iter=30).fit(_PHASE3_DF)
+        recs = engine.recommend(entity_id="a", n=3)
+        assert isinstance(recs, list)
 
 
 def test_recommend_never_returns_owned_items_phase2() -> None:

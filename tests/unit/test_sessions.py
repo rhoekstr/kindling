@@ -93,9 +93,7 @@ def test_session_ids_align_with_input_rows() -> None:
         {
             "entity_id": ["a", "b", "a", "b"],
             "item_id": [1, 2, 3, 4],
-            "timestamp": pd.to_datetime(
-                ["2026-01-01", "2026-01-01", "2026-06-01", "2026-06-01"]
-            ),
+            "timestamp": pd.to_datetime(["2026-01-01", "2026-01-01", "2026-06-01", "2026-06-01"]),
         }
     )
     result = infer_sessions(df)

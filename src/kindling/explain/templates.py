@@ -39,6 +39,11 @@ class Explanation:
         return dict(self.debug_payload)
 
 
+# The PRD calls these "confidence intervals" for familiarity, but they are
+# Bayesian credible intervals derived from the posterior over blend weights.
+# The plan's honesty commitment renames them to match.
+
+
 def explain_from_source(source: str, score: float) -> Explanation:
     """Build an explanation for a Phase 1 single-source recommendation."""
     template = _DEFAULT_TEMPLATES.get(source, "Recommended based on your history.")
