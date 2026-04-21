@@ -1,0 +1,107 @@
+{
+  "engine_version": "0.0.1.dev0",
+  "dataset": "movielens-1m",
+  "decision": "review: listwise_calibration matches on NDCG but not calibration. Consider keeping on domain-knowledge grounds or switching.",
+  "results": [
+    {
+      "likelihood": "listwise_calibration",
+      "ndcg_at_k": 0.19576165461722758,
+      "precision_at_k": 0.18466666666666667,
+      "recall_at_k": 0.04284388182239772,
+      "mrr": 0.33532275132275136,
+      "hit_rate": 0.6,
+      "brier": 0.8151279296798266,
+      "ece": 0.8151934559745958,
+      "posterior_mean": [
+        0.42499559035525014,
+        0.37764927744685617,
+        0.19217861226499666,
+        0.005176519932897006
+      ],
+      "credible_width_mean": 0.07696328693389988,
+      "diagnostic_all_pass": false,
+      "diagnostic_warnings": [
+        "ELBO trajectory non-monotonic (final=-620.572, peak=-521.775). Consider a different random seed or a lower learning rate.",
+        "Posterior predictive check failed (actual Brier 0.6032 vs simulated 0.0972, deviation 83.9%). The fitted posterior does not match the data well.",
+        "Variational effective sample size ratio 1.41% below 10%. Consider a richer variational family."
+      ],
+      "fit_seconds": 108.51621279097162,
+      "recommend_seconds": 58.014487999957055
+    },
+    {
+      "likelihood": "binary_independent",
+      "ndcg_at_k": 0.19572606278780916,
+      "precision_at_k": 0.185,
+      "recall_at_k": 0.04288468959849962,
+      "mrr": 0.3333783068783069,
+      "hit_rate": 0.6,
+      "brier": 0.8148191147930393,
+      "ece": 0.8148730641014215,
+      "posterior_mean": [
+        0.42488883895808977,
+        0.3776107116864829,
+        0.1919820314707614,
+        0.005518417884665804
+      ],
+      "credible_width_mean": 0.07707644317514756,
+      "diagnostic_all_pass": false,
+      "diagnostic_warnings": [
+        "ELBO trajectory non-monotonic (final=-15373.016, peak=-11307.230). Consider a different random seed or a lower learning rate.",
+        "Posterior predictive check failed (actual Brier 0.6086 vs simulated 0.0936, deviation 84.6%). The fitted posterior does not match the data well.",
+        "Variational effective sample size ratio 0.78% below 10%. Consider a richer variational family."
+      ],
+      "fit_seconds": 112.67726433288772,
+      "recommend_seconds": 59.241087833070196
+    },
+    {
+      "likelihood": "pairwise_bradley_terry",
+      "ndcg_at_k": 0.19568419244850008,
+      "precision_at_k": 0.18466666666666667,
+      "recall_at_k": 0.04284388182239772,
+      "mrr": 0.33476719576719577,
+      "hit_rate": 0.6,
+      "brier": 0.8151373966851088,
+      "ece": 0.815199631028896,
+      "posterior_mean": [
+        0.4249046689985411,
+        0.3776675664609815,
+        0.1920945384447501,
+        0.005333226095727187
+      ],
+      "credible_width_mean": 0.07701235435390906,
+      "diagnostic_all_pass": false,
+      "diagnostic_warnings": [
+        "ELBO trajectory non-monotonic (final=-4172.081, peak=-3329.583). Consider a different random seed or a lower learning rate.",
+        "Posterior predictive check failed (actual Brier 0.6057 vs simulated 0.0956, deviation 84.2%). The fitted posterior does not match the data well.",
+        "Variational effective sample size ratio 1.11% below 10%. Consider a richer variational family."
+      ],
+      "fit_seconds": 129.3286427500425,
+      "recommend_seconds": 61.03618408390321
+    },
+    {
+      "likelihood": "multinomial_softmax",
+      "ndcg_at_k": 0.19823266083476965,
+      "precision_at_k": 0.18633333333333335,
+      "recall_at_k": 0.04371703091396858,
+      "mrr": 0.34129497354497357,
+      "hit_rate": 0.6,
+      "brier": 0.8135638205450687,
+      "ece": 0.8135981654681699,
+      "posterior_mean": [
+        0.4244485674879593,
+        0.3762610075144238,
+        0.19130673955178615,
+        0.007983685445830823
+      ],
+      "credible_width_mean": 0.07783186531478495,
+      "diagnostic_all_pass": false,
+      "diagnostic_warnings": [
+        "ELBO trajectory non-monotonic (final=-10236.032, peak=-6641.278). Consider a different random seed or a lower learning rate.",
+        "Posterior predictive check failed (actual Brier 0.6380 vs simulated 0.0736, deviation 88.5%). The fitted posterior does not match the data well.",
+        "Variational effective sample size ratio 0.78% below 10%. Consider a richer variational family."
+      ],
+      "fit_seconds": 125.6385163340019,
+      "recommend_seconds": 61.44377212494146
+    }
+  ]
+}
