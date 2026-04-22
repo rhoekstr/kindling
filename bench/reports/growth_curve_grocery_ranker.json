@@ -1,0 +1,344 @@
+{
+  "dataset": "synthetic-grocery-deep",
+  "k": 10,
+  "n_eval_entities": 500,
+  "kindling_version": "0.0.1.dev0",
+  "results": [
+    {
+      "fraction": 0.1,
+      "n_train_interactions": 16200,
+      "n_train_entities": 1500,
+      "n_train_items": 200,
+      "model_name": "kindling",
+      "fit_seconds": 4.13266162504442,
+      "recommend_p50_ms": 1.6397919389419258,
+      "recommend_p95_ms": 2.6181495748460293,
+      "metrics": {
+        "precision_at_k": 0.043186582809224314,
+        "recall_at_k": 0.12286255847576602,
+        "ndcg_at_k": 0.07813890261707278,
+        "mrr": 0.10310056237729193,
+        "hit_rate": 0.3228511530398323,
+        "coverage": 1.0,
+        "intra_list_diversity": 1.0,
+        "n_entities_evaluated": 477,
+        "k": 10
+      }
+    },
+    {
+      "fraction": 0.1,
+      "n_train_interactions": 16200,
+      "n_train_entities": 1500,
+      "n_train_items": 200,
+      "model_name": "popularity",
+      "fit_seconds": 0.02490158297587186,
+      "recommend_p50_ms": 0.0007080379873514175,
+      "recommend_p95_ms": 0.0010440824553370456,
+      "metrics": {
+        "precision_at_k": 0.025995807127882603,
+        "recall_at_k": 0.057085024223389,
+        "ndcg_at_k": 0.04086793021021105,
+        "mrr": 0.06879804332634522,
+        "hit_rate": 0.22431865828092243,
+        "coverage": 0.075,
+        "intra_list_diversity": 1.0,
+        "n_entities_evaluated": 477,
+        "k": 10
+      }
+    },
+    {
+      "fraction": 0.1,
+      "n_train_interactions": 16200,
+      "n_train_entities": 1500,
+      "n_train_items": 200,
+      "model_name": "item_item_knn",
+      "fit_seconds": 0.008175167022272944,
+      "recommend_p50_ms": 0.03462505992501974,
+      "recommend_p95_ms": 0.039624987402930856,
+      "metrics": {
+        "precision_at_k": 0.04360587002096436,
+        "recall_at_k": 0.11966278829486376,
+        "ndcg_at_k": 0.07838373607346853,
+        "mrr": 0.10033609530464876,
+        "hit_rate": 0.3060796645702306,
+        "coverage": 1.0,
+        "intra_list_diversity": 1.0,
+        "n_entities_evaluated": 477,
+        "k": 10
+      }
+    },
+    {
+      "fraction": 0.1,
+      "n_train_interactions": 16200,
+      "n_train_entities": 1500,
+      "n_train_items": 200,
+      "model_name": "implicit_als",
+      "fit_seconds": 0.09823816700372845,
+      "recommend_p50_ms": 0.029582995921373367,
+      "recommend_p95_ms": 0.03204828244633972,
+      "metrics": {
+        "precision_at_k": 0.04067085953878406,
+        "recall_at_k": 0.11109348955260905,
+        "ndcg_at_k": 0.07299288521498583,
+        "mrr": 0.10158064623473427,
+        "hit_rate": 0.32914046121593293,
+        "coverage": 1.0,
+        "intra_list_diversity": 1.0,
+        "n_entities_evaluated": 477,
+        "k": 10
+      }
+    },
+    {
+      "fraction": 0.3,
+      "n_train_interactions": 48600,
+      "n_train_entities": 1500,
+      "n_train_items": 200,
+      "model_name": "kindling",
+      "fit_seconds": 7.637763749924488,
+      "recommend_p50_ms": 3.98539548041299,
+      "recommend_p95_ms": 5.835125019075349,
+      "metrics": {
+        "precision_at_k": 0.05660377358490566,
+        "recall_at_k": 0.16035170571334093,
+        "ndcg_at_k": 0.10446872796555488,
+        "mrr": 0.13951865162556984,
+        "hit_rate": 0.42138364779874216,
+        "coverage": 1.0,
+        "intra_list_diversity": 1.0,
+        "n_entities_evaluated": 477,
+        "k": 10
+      }
+    },
+    {
+      "fraction": 0.3,
+      "n_train_interactions": 48600,
+      "n_train_entities": 1500,
+      "n_train_items": 200,
+      "model_name": "popularity",
+      "fit_seconds": 0.025208667037077248,
+      "recommend_p50_ms": 0.0008330098353326321,
+      "recommend_p95_ms": 0.001125037670135498,
+      "metrics": {
+        "precision_at_k": 0.025995807127882596,
+        "recall_at_k": 0.05131421397144667,
+        "ndcg_at_k": 0.0387441190790308,
+        "mrr": 0.06526654687032045,
+        "hit_rate": 0.21174004192872117,
+        "coverage": 0.095,
+        "intra_list_diversity": 1.0,
+        "n_entities_evaluated": 477,
+        "k": 10
+      }
+    },
+    {
+      "fraction": 0.3,
+      "n_train_interactions": 48600,
+      "n_train_entities": 1500,
+      "n_train_items": 200,
+      "model_name": "item_item_knn",
+      "fit_seconds": 0.012385624926537275,
+      "recommend_p50_ms": 0.03825000021606684,
+      "recommend_p95_ms": 0.09488334762863813,
+      "metrics": {
+        "precision_at_k": 0.06373165618448637,
+        "recall_at_k": 0.18255950606579538,
+        "ndcg_at_k": 0.12141629990494222,
+        "mrr": 0.1546920235599481,
+        "hit_rate": 0.42138364779874216,
+        "coverage": 1.0,
+        "intra_list_diversity": 1.0,
+        "n_entities_evaluated": 477,
+        "k": 10
+      }
+    },
+    {
+      "fraction": 0.3,
+      "n_train_interactions": 48600,
+      "n_train_entities": 1500,
+      "n_train_items": 200,
+      "model_name": "implicit_als",
+      "fit_seconds": 0.13937683298718184,
+      "recommend_p50_ms": 0.02970895729959011,
+      "recommend_p95_ms": 0.03258816432207822,
+      "metrics": {
+        "precision_at_k": 0.04884696016771488,
+        "recall_at_k": 0.14206834104632846,
+        "ndcg_at_k": 0.10037246380030446,
+        "mrr": 0.14959319157432363,
+        "hit_rate": 0.389937106918239,
+        "coverage": 1.0,
+        "intra_list_diversity": 1.0,
+        "n_entities_evaluated": 477,
+        "k": 10
+      }
+    },
+    {
+      "fraction": 0.6,
+      "n_train_interactions": 97200,
+      "n_train_entities": 1500,
+      "n_train_items": 200,
+      "model_name": "kindling",
+      "fit_seconds": 16.904181582969613,
+      "recommend_p50_ms": 8.738396049011499,
+      "recommend_p95_ms": 10.447597969323395,
+      "metrics": {
+        "precision_at_k": 0.08301886792452831,
+        "recall_at_k": 0.23815810907005877,
+        "ndcg_at_k": 0.1597521634477012,
+        "mrr": 0.1977995740574357,
+        "hit_rate": 0.5429769392033543,
+        "coverage": 1.0,
+        "intra_list_diversity": 1.0,
+        "n_entities_evaluated": 477,
+        "k": 10
+      }
+    },
+    {
+      "fraction": 0.6,
+      "n_train_interactions": 97200,
+      "n_train_entities": 1500,
+      "n_train_items": 200,
+      "model_name": "popularity",
+      "fit_seconds": 0.02863420802168548,
+      "recommend_p50_ms": 0.0011874944902956486,
+      "recommend_p95_ms": 0.001625041477382183,
+      "metrics": {
+        "precision_at_k": 0.03060796645702306,
+        "recall_at_k": 0.06860013094289824,
+        "ndcg_at_k": 0.04786260157189985,
+        "mrr": 0.07937506239393032,
+        "hit_rate": 0.2431865828092243,
+        "coverage": 0.115,
+        "intra_list_diversity": 1.0,
+        "n_entities_evaluated": 477,
+        "k": 10
+      }
+    },
+    {
+      "fraction": 0.6,
+      "n_train_interactions": 97200,
+      "n_train_entities": 1500,
+      "n_train_items": 200,
+      "model_name": "item_item_knn",
+      "fit_seconds": 0.015993707929737866,
+      "recommend_p50_ms": 0.042625004425644875,
+      "recommend_p95_ms": 0.059926445828750494,
+      "metrics": {
+        "precision_at_k": 0.09350104821802933,
+        "recall_at_k": 0.27736628908012556,
+        "ndcg_at_k": 0.1881027510374851,
+        "mrr": 0.2430310139429636,
+        "hit_rate": 0.5786163522012578,
+        "coverage": 1.0,
+        "intra_list_diversity": 1.0,
+        "n_entities_evaluated": 477,
+        "k": 10
+      }
+    },
+    {
+      "fraction": 0.6,
+      "n_train_interactions": 97200,
+      "n_train_entities": 1500,
+      "n_train_items": 200,
+      "model_name": "implicit_als",
+      "fit_seconds": 0.18636183300986886,
+      "recommend_p50_ms": 0.02983352169394493,
+      "recommend_p95_ms": 0.03500411985442042,
+      "metrics": {
+        "precision_at_k": 0.07148846960167715,
+        "recall_at_k": 0.21106767097333134,
+        "ndcg_at_k": 0.13834118130126433,
+        "mrr": 0.18142075138930483,
+        "hit_rate": 0.4968553459119497,
+        "coverage": 1.0,
+        "intra_list_diversity": 1.0,
+        "n_entities_evaluated": 477,
+        "k": 10
+      }
+    },
+    {
+      "fraction": 1.0,
+      "n_train_interactions": 162000,
+      "n_train_entities": 1500,
+      "n_train_items": 200,
+      "model_name": "kindling",
+      "fit_seconds": 25.752463291981257,
+      "recommend_p50_ms": 12.41754152579233,
+      "recommend_p95_ms": 14.488093409454448,
+      "metrics": {
+        "precision_at_k": 0.12494758909853251,
+        "recall_at_k": 0.358718852193695,
+        "ndcg_at_k": 0.24747846823451847,
+        "mrr": 0.3012312402249509,
+        "hit_rate": 0.70020964360587,
+        "coverage": 1.0,
+        "intra_list_diversity": 1.0,
+        "n_entities_evaluated": 477,
+        "k": 10
+      }
+    },
+    {
+      "fraction": 1.0,
+      "n_train_interactions": 162000,
+      "n_train_entities": 1500,
+      "n_train_items": 200,
+      "model_name": "popularity",
+      "fit_seconds": 0.033164291991852224,
+      "recommend_p50_ms": 0.001334003172814846,
+      "recommend_p95_ms": 0.0031691219191998226,
+      "metrics": {
+        "precision_at_k": 0.03542976939203354,
+        "recall_at_k": 0.08050161752991941,
+        "ndcg_at_k": 0.059643598657639595,
+        "mrr": 0.08609530464876376,
+        "hit_rate": 0.24947589098532494,
+        "coverage": 0.17,
+        "intra_list_diversity": 1.0,
+        "n_entities_evaluated": 477,
+        "k": 10
+      }
+    },
+    {
+      "fraction": 1.0,
+      "n_train_interactions": 162000,
+      "n_train_entities": 1500,
+      "n_train_items": 200,
+      "model_name": "item_item_knn",
+      "fit_seconds": 0.021067957975901663,
+      "recommend_p50_ms": 0.045749940909445286,
+      "recommend_p95_ms": 0.08047674200497498,
+      "metrics": {
+        "precision_at_k": 0.15534591194968556,
+        "recall_at_k": 0.4474223743877832,
+        "ndcg_at_k": 0.3197853787609234,
+        "mrr": 0.3554157931516422,
+        "hit_rate": 0.7421383647798742,
+        "coverage": 1.0,
+        "intra_list_diversity": 1.0,
+        "n_entities_evaluated": 477,
+        "k": 10
+      }
+    },
+    {
+      "fraction": 1.0,
+      "n_train_interactions": 162000,
+      "n_train_entities": 1500,
+      "n_train_items": 200,
+      "model_name": "implicit_als",
+      "fit_seconds": 0.2265981250675395,
+      "recommend_p50_ms": 0.030374969355762005,
+      "recommend_p95_ms": 0.03527497756294904,
+      "metrics": {
+        "precision_at_k": 0.1119496855345912,
+        "recall_at_k": 0.3306453504566712,
+        "ndcg_at_k": 0.23197635878377412,
+        "mrr": 0.2902382616219094,
+        "hit_rate": 0.7127882599580713,
+        "coverage": 1.0,
+        "intra_list_diversity": 1.0,
+        "n_entities_evaluated": 477,
+        "k": 10
+      }
+    }
+  ]
+}

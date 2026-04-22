@@ -91,6 +91,7 @@ class EngineState:
     # Optional (append-only; older saves don't have these).
     item_cosine: Any = None
     als_factors: Any = None
+    ranker: Any = None
 
 
 _Factory = Callable[..., Any]
@@ -179,6 +180,7 @@ def _snapshot(engine: "Engine") -> EngineState:
         population_baselines=engine._population_baselines,
         item_cosine=engine._item_cosine,
         als_factors=engine._als_factors,
+        ranker=engine._ranker,
         category_index=engine._category_index,
         drift_tracker=engine._drift_tracker,
         owned_by_entity=dict(engine._owned_by_entity),
@@ -277,6 +279,10 @@ def _restore(
     engine._population_baselines = state.population_baselines
     engine._item_cosine = getattr(state, "item_cosine", None)
     engine._als_factors = getattr(state, "als_factors", None)
+    engine._ranker = getattr(state, "ranker", None)
+    engine.use_ranker = False
+    engine.ranker_negatives_per_positive = 99
+    engine.ranker_min_train_pairs = 500
     # Rebuild the cold-start popularity ranking from the restored baselines.
     if engine._population_baselines is not None and engine._population_baselines.item_to_baseline:
         engine._popular_items_ranked = sorted(

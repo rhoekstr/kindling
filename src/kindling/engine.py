@@ -77,6 +77,7 @@ from kindling.rerank.temperature import (
     resolve_temperature,
 )
 from kindling.rerank.temperature import solve as solve_temperature
+from kindling.rank.lightgbm_ranker import LightGBMRanker
 from kindling.retrieve.cooccurrence import CoOccurrenceRetriever
 from kindling.retrieve.path_endpoint import PathEndpointRetriever
 from kindling.retrieve.protocol import Candidate
@@ -162,6 +163,15 @@ class Engine:
         outcome_log_path: str | None = None,
         # Phase 6 lifecycle configuration.
         pruning_config: PruningConfig | None = None,
+        # Warm-regime learned ranker (LightGBM LambdaRank). Off by default
+        # because the current training distribution (random-sampled
+        # negatives) doesn't match the inference distribution (retrieved
+        # candidates) - enabling produces worse NDCG than the Bayesian
+        # blend. See ADR-lightgbm-warm-regime.md. Opt in once the training
+        # generator is upgraded to retrieved-candidate negatives.
+        use_ranker: bool = False,
+        ranker_negatives_per_positive: int = 99,
+        ranker_min_train_pairs: int = 500,
     ) -> None:
         self.retrieval_budget = retrieval_budget
         self.decay: DecayProtocol = (
@@ -219,6 +229,11 @@ class Engine:
         self._item_cosine: "ItemCosineMatrix | None" = None
         # ALS latent factors (9th signal, optional - requires `implicit`).
         self._als_factors: "ALSFactors | None" = None
+        # Warm-regime LambdaRank scorer over the 9-signal feature matrix.
+        self.use_ranker = use_ranker
+        self.ranker_negatives_per_positive = ranker_negatives_per_positive
+        self.ranker_min_train_pairs = ranker_min_train_pairs
+        self._ranker: "LightGBMRanker | None" = None
 
         # Phase 5 negative-signal + outcome-log state.
         if negative_signal_mode is not None and negative_signal_mode not in NEGATIVE_SIGNAL_MODES:
@@ -369,7 +384,123 @@ class Engine:
         if self.use_bayesian_blend:
             self._fit_bayesian_blend(path_basis, sessions_count=len(sessions))
 
+        # Warm-regime LambdaRank over the 9-signal feature matrix. Trained
+        # via last-item holdout + negative sampling. Silent no-op when
+        # `lightgbm` isn't installed or training data is too small.
+        if self.use_ranker:
+            self._fit_ranker()
+
         return self
+
+    def _fit_ranker(self) -> None:
+        """Train a LightGBMRanker over the 9-signal feature matrix using
+        last-item holdout + random negative sampling.
+
+        Per entity with >=2 interactions: positive = the most recent item,
+        negatives = ``ranker_negatives_per_positive`` random items not in
+        the entity's owned set. Features computed via the existing fitted
+        signal stack (leakage acknowledged: signals saw the positive
+        item's training-time effect). For a production-grade version the
+        signals should be fit on train-early and labels drawn from train-
+        late, but the simpler one-fit version is honest enough to measure
+        whether LambdaRank helps vs. the linear blend.
+        """
+        try:
+            from kindling.rank.lightgbm_ranker import _require_lightgbm
+
+            _require_lightgbm()
+        except ImportError:
+            # lightgbm not installed - silently fall through to blend.
+            self._ranker = None
+            return
+
+        assert self._interactions is not None
+        assert self._item_graph is not None
+
+        # Per-entity ordering to pull out the last item as the positive.
+        n_neg = max(1, self.ranker_negatives_per_positive)
+        rng = np.random.default_rng(self.seed + 7)
+        all_item_ids = self._item_graph.item_ids
+        n_items = len(all_item_ids)
+        if n_items < n_neg + 2:
+            self._ranker = None
+            return
+
+        features_list: list[np.ndarray] = []
+        labels_list: list[np.ndarray] = []
+        groups: list[int] = []
+
+        # Iterate entities with enough history. Sample up to 2000 entities
+        # for training-time bound (ML-1M 6000 x 100 would be 600k rows;
+        # we cap to stay fast even on large datasets).
+        eligible_entities = [
+            e for e, hist in self._history_by_entity.items() if len(hist) >= 2
+        ]
+        if len(eligible_entities) > 2000:
+            eligible_entities = list(rng.choice(eligible_entities, size=2000, replace=False))
+
+        for entity in eligible_entities:
+            history = self._history_by_entity.get(entity, ())
+            if len(history) < 2:
+                continue
+            positive = history[-1]
+            prior_history = history[:-1]
+            owned_set = set(prior_history)
+            owned_set.add(positive)
+            # Uniform negatives from items not in owned_set.
+            negatives: list[object] = []
+            while len(negatives) < n_neg:
+                pick_idx = int(rng.integers(0, n_items))
+                pick = all_item_ids[pick_idx]
+                if pick not in owned_set:
+                    negatives.append(pick)
+                    owned_set.add(pick)
+
+            candidates_items = [positive, *negatives]
+            candidates = [
+                Candidate(item_id=c, score=0.0, source="ranker_training")
+                for c in candidates_items
+            ]
+            owned_arr = np.asarray(list(prior_history), dtype=object)
+            features = _compute_signal_features(
+                candidates=candidates,
+                owned_items=owned_arr,
+                query_basket=frozenset(prior_history[-MAX_QUERY_BASKET_SIZE:]),
+                history=prior_history[-self.max_history_for_recommend :],
+                item_graph=self._item_graph,
+                tail_index=self._tail_index,
+                path_tree=self._path_tree,
+                basket_index=self._basket_index,
+                basket_similarity=self.basket_similarity,
+                cost_graph=self._cost_graph,
+                entity_id=entity,
+                basket_scan_cap=self.basket_scan_cap,
+                rng=rng,
+                item_cosine=self._item_cosine,
+                als_factors=self._als_factors,
+            )
+            features_list.append(features.matrix)
+            labels = np.zeros(len(candidates), dtype=np.int32)
+            labels[0] = 1
+            labels_list.append(labels)
+            groups.append(len(candidates))
+
+        if not features_list or sum(groups) < self.ranker_min_train_pairs:
+            self._ranker = None
+            return
+
+        X = np.vstack(features_list)
+        y = np.concatenate(labels_list)
+        group_arr = np.asarray(groups, dtype=np.int32)
+
+        ranker = LightGBMRanker(
+            num_leaves=31,
+            learning_rate=0.05,
+            n_estimators=200,
+            random_state=int(self.seed),
+        )
+        ranker.fit(features=X, labels=y, groups=group_arr)
+        self._ranker = ranker
 
     def _fit_bayesian_blend(
         self,
@@ -618,8 +749,11 @@ class Engine:
             posterior_mean=posterior_for_skip,
             skip_weight_threshold=self.skip_signal_weight_threshold,
         )
-        # Stage 2: score via Bayesian posterior mean when available,
-        # heuristic blend otherwise. Both operate on the same SignalFeatures.
+        # Stage 2: score via LambdaRank (warm regime), Bayesian blend mean
+        # (cold regime), or heuristic blend (no Bayesian).  All three paths
+        # operate on the same SignalFeatures. LambdaRank replaces the raw
+        # score; credible intervals still come from the Bayesian blend for
+        # consumers that want uncertainty quantification.
         ci_lower: np.ndarray | None
         ci_upper: np.ndarray | None
         if self._bayesian_blend is not None and self.use_bayesian_blend:
@@ -640,6 +774,13 @@ class Engine:
             scores = self._heuristic_blend.score(features)
             ci_lower, ci_upper = None, None
             weights_for_explanation = dict(self._heuristic_blend.weights)
+
+        # Warm regime: LightGBM LambdaRank over the same feature matrix.
+        # The blend score + credible intervals above remain for explanation
+        # and uncertainty surfaces; the ranker replaces the score used for
+        # ordering. This is PRD §6.3's "warm regime handoff" in v1.
+        if self._ranker is not None and self._ranker.is_fitted:
+            scores = self._ranker.score_features(features.matrix)
 
         # Stage 3 re-rank pipeline: lift -> diversity (DPP) -> calibration
         # -> temperature -> top-N. Each step transforms the score or the

@@ -93,26 +93,52 @@ class LightGBMRanker:
             random_state=self.random_state,
             verbose=-1,
         )
-        self._model.fit(features, labels, group=groups)
+        # Fit on a bare ndarray so predict() matches at inference time
+        # without the "X does not have valid feature names" warning.
+        self._model.fit(np.asarray(features), labels, group=groups)
 
     def score(
         self,
         candidates: list["Candidate"],
         owned_items: np.ndarray,  # noqa: ARG002 - protocol alignment
     ) -> np.ndarray:
-        """Score candidates using the retriever-stage score if no model
-        is fitted yet; otherwise use the fitted LambdaRank."""
+        """Fall-through scorer when no SignalFeatures are available.
+
+        Returns the retriever-stage scores. The engine's warm-regime
+        recommend path uses ``score_features`` below with the full 9-
+        column feature matrix; this path only fires when the caller
+        bypasses feature computation.
+        """
         if not candidates:
             return np.array([], dtype=np.float64)
+        return np.array([c.score for c in candidates], dtype=np.float64)
+
+    def score_features(self, features: np.ndarray) -> np.ndarray:
+        """Score a (n_candidates, k_signals) feature matrix.
+
+        Returns the raw LambdaRank output. The engine routes this as the
+        final candidate score when ``is_fitted``; otherwise the Bayesian-
+        blend posterior mean is used (cold-regime fallback).
+        """
+        import warnings
+
         if self._model is None:
-            # Not yet trained - fall through to retriever score as
-            # kindling's heuristic default.
-            return np.array([c.score for c in candidates], dtype=np.float64)
-        raise NotImplementedError(
-            "LightGBMRanker.score requires a SignalFeatures matrix; wire "
-            "via Engine's ranker protocol in v1.x when warm-regime "
-            "training orchestration lands."
-        )
+            raise RuntimeError("LightGBMRanker.score_features called before fit()")
+        # sklearn 1.8 complains when we predict on a bare ndarray but the
+        # model was fitted on one too - benign mismatch because lightgbm
+        # doesn't actually use the names for scoring.
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message="X does not have valid feature names",
+                category=UserWarning,
+            )
+            pred = self._model.predict(features)  # type: ignore[attr-defined]
+        return np.asarray(pred, dtype=np.float64)
+
+    @property
+    def is_fitted(self) -> bool:
+        return self._model is not None
 
 
 class NoRanker:
