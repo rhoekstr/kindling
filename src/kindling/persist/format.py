@@ -304,6 +304,7 @@ def _restore(
     engine.max_history_for_recommend = 5
     engine.basket_similarity = BasketSimilarity.COVERAGE
     engine.basket_scan_cap = 10_000
+    engine.skip_signal_weight_threshold = 0.0
     engine.use_bayesian_blend = state.bayesian_blend is not None
 
     from kindling.blend.likelihoods import ListwiseCalibration

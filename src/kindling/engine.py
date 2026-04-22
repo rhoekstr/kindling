@@ -138,6 +138,13 @@ class Engine:
         max_history_for_recommend: int = 5,
         basket_similarity: BasketSimilarity = BasketSimilarity.COVERAGE,
         basket_scan_cap: int | None = 10_000,
+        # Default 0 = never skip. Set to 0.05 to trade ~7% NDCG for a ~100x
+        # latency win on ratings-style data (measured on ML-1M full):
+        # p95 152ms -> 1.6ms, NDCG 0.213 -> 0.198, MRR 0.364 -> 0.331.
+        # Signals with posterior weight below the threshold contribute
+        # negligibly to the blend score; skipping their computation
+        # entirely saves the dominant basket_index.score_many call.
+        skip_signal_weight_threshold: float = 0.0,
         use_bayesian_blend: bool = True,
         likelihood: LikelihoodProtocol | None = None,
         credible_coverage: float = 0.9,
@@ -164,6 +171,7 @@ class Engine:
         self.max_history_for_recommend = max_history_for_recommend
         self.basket_similarity = basket_similarity
         self.basket_scan_cap = basket_scan_cap
+        self.skip_signal_weight_threshold = skip_signal_weight_threshold
 
         # Bayesian blend configuration (Phase 3).
         self.use_bayesian_blend = use_bayesian_blend
@@ -564,7 +572,16 @@ class Engine:
                 owned_set=owned_set, constraints=constraints, n=n
             )
 
-        # Stage 2: score each candidate on each signal.
+        # Stage 2: score each candidate on each signal. Skip signals whose
+        # posterior weight is below the threshold - they contribute
+        # negligibly to the blend but can dominate compute (basket_index
+        # in particular on ratings data). The outcome-training path
+        # always computes all signals (passes skip_weight_threshold=0).
+        posterior_for_skip = (
+            self._bayesian_blend.posterior_mean
+            if self._bayesian_blend is not None and self.use_bayesian_blend
+            else None
+        )
         assert self._item_graph is not None
         features = _compute_signal_features(
             candidates=candidates,
@@ -581,6 +598,8 @@ class Engine:
             basket_scan_cap=self.basket_scan_cap,
             rng=self._rng,
             item_cosine=self._item_cosine,
+            posterior_mean=posterior_for_skip,
+            skip_weight_threshold=self.skip_signal_weight_threshold,
         )
         # Stage 2: score via Bayesian posterior mean when available,
         # heuristic blend otherwise. Both operate on the same SignalFeatures.
@@ -1154,40 +1173,65 @@ def _compute_signal_features(
     basket_scan_cap: int | None = None,
     rng: np.random.Generator | None = None,
     item_cosine: ItemCosineMatrix | None = None,
+    posterior_mean: np.ndarray | None = None,
+    skip_weight_threshold: float = 0.0,
 ) -> SignalFeatures:
-    """Compute the (N_candidates, K_signals) feature matrix in SIGNAL_ORDER."""
+    """Compute the (N_candidates, K_signals) feature matrix in SIGNAL_ORDER.
+
+    When ``posterior_mean`` is provided and a signal's posterior weight is
+    below ``skip_weight_threshold``, its column stays zero rather than
+    being computed. The blend score is a weighted sum, so a near-zero-
+    weight signal contributes near-zero to the final score either way.
+    Saves the dominant basket_index.score_many call on ratings-style
+    data where path_basket weight shrinks to <0.05 post-stiffness.
+    """
     n = len(candidates)
     matrix = np.zeros((n, len(SIGNAL_ORDER)), dtype=np.float64)
     cand_ids = [c.item_id for c in candidates]
 
+    # Which signals are "hot enough" to compute. When the threshold is 0
+    # or no posterior is available, compute everything (preserves debug
+    # payload completeness).
+    def _hot(i: int) -> bool:
+        if skip_weight_threshold <= 0.0 or posterior_mean is None:
+            return True
+        return bool(posterior_mean[i] >= skip_weight_threshold)
+
     last_item = history[-1] if history else None
     # path_full, path_tail, path_basket
-    matrix[:, 0] = path_tree.score_many(cand_ids, history)
-    matrix[:, 1] = tail_index.score_many(cand_ids, last_item)
-    matrix[:, 2] = basket_index.score_many(
-        cand_ids,
-        query_basket=query_basket,
-        similarity=basket_similarity,
-        scan_cap=basket_scan_cap,
-        rng=rng,
-    )
+    if _hot(0):
+        matrix[:, 0] = path_tree.score_many(cand_ids, history)
+    if _hot(1):
+        matrix[:, 1] = tail_index.score_many(cand_ids, last_item)
+    if _hot(2):
+        matrix[:, 2] = basket_index.score_many(
+            cand_ids,
+            query_basket=query_basket,
+            similarity=basket_similarity,
+            scan_cap=basket_scan_cap,
+            rng=rng,
+        )
     # cooccurrence - recompute from the graph against the entity's owned set.
     # Using the retriever's max-score would let the path_endpoint retriever's
     # score leak into this feature for candidates it won via dedup.
-    matrix[:, 3] = _cooccurrence_signal(cand_ids, owned_items, item_graph)
+    if _hot(3):
+        matrix[:, 3] = _cooccurrence_signal(cand_ids, owned_items, item_graph)
 
     # Cost signals (PRD §3.6). Store as negative values so positive
     # Dirichlet weights translate into penalties. Zero when no cost graph
     # is active (positive_only mode).
     if cost_graph is not None:
         owned_set = frozenset(owned_items.tolist()) if owned_items.size else frozenset()
-        matrix[:, 4] = -cost_graph.population_costs_many(cand_ids)
-        matrix[:, 5] = -cost_graph.entity_costs_many(cand_ids, entity_id)
-        matrix[:, 6] = -cost_graph.context_costs_many(cand_ids, owned_set)
+        if _hot(4):
+            matrix[:, 4] = -cost_graph.population_costs_many(cand_ids)
+        if _hot(5):
+            matrix[:, 5] = -cost_graph.entity_costs_many(cand_ids, entity_id)
+        if _hot(6):
+            matrix[:, 6] = -cost_graph.context_costs_many(cand_ids, owned_set)
 
     # item_item_cosine (8th signal). Cosine kNN directly scored against
     # the entity's owned items, normalized to [0, 1].
-    if item_cosine is not None and owned_items.size > 0:
+    if item_cosine is not None and owned_items.size > 0 and _hot(7):
         cand_indices = np.fromiter(
             (item_graph.item_index.get(c, -1) for c in cand_ids),
             dtype=np.int64,
