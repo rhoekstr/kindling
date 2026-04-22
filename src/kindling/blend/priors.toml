@@ -35,6 +35,13 @@ coefficient = 5.0
 target = "item_item_cosine"
 coefficient = 5.0
 
+[graph_density_als]
+# ALS also scales with graph density but is less sensitive: it generalizes
+# across items that never co-occur, which is exactly what sparse graphs
+# need. Smaller coefficient so ALS retains mass on sparse data.
+target = "als_factor"
+coefficient = 2.0
+
 [clustering_coefficient]
 targets = ["community", "graph_topology"]
 coefficient = 3.0

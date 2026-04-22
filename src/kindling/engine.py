@@ -36,6 +36,7 @@ from kindling.blend.likelihoods import (
 from kindling.blend.outcome_builder import OutcomeBuildConfig, build_outcomes
 from kindling.blend.priors import DataFeatures, construct_prior
 from kindling.explain import Explanation
+from kindling.graph.als_factors import ALSFactors, build_als_factors
 from kindling.graph.cost_graph import CostGraph, build_cost_graph
 from kindling.graph.item_cosine import ItemCosineMatrix, build_item_cosine_matrix
 from kindling.graph.item_graph import ItemGraph, build_item_graph
@@ -95,6 +96,7 @@ SIGNAL_ORDER: tuple[str, ...] = (
     "cost_entity",
     "cost_context",
     "item_item_cosine",
+    "als_factor",
 )
 NEGATIVE_SIGNAL_MODES = frozenset({"positive_only", "explicit", "implicit_from_impressions"})
 # Cap the query basket at recommend time. Full-history users (ML-1M power
@@ -215,6 +217,8 @@ class Engine:
         self._category_index: CategoryIndex | None = None
         # Item-item cosine matrix (8th signal).
         self._item_cosine: "ItemCosineMatrix | None" = None
+        # ALS latent factors (9th signal, optional - requires `implicit`).
+        self._als_factors: "ALSFactors | None" = None
 
         # Phase 5 negative-signal + outcome-log state.
         if negative_signal_mode is not None and negative_signal_mode not in NEGATIVE_SIGNAL_MODES:
@@ -292,6 +296,17 @@ class Engine:
             cooccurrence=self._item_graph.adjacency,
             item_counts=ordered_counts,
             top_k=200,
+        )
+
+        # ALS latent factors (9th signal). Optional: graceful no-op if
+        # `implicit` isn't installed. Small factor count (32) keeps fit
+        # time sub-second on ML-1M scale.
+        self._als_factors = build_als_factors(
+            interactions=self._interactions,
+            item_graph_item_index=self._item_graph.item_index,
+            factors=32,
+            iterations=8,
+            random_state=self.seed,
         )
 
         # Phase 4 re-rank state.
@@ -451,6 +466,7 @@ class Engine:
             basket_scan_cap=self.basket_scan_cap,
             rng=self._rng,
             item_cosine=self._item_cosine,
+            als_factors=self._als_factors,
         )
 
     # ---- introspection (PRD §10.2 power-user surface) ---------------------
@@ -598,6 +614,7 @@ class Engine:
             basket_scan_cap=self.basket_scan_cap,
             rng=self._rng,
             item_cosine=self._item_cosine,
+            als_factors=self._als_factors,
             posterior_mean=posterior_for_skip,
             skip_weight_threshold=self.skip_signal_weight_threshold,
         )
@@ -1173,6 +1190,7 @@ def _compute_signal_features(
     basket_scan_cap: int | None = None,
     rng: np.random.Generator | None = None,
     item_cosine: ItemCosineMatrix | None = None,
+    als_factors: ALSFactors | None = None,
     posterior_mean: np.ndarray | None = None,
     skip_weight_threshold: float = 0.0,
 ) -> SignalFeatures:
@@ -1249,6 +1267,23 @@ def _compute_signal_features(
             full = np.zeros(len(cand_ids), dtype=np.float64)
             full[valid] = scores
             matrix[:, 7] = full
+
+    # als_factor (9th signal). Latent-factor score = U_entity @ V_item.
+    # Complements the neighborhood signals by generalizing across items
+    # with no direct cooccurrence. Silent no-op when `implicit` wasn't
+    # installed at fit time.
+    if als_factors is not None and _hot(8):
+        cand_indices_als = np.fromiter(
+            (item_graph.item_index.get(c, -1) for c in cand_ids),
+            dtype=np.int64,
+            count=len(cand_ids),
+        )
+        valid_als = cand_indices_als >= 0
+        if valid_als.any():
+            als_scores = als_factors.score_many(entity_id, cand_indices_als[valid_als])
+            full_als = np.zeros(len(cand_ids), dtype=np.float64)
+            full_als[valid_als] = als_scores
+            matrix[:, 8] = full_als
 
     return SignalFeatures(matrix=matrix, signal_names=SIGNAL_ORDER)
 
