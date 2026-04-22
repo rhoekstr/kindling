@@ -88,6 +88,9 @@ class EngineState:
     # Pluggable components.
     plugin_manifest: PluginManifest
 
+    # Optional (append-only; older saves don't have these).
+    item_cosine: Any = None
+
 
 _Factory = Callable[..., Any]
 
@@ -173,6 +176,7 @@ def _snapshot(engine: "Engine") -> EngineState:
         bayesian_blend=engine._bayesian_blend,
         diagnostics=engine._diagnostics,
         population_baselines=engine._population_baselines,
+        item_cosine=engine._item_cosine,
         category_index=engine._category_index,
         drift_tracker=engine._drift_tracker,
         owned_by_entity=dict(engine._owned_by_entity),
@@ -269,6 +273,7 @@ def _restore(
     engine._bayesian_blend = state.bayesian_blend
     engine._diagnostics = state.diagnostics
     engine._population_baselines = state.population_baselines
+    engine._item_cosine = getattr(state, "item_cosine", None)
     # Rebuild the cold-start popularity ranking from the restored baselines.
     if engine._population_baselines is not None and engine._population_baselines.item_to_baseline:
         engine._popular_items_ranked = sorted(

@@ -30,6 +30,11 @@ alpha = 1.0
 target = "cooccurrence"
 coefficient = 5.0
 
+[graph_density_cosine]
+# Same rationale - denser graphs mean cosine kNN carries stronger signal.
+target = "item_item_cosine"
+coefficient = 5.0
+
 [clustering_coefficient]
 targets = ["community", "graph_topology"]
 coefficient = 3.0

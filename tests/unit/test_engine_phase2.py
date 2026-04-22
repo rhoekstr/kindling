@@ -102,11 +102,14 @@ def test_engine_posterior_summary_populates() -> None:
     engine = Engine(vi_max_iter=50).fit(_PHASE3_DF)
     summary = engine.posterior_summary()
     assert summary["bayesian_blend_active"] is True
-    # Phase 5: 4 positive signals + 3 cost signals = 7.
-    assert len(summary["signal_names"]) == 7  # type: ignore[arg-type]
-    assert len(summary["posterior_mean"]) == 7  # type: ignore[arg-type]
+    # Phase 5: 4 positive + 3 cost = 7. Post-ADR-growth-curves item C:
+    # +1 item_item_cosine signal = 8.
+    from kindling.engine import SIGNAL_ORDER
+
+    assert len(summary["signal_names"]) == len(SIGNAL_ORDER)
+    assert len(summary["posterior_mean"]) == len(SIGNAL_ORDER)
     ci = summary["credible_interval"]
-    assert len(ci) == 7  # type: ignore[arg-type]
+    assert len(ci) == len(SIGNAL_ORDER)  # type: ignore[arg-type]
     assert "diagnostics" in summary
 
 

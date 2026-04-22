@@ -70,6 +70,12 @@ def construct_prior(
         coefs.get("graph_density"),
         features.graph_density,
     )
+    _apply_single(
+        alpha,
+        name_to_idx,
+        coefs.get("graph_density_cosine"),
+        features.graph_density,
+    )
     _apply_multi(
         alpha,
         name_to_idx,

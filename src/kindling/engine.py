@@ -37,6 +37,7 @@ from kindling.blend.outcome_builder import OutcomeBuildConfig, build_outcomes
 from kindling.blend.priors import DataFeatures, construct_prior
 from kindling.explain import Explanation
 from kindling.graph.cost_graph import CostGraph, build_cost_graph
+from kindling.graph.item_cosine import ItemCosineMatrix, build_item_cosine_matrix
 from kindling.graph.item_graph import ItemGraph, build_item_graph
 from kindling.ingest.contract import (
     InteractionSchema,
@@ -93,6 +94,7 @@ SIGNAL_ORDER: tuple[str, ...] = (
     "cost_population",
     "cost_entity",
     "cost_context",
+    "item_item_cosine",
 )
 NEGATIVE_SIGNAL_MODES = frozenset({"positive_only", "explicit", "implicit_from_impressions"})
 # Cap the query basket at recommend time. Full-history users (ML-1M power
@@ -203,6 +205,8 @@ class Engine:
         # Popularity ranking cached at fit time for O(N) cold-start fallback.
         self._popular_items_ranked: list[object] = []
         self._category_index: CategoryIndex | None = None
+        # Item-item cosine matrix (8th signal).
+        self._item_cosine: "ItemCosineMatrix | None" = None
 
         # Phase 5 negative-signal + outcome-log state.
         if negative_signal_mode is not None and negative_signal_mode not in NEGATIVE_SIGNAL_MODES:
@@ -262,6 +266,25 @@ class Engine:
             for entity, group in self._interactions.groupby("entity_id", sort=False)
         }
         self._history_by_entity = _build_histories(self._interactions, schema)
+
+        # Item-item cosine matrix (8th signal). Built once at fit; scored
+        # by summing cos over owned items. Needs per-item user counts, which
+        # are the diagonal of U^T U that ItemGraph does not store - derive
+        # from the population-baseline fraction * n_entities.
+        n_entities_val = int(self._interactions["entity_id"].nunique())
+        pop_for_counts = compute_population_baselines(self._interactions)
+        ordered_counts = np.array(
+            [
+                pop_for_counts.item_to_baseline.get(item, 0.0) * n_entities_val
+                for item in self._item_graph.item_ids
+            ],
+            dtype=np.float64,
+        )
+        self._item_cosine = build_item_cosine_matrix(
+            cooccurrence=self._item_graph.adjacency,
+            item_counts=ordered_counts,
+            top_k=200,
+        )
 
         # Phase 4 re-rank state.
         self._population_baselines = compute_population_baselines(self._interactions)
@@ -419,6 +442,7 @@ class Engine:
             entity_id=entity,
             basket_scan_cap=self.basket_scan_cap,
             rng=self._rng,
+            item_cosine=self._item_cosine,
         )
 
     # ---- introspection (PRD §10.2 power-user surface) ---------------------
@@ -556,6 +580,7 @@ class Engine:
             entity_id=entity_id,
             basket_scan_cap=self.basket_scan_cap,
             rng=self._rng,
+            item_cosine=self._item_cosine,
         )
         # Stage 2: score via Bayesian posterior mean when available,
         # heuristic blend otherwise. Both operate on the same SignalFeatures.
@@ -1128,6 +1153,7 @@ def _compute_signal_features(
     entity_id: object = None,
     basket_scan_cap: int | None = None,
     rng: np.random.Generator | None = None,
+    item_cosine: ItemCosineMatrix | None = None,
 ) -> SignalFeatures:
     """Compute the (N_candidates, K_signals) feature matrix in SIGNAL_ORDER."""
     n = len(candidates)
@@ -1158,6 +1184,27 @@ def _compute_signal_features(
         matrix[:, 4] = -cost_graph.population_costs_many(cand_ids)
         matrix[:, 5] = -cost_graph.entity_costs_many(cand_ids, entity_id)
         matrix[:, 6] = -cost_graph.context_costs_many(cand_ids, owned_set)
+
+    # item_item_cosine (8th signal). Cosine kNN directly scored against
+    # the entity's owned items, normalized to [0, 1].
+    if item_cosine is not None and owned_items.size > 0:
+        cand_indices = np.fromiter(
+            (item_graph.item_index.get(c, -1) for c in cand_ids),
+            dtype=np.int64,
+            count=len(cand_ids),
+        )
+        owned_idx_list = [
+            item_graph.item_index[o]
+            for o in owned_items.tolist()
+            if o in item_graph.item_index
+        ]
+        owned_indices = np.asarray(owned_idx_list, dtype=np.int64)
+        valid = cand_indices >= 0
+        if valid.any() and owned_indices.size > 0:
+            scores = item_cosine.score_many(cand_indices[valid], owned_indices)
+            full = np.zeros(len(cand_ids), dtype=np.float64)
+            full[valid] = scores
+            matrix[:, 7] = full
 
     return SignalFeatures(matrix=matrix, signal_names=SIGNAL_ORDER)
 
