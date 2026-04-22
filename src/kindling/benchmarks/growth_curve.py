@@ -204,7 +204,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--dataset",
         default="movielens-1m",
-        choices=["movielens-1m", "synthetic-grocery", "synthetic-grocery-deep"],
+        choices=["movielens-1m", "synthetic-grocery", "synthetic-grocery-deep", "retailrocket"],
     )
     parser.add_argument("--k", type=int, default=10)
     parser.add_argument(

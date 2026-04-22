@@ -31,7 +31,7 @@ from kindling.benchmarks.baselines import (
 )
 from kindling.benchmarks.metrics import MetricReport, aggregate
 from kindling.engine import Engine
-from kindling.loaders import movielens, synthetic
+from kindling.loaders import movielens, retailrocket, synthetic
 from kindling.loaders._base import DatasetSplit
 
 
@@ -139,6 +139,13 @@ def _load_dataset(name: str, test_fraction: float) -> DatasetSplit:
             items_per_session=10,
             test_fraction=test_fraction,
         )
+    if name == "retailrocket":
+        import os
+        from pathlib import Path
+
+        cache = Path(os.environ.get("KINDLING_CACHE_DIR", Path.home() / ".cache" / "kindling"))
+        data_dir = cache / "retailrocket"
+        return retailrocket.load(data_dir, test_fraction=test_fraction)
     raise ValueError(f"Unknown dataset: {name}")
 
 
@@ -212,7 +219,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--dataset",
         default="movielens-1m",
-        choices=["movielens-1m", "synthetic-grocery", "synthetic-grocery-deep"],
+        choices=["movielens-1m", "synthetic-grocery", "synthetic-grocery-deep", "retailrocket"],
     )
     parser.add_argument("--k", type=int, default=10)
     parser.add_argument("--max-eval-entities", type=int, default=2000)
