@@ -71,3 +71,13 @@ shrink_factor = 2.0
 # path_* priors by `shrink_factor` to let cooccurrence dominate.
 shrink_factor = 0.2
 targets = ["path_full", "path_tail", "path_basket"]
+
+[persona_baseline]
+# Persona signal is opt-in. When the signal isn't fitted, the column
+# is all zeros and the blend naturally gives it zero weight. When
+# fitted, we start with alpha=1 (uniform prior) and let Phase 7-style
+# empirical tuning raise or lower it. PRD supplement §3.2 proposes
+# silhouette/noise-fraction-based adjustments; those land once we
+# have measured per-dataset behavior.
+target = "persona"
+alpha = 1.0

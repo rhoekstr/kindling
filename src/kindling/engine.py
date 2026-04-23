@@ -77,6 +77,8 @@ from kindling.rerank.temperature import (
     resolve_temperature,
 )
 from kindling.rerank.temperature import solve as solve_temperature
+from kindling.personas.config import PersonaConfig
+from kindling.personas.index import PersonaIndex
 from kindling.rank.lightgbm_ranker import LightGBMRanker
 from kindling.retrieve.cooccurrence import CoOccurrenceRetriever
 from kindling.retrieve.path_endpoint import PathEndpointRetriever
@@ -98,6 +100,7 @@ SIGNAL_ORDER: tuple[str, ...] = (
     "cost_context",
     "item_item_cosine",
     "als_factor",
+    "persona",
 )
 NEGATIVE_SIGNAL_MODES = frozenset({"positive_only", "explicit", "implicit_from_impressions"})
 # Cap the query basket at recommend time. Full-history users (ML-1M power
@@ -172,6 +175,9 @@ class Engine:
         use_ranker: bool = False,
         ranker_negatives_per_positive: int = 99,
         ranker_min_train_pairs: int = 500,
+        # Persona signal (PRD supplement). Off by default - opt in via
+        # Engine(persona_config=PersonaConfig(enabled=True, ...)).
+        persona_config: PersonaConfig | None = None,
     ) -> None:
         self.retrieval_budget = retrieval_budget
         self.decay: DecayProtocol = (
@@ -235,6 +241,10 @@ class Engine:
         self.ranker_min_train_pairs = ranker_min_train_pairs
         self._ranker: "LightGBMRanker | None" = None
         self._ranker_retrieval_hit_rate: float = 0.0
+
+        # Persona signal state (10th column in SignalFeatures).
+        self.persona_config = persona_config
+        self._persona_index: PersonaIndex | None = None
 
         # Phase 5 negative-signal + outcome-log state.
         if negative_signal_mode is not None and negative_signal_mode not in NEGATIVE_SIGNAL_MODES:
@@ -380,6 +390,12 @@ class Engine:
         if self.pruning_config.enabled and self.pruning_config.schedule == "retrain":
             self.prune()
 
+        # Persona signal (PRD supplement). Must precede blend + ranker
+        # fits because it produces the 10th column of SignalFeatures
+        # that both downstream consumers read.
+        if self.persona_config is not None and self.persona_config.enabled:
+            self._fit_persona_index()
+
         # Bayesian blend: prior from data features + VI fit on the
         # chronological tail.
         if self.use_bayesian_blend:
@@ -392,6 +408,75 @@ class Engine:
             self._fit_ranker()
 
         return self
+
+    def _fit_persona_index(self) -> None:
+        """Cluster users into personas and build the persona index.
+
+        Skipped when user count is below ``min_activation_users``, when
+        clustering produces zero personas, or when the persona config
+        is disabled. The index becomes the 10th column in
+        SignalFeatures via ``_compute_signal_features``.
+        """
+        assert self._interactions is not None
+        assert self._item_graph is not None
+        assert self.persona_config is not None
+
+        from kindling.personas.build import build_persona_index, build_user_vectors
+
+        cfg = self.persona_config
+        entity_order = list(self._owned_by_entity.keys())
+        n_users = len(entity_order)
+        if n_users < cfg.min_activation_users:
+            self._persona_index = None
+            return
+
+        item_ids = np.asarray(self._item_graph.item_ids, dtype=object)
+        user_mat = build_user_vectors(
+            self._interactions, item_ids=item_ids, entity_order=entity_order
+        )
+
+        clustering = cfg.resolved_clustering()
+        # Dense input for clustering. Most real catalogs require
+        # dimensionality reduction before clustering; HDBSCANClustering
+        # handles it internally. K-means expects something already-low-
+        # dim; if the caller passed an ALS reduction upstream, they
+        # should've selected it here.
+        try:
+            cluster_result = clustering.fit(user_mat.toarray())
+        except Exception as exc:
+            import warnings
+
+            warnings.warn(
+                f"Persona clustering failed ({exc!r}); signal disabled for this fit.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            self._persona_index = None
+            return
+
+        if cluster_result.n_personas == 0:
+            self._persona_index = None
+            return
+
+        noise_fraction = float((cluster_result.assignments < 0).sum() / max(n_users, 1))
+        if noise_fraction > 0.5:
+            import warnings
+
+            warnings.warn(
+                f"Persona clustering produced {noise_fraction:.1%} noise points; "
+                "the signal will contribute little. Consider tuning "
+                "PersonaConfig.clustering or adjusting min_cluster_size_pct.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+
+        self._persona_index = build_persona_index(
+            interactions=self._interactions,
+            cluster_result=cluster_result,
+            item_ids=item_ids,
+            entity_order=entity_order,
+            z_threshold=cfg.z_threshold,
+        )
 
     def _fit_ranker(self) -> None:
         """Train a LightGBMRanker over the 9-signal feature matrix using
@@ -508,6 +593,7 @@ class Engine:
                 rng=rng,
                 item_cosine=self._item_cosine,
                 als_factors=self._als_factors,
+                persona_index=self._persona_index,
             )
             # Stack the Bayesian blend's posterior-mean score as a 10th
             # feature. Worst case, LambdaRank learns "just use the blend"
@@ -797,6 +883,7 @@ class Engine:
             rng=self._rng,
             item_cosine=self._item_cosine,
             als_factors=self._als_factors,
+            persona_index=self._persona_index,
             posterior_mean=posterior_for_skip,
             skip_weight_threshold=self.skip_signal_weight_threshold,
         )
@@ -1388,6 +1475,7 @@ def _compute_signal_features(
     rng: np.random.Generator | None = None,
     item_cosine: ItemCosineMatrix | None = None,
     als_factors: ALSFactors | None = None,
+    persona_index: "PersonaIndex | None" = None,
     posterior_mean: np.ndarray | None = None,
     skip_weight_threshold: float = 0.0,
 ) -> SignalFeatures:
@@ -1481,6 +1569,23 @@ def _compute_signal_features(
             full_als = np.zeros(len(cand_ids), dtype=np.float64)
             full_als[valid_als] = als_scores
             matrix[:, 8] = full_als
+
+    # persona (10th signal). Group-level taste score = sum_P match(P) *
+    # persona_weight(c, P). Zero for entities the clustering didn't place
+    # (noise points) and for candidates not in the persona vocabulary.
+    if persona_index is not None and _hot(9) and persona_index.n_personas > 0:
+        from kindling.personas.matching import (
+            build_user_query_vector,
+            match_user,
+            score_candidates,
+        )
+
+        user_vec = build_user_query_vector(
+            owned_items=owned_items, history_items=history, index=persona_index
+        )
+        matches = match_user(user_vec, persona_index)
+        if matches.any():
+            matrix[:, 9] = score_candidates(matches, persona_index, cand_ids)
 
     return SignalFeatures(matrix=matrix, signal_names=SIGNAL_ORDER)
 

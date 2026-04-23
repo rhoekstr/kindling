@@ -92,6 +92,7 @@ class EngineState:
     item_cosine: Any = None
     als_factors: Any = None
     ranker: Any = None
+    persona_index: Any = None
 
 
 _Factory = Callable[..., Any]
@@ -181,6 +182,7 @@ def _snapshot(engine: "Engine") -> EngineState:
         item_cosine=engine._item_cosine,
         als_factors=engine._als_factors,
         ranker=engine._ranker,
+        persona_index=engine._persona_index,
         category_index=engine._category_index,
         drift_tracker=engine._drift_tracker,
         owned_by_entity=dict(engine._owned_by_entity),
@@ -279,6 +281,7 @@ def _restore(
     engine._population_baselines = state.population_baselines
     engine._item_cosine = getattr(state, "item_cosine", None)
     engine._als_factors = getattr(state, "als_factors", None)
+    engine._persona_index = getattr(state, "persona_index", None)
     engine._ranker = getattr(state, "ranker", None)
     engine.use_ranker = False
     engine.ranker_negatives_per_positive = 99
