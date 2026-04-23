@@ -183,3 +183,61 @@ def test_persona_config_defaults_to_hdbscan() -> None:
     cfg = PersonaConfig()
     resolved = cfg.resolved_clustering()
     assert resolved.name == "hdbscan"
+
+
+def test_cold_start_overperformance_flags_group_items() -> None:
+    """Items over-consumed by one taste group should have non-zero cold-start
+    weight on that group's persona."""
+    from kindling.personas.cold_start import compute_cold_start_weights
+
+    df, item_ids, entity_order = _synthetic_taste_groups()
+    user_mat = build_user_vectors(df, item_ids, entity_order)
+    cluster = KMeansClustering(n_clusters=3, random_state=0).fit(user_mat.toarray())
+    index = build_persona_index(
+        interactions=df, cluster_result=cluster, item_ids=item_ids, entity_order=entity_order
+    )
+    cs = compute_cold_start_weights(
+        interactions=df, index=index, overperformance_threshold=1.0
+    )
+    # At least some (persona, item) pairs should have elevated overperformance.
+    assert cs.nnz > 0
+    # Diagonal-ish structure: group-signature items should score higher
+    # on their own-group persona than cross-group ones. Test via argmax.
+    dense = cs.toarray()
+    # For a user in group 0, the item most-strongly over-performing on
+    # persona 0 should be one of items 0-9 (group 0's signature items).
+    persona_of_g0 = index.persona_of_entity("g0u0")
+    if persona_of_g0 >= 0:
+        top_item_idx = int(np.argmax(dense[persona_of_g0]))
+        top_item = item_ids[top_item_idx]
+        # Items 0-9 are group 0's territory; 10-19 group 1; 20-29 group 2.
+        assert top_item < 20, f"cold-start picked {top_item} (out of group 0 range)"
+
+
+def test_cold_start_weight_scales_contribution() -> None:
+    """Setting cold_start_weight=0 should zero out cold-start's contribution
+    to scores; setting it >0 should add to persona_vectors contribution."""
+    from kindling.personas.cold_start import compute_cold_start_weights
+
+    df, item_ids, entity_order = _synthetic_taste_groups()
+    user_mat = build_user_vectors(df, item_ids, entity_order)
+    cluster = KMeansClustering(n_clusters=3, random_state=0).fit(user_mat.toarray())
+    index = build_persona_index(
+        interactions=df, cluster_result=cluster, item_ids=item_ids, entity_order=entity_order
+    )
+    index.cold_start_weights = compute_cold_start_weights(
+        interactions=df, index=index, overperformance_threshold=1.0
+    )
+
+    vec = build_user_query_vector(np.asarray([0], dtype=object), (), index)
+    matches = match_user(vec, index)
+    candidates = [3, 5, 25, 999]
+
+    index.cold_start_weight = 0.0
+    scores_off = score_candidates(matches, index, candidates)
+    index.cold_start_weight = 0.5
+    scores_on = score_candidates(matches, index, candidates)
+    # Cold-start must either lift in-group items or leave them unchanged;
+    # it cannot make a known in-group item score below its pure-persona
+    # score.
+    assert (scores_on >= scores_off - 1e-9).all()

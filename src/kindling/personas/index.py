@@ -44,6 +44,12 @@ class PersonaIndex:
     user_to_persona: np.ndarray = field(default_factory=lambda: np.empty(0, dtype=np.int64))
     user_membership: np.ndarray = field(default_factory=lambda: np.empty(0, dtype=np.float64))
     entity_id_to_user_idx: dict[object, int] = field(default_factory=dict)
+    # Optional cold-start affinity (commit 3). (n_personas, n_items) sparse
+    # matrix where entry (P, c) is the overperformance ratio for item c
+    # relative to persona P's base rate. Zero when the pair doesn't over-
+    # perform, so the matrix is sparse on real data.
+    cold_start_weights: sp.csr_matrix | None = None
+    cold_start_weight: float = 0.0
 
     @property
     def n_personas(self) -> int:

@@ -478,6 +478,21 @@ class Engine:
             z_threshold=cfg.z_threshold,
         )
 
+        # Cold-start: compute per-(item, persona) overperformance. Items
+        # that under-weight in the main persona_vectors (because the
+        # z-score filter dropped them or they appear in few personas)
+        # still get a signal when their early-interaction users
+        # concentrate in a specific persona.
+        if cfg.cold_start_weight > 0.0:
+            from kindling.personas.cold_start import compute_cold_start_weights
+
+            self._persona_index.cold_start_weights = compute_cold_start_weights(
+                interactions=self._interactions,
+                index=self._persona_index,
+                overperformance_threshold=cfg.cold_start_overperformance_threshold,
+            )
+            self._persona_index.cold_start_weight = cfg.cold_start_weight
+
     def _fit_ranker(self) -> None:
         """Train a LightGBMRanker over the 9-signal feature matrix using
         last-item holdout + **retrieved-candidate negatives**.

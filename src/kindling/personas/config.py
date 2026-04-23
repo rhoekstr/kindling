@@ -52,8 +52,9 @@ class PersonaConfig:
     z_threshold: float = 1.5
     min_cluster_membership: float = 0.5
     min_activation_users: int = 1000
-    cold_start_overperformance_threshold: float = 1.5
-    cold_start_min_interactions: int = 20
+    cold_start_overperformance_threshold: float = 1.0
+    cold_start_min_interactions: int = 1
+    cold_start_weight: float = 0.25
 
     def resolved_clustering(self) -> "ClusteringProtocol":
         """Return a concrete clustering instance, defaulting to HDBSCAN."""

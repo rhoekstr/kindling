@@ -103,6 +103,14 @@ def score_candidates(
     # weighted sum by persona match: match @ sub → (n_cols,)
     scores_subset = np.asarray(sub.T @ persona_match).ravel()
 
+    # Cold-start: add the overperformance contribution for items that
+    # have it. Scaled by ``cold_start_weight`` so the supervised
+    # persona vector stays dominant on well-represented items.
+    if index.cold_start_weights is not None and index.cold_start_weight > 0.0:
+        sub_cs = index.cold_start_weights[:, col_idx]
+        cs_scores = np.asarray(sub_cs.T @ persona_match).ravel()
+        scores_subset = scores_subset + index.cold_start_weight * cs_scores
+
     out = np.zeros(n, dtype=np.float64)
     out[slot] = scores_subset
     return out
