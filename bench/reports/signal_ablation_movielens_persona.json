@@ -1,0 +1,603 @@
+{
+  "dataset": "movielens-1m",
+  "k": 10,
+  "kindling_version": "0.0.1.dev0",
+  "posterior_trace": [
+    {
+      "fraction": 0.3,
+      "n_interactions": 155326,
+      "signal_weights": {
+        "path_full": 0.02430770178726532,
+        "path_tail": 0.02430770178726539,
+        "path_basket": 0.024307701787265375,
+        "cooccurrence": 0.02660010206045853,
+        "cost_population": 0.11256451413061258,
+        "cost_entity": 0.09302537667046681,
+        "cost_context": 0.09537349465704703,
+        "item_item_cosine": 0.2879189728865745,
+        "als_factor": 0.20250576538741277,
+        "persona": 0.1090886688456317
+      },
+      "prior_alpha": {
+        "path_full": 0.5,
+        "path_tail": 0.5,
+        "path_basket": 0.5,
+        "cooccurrence": 3.1196799716679173,
+        "cost_population": 1.0,
+        "cost_entity": 1.0,
+        "cost_context": 1.0,
+        "item_item_cosine": 3.1196799716679173,
+        "als_factor": 1.8478719886671668,
+        "persona": 1.0
+      }
+    },
+    {
+      "fraction": 0.6,
+      "n_interactions": 310651,
+      "signal_weights": {
+        "path_full": 0.022953883845680076,
+        "path_tail": 0.022953883845680076,
+        "path_basket": 0.022953883845680135,
+        "cooccurrence": 0.024952385557241406,
+        "cost_population": 0.08607948938587075,
+        "cost_entity": 0.1068911971909874,
+        "cost_context": 0.09253598001869137,
+        "item_item_cosine": 0.3148661505233936,
+        "als_factor": 0.20217256295895258,
+        "persona": 0.10364058282782254
+      },
+      "prior_alpha": {
+        "path_full": 0.5,
+        "path_tail": 0.5,
+        "path_basket": 0.5,
+        "cooccurrence": 3.652110760049149,
+        "cost_population": 1.0,
+        "cost_entity": 1.0,
+        "cost_context": 1.0,
+        "item_item_cosine": 3.652110760049149,
+        "als_factor": 2.0608443040196596,
+        "persona": 1.0
+      }
+    },
+    {
+      "fraction": 1.0,
+      "n_interactions": 517752,
+      "signal_weights": {
+        "path_full": 0.020965324938877018,
+        "path_tail": 0.020965324938877036,
+        "path_basket": 0.02096532493887713,
+        "cooccurrence": 0.02244450424760496,
+        "cost_population": 0.1045888282648278,
+        "cost_entity": 0.0710834273518058,
+        "cost_context": 0.077645824144406,
+        "item_item_cosine": 0.3039011465014547,
+        "als_factor": 0.23306627714248998,
+        "persona": 0.12437401753077965
+      },
+      "prior_alpha": {
+        "path_full": 0.5,
+        "path_tail": 0.5,
+        "path_basket": 0.5,
+        "cooccurrence": 3.9664331674121285,
+        "cost_population": 1.0,
+        "cost_entity": 1.0,
+        "cost_context": 1.0,
+        "item_item_cosine": 3.9664331674121285,
+        "als_factor": 2.186573266964851,
+        "persona": 1.0
+      }
+    }
+  ],
+  "ablation_points": [
+    {
+      "fraction": 0.3,
+      "n_interactions": 155326,
+      "config": "full",
+      "ndcg_at_k": 0.11479074680742311,
+      "recall_at_k": 0.03200515960212911,
+      "mrr": 0.20272460317460317,
+      "coverage": 0.01716321243523316,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.3,
+      "n_interactions": 155326,
+      "config": "-path_full",
+      "ndcg_at_k": 0.11487889496643115,
+      "recall_at_k": 0.03200515960212911,
+      "mrr": 0.20305793650793652,
+      "coverage": 0.01716321243523316,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.3,
+      "n_interactions": 155326,
+      "config": "-path_tail",
+      "ndcg_at_k": 0.11478547993691225,
+      "recall_at_k": 0.03200515960212911,
+      "mrr": 0.20275238095238093,
+      "coverage": 0.01683937823834197,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.3,
+      "n_interactions": 155326,
+      "config": "-path_basket",
+      "ndcg_at_k": 0.11479861220774831,
+      "recall_at_k": 0.03200515960212911,
+      "mrr": 0.20272460317460317,
+      "coverage": 0.01716321243523316,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.3,
+      "n_interactions": 155326,
+      "config": "-cooccurrence",
+      "ndcg_at_k": 0.10989253733010466,
+      "recall_at_k": 0.0309427893382734,
+      "mrr": 0.19396904761904762,
+      "coverage": 0.1094559585492228,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.3,
+      "n_interactions": 155326,
+      "config": "-cost_population",
+      "ndcg_at_k": 0.11479074680742311,
+      "recall_at_k": 0.03200515960212911,
+      "mrr": 0.20272460317460317,
+      "coverage": 0.01716321243523316,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.3,
+      "n_interactions": 155326,
+      "config": "-cost_entity",
+      "ndcg_at_k": 0.11479074680742311,
+      "recall_at_k": 0.03200515960212911,
+      "mrr": 0.20272460317460317,
+      "coverage": 0.01716321243523316,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.3,
+      "n_interactions": 155326,
+      "config": "-cost_context",
+      "ndcg_at_k": 0.11479074680742311,
+      "recall_at_k": 0.03200515960212911,
+      "mrr": 0.20272460317460317,
+      "coverage": 0.01716321243523316,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.3,
+      "n_interactions": 155326,
+      "config": "-item_item_cosine",
+      "ndcg_at_k": 0.11466610376083952,
+      "recall_at_k": 0.03182334142031093,
+      "mrr": 0.20250238095238093,
+      "coverage": 0.01716321243523316,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.3,
+      "n_interactions": 155326,
+      "config": "-als_factor",
+      "ndcg_at_k": 0.11479861220774831,
+      "recall_at_k": 0.03200515960212911,
+      "mrr": 0.20272460317460317,
+      "coverage": 0.01716321243523316,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.3,
+      "n_interactions": 155326,
+      "config": "-persona",
+      "ndcg_at_k": 0.11479074680742311,
+      "recall_at_k": 0.03200515960212911,
+      "mrr": 0.20272460317460317,
+      "coverage": 0.01716321243523316,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.3,
+      "n_interactions": 155326,
+      "config": "only_paths",
+      "ndcg_at_k": 0.1067438285527902,
+      "recall_at_k": 0.029628876062400857,
+      "mrr": 0.18923809523809523,
+      "coverage": 0.12402849740932642,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.3,
+      "n_interactions": 155326,
+      "config": "only_cooc",
+      "ndcg_at_k": 0.11483149219088562,
+      "recall_at_k": 0.03200515960212911,
+      "mrr": 0.20303571428571426,
+      "coverage": 0.01683937823834197,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.3,
+      "n_interactions": 155326,
+      "config": "only_cosine",
+      "ndcg_at_k": 0.11508673179449659,
+      "recall_at_k": 0.032208362618185875,
+      "mrr": 0.2024079365079365,
+      "coverage": 0.06055699481865285,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.3,
+      "n_interactions": 155326,
+      "config": "only_als",
+      "ndcg_at_k": 0.1140326931929676,
+      "recall_at_k": 0.031943481045290094,
+      "mrr": 0.20009285714285713,
+      "coverage": 0.07480569948186529,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.3,
+      "n_interactions": 155326,
+      "config": "only_cost",
+      "ndcg_at_k": 0.11466610376083952,
+      "recall_at_k": 0.03182334142031093,
+      "mrr": 0.20250238095238093,
+      "coverage": 0.01716321243523316,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.3,
+      "n_interactions": 155326,
+      "config": "only_persona",
+      "ndcg_at_k": 0.10342495702470773,
+      "recall_at_k": 0.029043469398308354,
+      "mrr": 0.1844825396825397,
+      "coverage": 0.04825129533678756,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.6,
+      "n_interactions": 310651,
+      "config": "full",
+      "ndcg_at_k": 0.13346809924320305,
+      "recall_at_k": 0.03596738107553186,
+      "mrr": 0.23656190476190478,
+      "coverage": 0.023400473933649288,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.6,
+      "n_interactions": 310651,
+      "config": "-path_full",
+      "ndcg_at_k": 0.13374167342741886,
+      "recall_at_k": 0.03596738107553186,
+      "mrr": 0.2382761904761905,
+      "coverage": 0.023400473933649288,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.6,
+      "n_interactions": 310651,
+      "config": "-path_tail",
+      "ndcg_at_k": 0.1336308891434349,
+      "recall_at_k": 0.03597626996442075,
+      "mrr": 0.23685952380952383,
+      "coverage": 0.023400473933649288,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.6,
+      "n_interactions": 310651,
+      "config": "-path_basket",
+      "ndcg_at_k": 0.13346809924320305,
+      "recall_at_k": 0.03596738107553186,
+      "mrr": 0.23656190476190478,
+      "coverage": 0.023400473933649288,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.6,
+      "n_interactions": 310651,
+      "config": "-cooccurrence",
+      "ndcg_at_k": 0.12338617412630384,
+      "recall_at_k": 0.03389336172417424,
+      "mrr": 0.22967380952380956,
+      "coverage": 0.16261848341232227,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.6,
+      "n_interactions": 310651,
+      "config": "-cost_population",
+      "ndcg_at_k": 0.13346809924320305,
+      "recall_at_k": 0.03596738107553186,
+      "mrr": 0.23656190476190478,
+      "coverage": 0.023400473933649288,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.6,
+      "n_interactions": 310651,
+      "config": "-cost_entity",
+      "ndcg_at_k": 0.13346809924320305,
+      "recall_at_k": 0.03596738107553186,
+      "mrr": 0.23656190476190478,
+      "coverage": 0.023400473933649288,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.6,
+      "n_interactions": 310651,
+      "config": "-cost_context",
+      "ndcg_at_k": 0.13346809924320305,
+      "recall_at_k": 0.03596738107553186,
+      "mrr": 0.23656190476190478,
+      "coverage": 0.023400473933649288,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.6,
+      "n_interactions": 310651,
+      "config": "-item_item_cosine",
+      "ndcg_at_k": 0.1332992866013892,
+      "recall_at_k": 0.03596738107553186,
+      "mrr": 0.23556190476190478,
+      "coverage": 0.023400473933649288,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.6,
+      "n_interactions": 310651,
+      "config": "-als_factor",
+      "ndcg_at_k": 0.13330564059835398,
+      "recall_at_k": 0.03596738107553186,
+      "mrr": 0.23556190476190478,
+      "coverage": 0.023400473933649288,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.6,
+      "n_interactions": 310651,
+      "config": "-persona",
+      "ndcg_at_k": 0.13346809924320305,
+      "recall_at_k": 0.03596738107553186,
+      "mrr": 0.23656190476190478,
+      "coverage": 0.023400473933649288,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.6,
+      "n_interactions": 310651,
+      "config": "only_paths",
+      "ndcg_at_k": 0.1018882882255245,
+      "recall_at_k": 0.02427690854782774,
+      "mrr": 0.1946119047619048,
+      "coverage": 0.19757109004739337,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.6,
+      "n_interactions": 310651,
+      "config": "only_cooc",
+      "ndcg_at_k": 0.1337059031581329,
+      "recall_at_k": 0.03605829016644096,
+      "mrr": 0.23747619047619048,
+      "coverage": 0.023400473933649288,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.6,
+      "n_interactions": 310651,
+      "config": "only_cosine",
+      "ndcg_at_k": 0.13602174985092028,
+      "recall_at_k": 0.035925761764996456,
+      "mrr": 0.24003650793650794,
+      "coverage": 0.08856635071090048,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.6,
+      "n_interactions": 310651,
+      "config": "only_als",
+      "ndcg_at_k": 0.12997483940336063,
+      "recall_at_k": 0.03595146421837434,
+      "mrr": 0.24624206349206348,
+      "coverage": 0.11315165876777251,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.6,
+      "n_interactions": 310651,
+      "config": "only_cost",
+      "ndcg_at_k": 0.13341303848046124,
+      "recall_at_k": 0.03605829016644096,
+      "mrr": 0.23576190476190478,
+      "coverage": 0.023400473933649288,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 0.6,
+      "n_interactions": 310651,
+      "config": "only_persona",
+      "ndcg_at_k": 0.08605382424887495,
+      "recall_at_k": 0.019361195699423902,
+      "mrr": 0.15561269841269842,
+      "coverage": 0.0648696682464455,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 1.0,
+      "n_interactions": 517752,
+      "config": "full",
+      "ndcg_at_k": 0.18257474183720193,
+      "recall_at_k": 0.046993097335808955,
+      "mrr": 0.31908095238095235,
+      "coverage": 0.024362281456004584,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 1.0,
+      "n_interactions": 517752,
+      "config": "-path_full",
+      "ndcg_at_k": 0.18270536176852764,
+      "recall_at_k": 0.047215319558031175,
+      "mrr": 0.3190587301587301,
+      "coverage": 0.024362281456004584,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 1.0,
+      "n_interactions": 517752,
+      "config": "-path_tail",
+      "ndcg_at_k": 0.1825660539631238,
+      "recall_at_k": 0.046993097335808955,
+      "mrr": 0.3189920634920635,
+      "coverage": 0.024362281456004584,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 1.0,
+      "n_interactions": 517752,
+      "config": "-path_basket",
+      "ndcg_at_k": 0.18285282119097324,
+      "recall_at_k": 0.04701690685961847,
+      "mrr": 0.3200587301587301,
+      "coverage": 0.024362281456004584,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 1.0,
+      "n_interactions": 517752,
+      "config": "-cooccurrence",
+      "ndcg_at_k": 0.1404349167090892,
+      "recall_at_k": 0.047480822126770336,
+      "mrr": 0.2645238095238095,
+      "coverage": 0.19805101748351964,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 1.0,
+      "n_interactions": 517752,
+      "config": "-cost_population",
+      "ndcg_at_k": 0.18271062863903853,
+      "recall_at_k": 0.047215319558031175,
+      "mrr": 0.31908095238095235,
+      "coverage": 0.024362281456004584,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 1.0,
+      "n_interactions": 517752,
+      "config": "-cost_entity",
+      "ndcg_at_k": 0.18256947496669107,
+      "recall_at_k": 0.046993097335808955,
+      "mrr": 0.3190587301587301,
+      "coverage": 0.024362281456004584,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 1.0,
+      "n_interactions": 517752,
+      "config": "-cost_context",
+      "ndcg_at_k": 0.18270536176852764,
+      "recall_at_k": 0.047215319558031175,
+      "mrr": 0.3190587301587301,
+      "coverage": 0.024362281456004584,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 1.0,
+      "n_interactions": 517752,
+      "config": "-item_item_cosine",
+      "ndcg_at_k": 0.1825443644018895,
+      "recall_at_k": 0.046993097335808955,
+      "mrr": 0.3190587301587301,
+      "coverage": 0.024362281456004584,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 1.0,
+      "n_interactions": 517752,
+      "config": "-als_factor",
+      "ndcg_at_k": 0.18235474986325942,
+      "recall_at_k": 0.046993097335808955,
+      "mrr": 0.3179587301587301,
+      "coverage": 0.024362281456004584,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 1.0,
+      "n_interactions": 517752,
+      "config": "-persona",
+      "ndcg_at_k": 0.18271062863903853,
+      "recall_at_k": 0.047215319558031175,
+      "mrr": 0.31908095238095235,
+      "coverage": 0.024362281456004584,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 1.0,
+      "n_interactions": 517752,
+      "config": "only_paths",
+      "ndcg_at_k": 0.0921419508793648,
+      "recall_at_k": 0.02763986520316932,
+      "mrr": 0.20005238095238095,
+      "coverage": 0.22671252507881914,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 1.0,
+      "n_interactions": 517752,
+      "config": "only_cooc",
+      "ndcg_at_k": 0.18278838362454589,
+      "recall_at_k": 0.04701472507820102,
+      "mrr": 0.3189920634920635,
+      "coverage": 0.024362281456004584,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 1.0,
+      "n_interactions": 517752,
+      "config": "only_cosine",
+      "ndcg_at_k": 0.18298465893686375,
+      "recall_at_k": 0.052077581694005975,
+      "mrr": 0.3134896825396825,
+      "coverage": 0.11435941530524506,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 1.0,
+      "n_interactions": 517752,
+      "config": "only_als",
+      "ndcg_at_k": 0.16349425656403338,
+      "recall_at_k": 0.055318183933168334,
+      "mrr": 0.3028492063492063,
+      "coverage": 0.1295500143307538,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 1.0,
+      "n_interactions": 517752,
+      "config": "only_cost",
+      "ndcg_at_k": 0.18266374057796228,
+      "recall_at_k": 0.04701690685961847,
+      "mrr": 0.3189920634920635,
+      "coverage": 0.024362281456004584,
+      "n_eval_entities": 500
+    },
+    {
+      "fraction": 1.0,
+      "n_interactions": 517752,
+      "config": "only_persona",
+      "ndcg_at_k": 0.04471240885649633,
+      "recall_at_k": 0.00832847058390443,
+      "mrr": 0.10116507936507935,
+      "coverage": 0.08684436801375753,
+      "n_eval_entities": 500
+    }
+  ]
+}

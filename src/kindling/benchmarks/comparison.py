@@ -47,10 +47,29 @@ class _EngineAdapter:
 
     name = "kindling"
 
-    def __init__(self, use_ranker: bool = False) -> None:
-        self._engine = Engine(use_ranker=use_ranker)
+    def __init__(
+        self,
+        use_ranker: bool = False,
+        use_personas: bool = False,
+        persona_cluster_k: int = 30,
+    ) -> None:
+        persona_config = None
+        if use_personas:
+            from kindling.personas import KMeansClustering, PersonaConfig
+
+            persona_config = PersonaConfig(
+                enabled=True,
+                clustering=KMeansClustering(n_clusters=persona_cluster_k, random_state=0),
+                min_activation_users=100,
+            )
+        self._engine = Engine(use_ranker=use_ranker, persona_config=persona_config)
+        suffix_parts: list[str] = []
+        if use_personas:
+            suffix_parts.append("persona")
         if use_ranker:
-            self.name = "kindling+ranker"
+            suffix_parts.append("ranker")
+        if suffix_parts:
+            self.name = "kindling+" + "+".join(suffix_parts)
 
     def fit(self, interactions: pd.DataFrame) -> "_EngineAdapter":
         self._engine.fit(interactions)

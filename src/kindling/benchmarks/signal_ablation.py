@@ -114,6 +114,7 @@ def run_ablation(
     k: int = 10,
     max_eval_entities: int = 500,
     test_fraction: float = 0.1,
+    with_personas: bool = False,
 ) -> dict[str, object]:
     split = _load_dataset(dataset, test_fraction=test_fraction)
     train_items = cast(
@@ -144,6 +145,8 @@ def run_ablation(
         ("only_als", ALS_SIGNALS),
         ("only_cost", COST_SIGNALS),
     ]
+    if with_personas:
+        family_configs.append(("only_persona", ["persona"]))
 
     for frac in fractions:
         n_take = int(round(len(split.train) * frac))
@@ -151,7 +154,17 @@ def run_ablation(
         catalog_size = int(sub["item_id"].nunique())
         print(f"\n=== {dataset} @ frac={frac:.2f} ({len(sub):,} interactions) ===", flush=True)
         t0 = time.perf_counter()
-        engine = Engine().fit(sub)
+        if with_personas:
+            from kindling.personas import KMeansClustering, PersonaConfig
+
+            persona_cfg = PersonaConfig(
+                enabled=True,
+                clustering=KMeansClustering(n_clusters=30, random_state=0),
+                min_activation_users=100,
+            )
+            engine = Engine(persona_config=persona_cfg).fit(sub)
+        else:
+            engine = Engine().fit(sub)
         fit_s = time.perf_counter() - t0
         print(f"  fit: {fit_s:.1f}s", flush=True)
 
@@ -226,6 +239,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--k", type=int, default=10)
     parser.add_argument("--fractions", default="0.3,0.6,1.0")
     parser.add_argument("--max-eval-entities", type=int, default=500)
+    parser.add_argument("--with-personas", action="store_true",
+                        help="Enable the persona signal before ablating.")
     parser.add_argument("--output", type=Path, default=None)
     args = parser.parse_args(argv)
 
@@ -235,6 +250,7 @@ def main(argv: list[str] | None = None) -> int:
         fractions=fractions,
         k=args.k,
         max_eval_entities=args.max_eval_entities,
+        with_personas=args.with_personas,
     )
     pretty = json.dumps(report, indent=2, default=str)
     if args.output is not None:
