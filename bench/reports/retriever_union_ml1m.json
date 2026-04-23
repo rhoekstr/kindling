@@ -1,0 +1,147 @@
+{
+  "dataset": "movielens-1m",
+  "fraction": 1.0,
+  "n_eval_entities": 500,
+  "per_retriever_budget": 100,
+  "k": 10,
+  "kindling_version": "0.0.1.dev0",
+  "results": [
+    {
+      "name": "cooc_only",
+      "retrievers": [
+        "cooccurrence"
+      ],
+      "per_retriever_budget": 100,
+      "total_budget": 100,
+      "ndcg_at_k": 0.1829508422693949,
+      "mrr": 0.3199920634920635,
+      "coverage": 0.024362281456004584,
+      "recall_budget": 0.88,
+      "recall_topk": 0.596,
+      "p95_ms": 0.766058091539889,
+      "n_eval_entities": 500
+    },
+    {
+      "name": "cooc+als",
+      "retrievers": [
+        "cooccurrence",
+        "als_factor"
+      ],
+      "per_retriever_budget": 100,
+      "total_budget": 200,
+      "ndcg_at_k": 0.1829508422693949,
+      "mrr": 0.3199920634920635,
+      "coverage": 0.024362281456004584,
+      "recall_budget": 0.932,
+      "recall_topk": 0.596,
+      "p95_ms": 0.9316687064710997,
+      "n_eval_entities": 500
+    },
+    {
+      "name": "cooc+als+cosine",
+      "retrievers": [
+        "cooccurrence",
+        "als_factor",
+        "item_item_cosine"
+      ],
+      "per_retriever_budget": 100,
+      "total_budget": 300,
+      "ndcg_at_k": 0.1829508422693949,
+      "mrr": 0.3199920634920635,
+      "coverage": 0.024362281456004584,
+      "recall_budget": 0.934,
+      "recall_topk": 0.596,
+      "p95_ms": 1.4462753606494514,
+      "n_eval_entities": 500
+    },
+    {
+      "name": "cooc+als+path_basket",
+      "retrievers": [
+        "cooccurrence",
+        "als_factor",
+        "path_basket"
+      ],
+      "per_retriever_budget": 100,
+      "total_budget": 300,
+      "ndcg_at_k": 0.1829508422693949,
+      "mrr": 0.3199920634920635,
+      "coverage": 0.024362281456004584,
+      "recall_budget": 0.936,
+      "recall_topk": 0.596,
+      "p95_ms": 195.77915428671986,
+      "n_eval_entities": 500
+    },
+    {
+      "name": "cooc+als+cosine+path_basket",
+      "retrievers": [
+        "cooccurrence",
+        "als_factor",
+        "item_item_cosine",
+        "path_basket"
+      ],
+      "per_retriever_budget": 100,
+      "total_budget": 400,
+      "ndcg_at_k": 0.1829508422693949,
+      "mrr": 0.3199920634920635,
+      "coverage": 0.024362281456004584,
+      "recall_budget": 0.938,
+      "recall_topk": 0.596,
+      "p95_ms": 196.52875207830218,
+      "n_eval_entities": 500
+    },
+    {
+      "name": "cooc+als+path_basket+persona",
+      "retrievers": [
+        "cooccurrence",
+        "als_factor",
+        "path_basket",
+        "persona"
+      ],
+      "per_retriever_budget": 100,
+      "total_budget": 400,
+      "ndcg_at_k": 0.1829508422693949,
+      "mrr": 0.3199920634920635,
+      "coverage": 0.024362281456004584,
+      "recall_budget": 0.946,
+      "recall_topk": 0.596,
+      "p95_ms": 196.0682752775028,
+      "n_eval_entities": 500
+    },
+    {
+      "name": "all_useful",
+      "retrievers": [
+        "cooccurrence",
+        "item_item_cosine",
+        "als_factor",
+        "path_basket",
+        "path_tail",
+        "persona"
+      ],
+      "per_retriever_budget": 100,
+      "total_budget": 600,
+      "ndcg_at_k": 0.1829508422693949,
+      "mrr": 0.3199920634920635,
+      "coverage": 0.024362281456004584,
+      "recall_budget": 0.95,
+      "recall_topk": 0.596,
+      "p95_ms": 197.816097602481,
+      "n_eval_entities": 500
+    },
+    {
+      "name": "engine_current_stage1",
+      "retrievers": [
+        "cooccurrence",
+        "path_endpoint_combined"
+      ],
+      "per_retriever_budget": 100,
+      "total_budget": 200,
+      "ndcg_at_k": 0.1829508422693949,
+      "mrr": 0.3199920634920635,
+      "coverage": 0.024362281456004584,
+      "recall_budget": 0.908,
+      "recall_topk": 0.596,
+      "p95_ms": 0.8198559633456162,
+      "n_eval_entities": 500
+    }
+  ]
+}
