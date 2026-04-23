@@ -12,6 +12,7 @@ mod cooccurrence;
 mod dedup;
 mod dpp_kernel;
 mod path_family;
+mod personas;
 
 /// Module entry point. Each submodule registers its functions here.
 #[pymodule]
@@ -20,5 +21,6 @@ fn kindling_native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     path_family::register(m)?;
     dpp_kernel::register(m)?;
     dedup::register(m)?;
+    personas::register(m)?;
     Ok(())
 }

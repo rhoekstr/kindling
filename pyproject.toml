@@ -41,6 +41,11 @@ bench = [
 baselines = [
     "implicit>=0.7",
 ]
+personas = [
+    "umap-learn>=0.5",
+    "hdbscan>=0.8",
+    "scikit-learn>=1.3",
+]
 
 [project.urls]
 Homepage = "https://github.com/awrylabs/kindling"
