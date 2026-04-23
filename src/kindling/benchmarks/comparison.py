@@ -47,8 +47,10 @@ class _EngineAdapter:
 
     name = "kindling"
 
-    def __init__(self) -> None:
-        self._engine = Engine()
+    def __init__(self, use_ranker: bool = False) -> None:
+        self._engine = Engine(use_ranker=use_ranker)
+        if use_ranker:
+            self.name = "kindling+ranker"
 
     def fit(self, interactions: pd.DataFrame) -> "_EngineAdapter":
         self._engine.fit(interactions)

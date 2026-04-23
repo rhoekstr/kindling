@@ -77,7 +77,7 @@ def _chronological_prefix(train: pd.DataFrame, fraction: float) -> pd.DataFrame:
     return train.iloc[:n].reset_index(drop=True)
 
 
-def _build_models(include_als: bool) -> list[Recommender]:
+def _build_models(include_als: bool, include_ranker: bool = False) -> list[Recommender]:
     models: list[Recommender] = [
         _EngineAdapter(),
         PopularityBaseline(),
@@ -85,6 +85,8 @@ def _build_models(include_als: bool) -> list[Recommender]:
     ]
     if include_als:
         models.append(ImplicitALSBaseline(factors=64, iterations=15))
+    if include_ranker:
+        models.append(_EngineAdapter(use_ranker=True))
     return models
 
 
@@ -125,6 +127,7 @@ def run_growth_curve(
     max_eval_entities: int = 1000,
     test_fraction: float = 0.1,
     include_als: bool = True,
+    include_ranker: bool = False,
 ) -> dict[str, object]:
     split = _load_dataset(dataset, test_fraction)
 
@@ -163,7 +166,7 @@ def run_growth_curve(
             flush=True,
         )
         # Build fresh models per fraction (no warm-start across fractions).
-        for model in _build_models(include_als):
+        for model in _build_models(include_als, include_ranker=include_ranker):
             print(f"  {model.name}...", flush=True)
             fit_s, p50, p95, metrics = _evaluate_at_fraction(
                 model,
@@ -214,6 +217,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--max-eval-entities", type=int, default=1000)
     parser.add_argument("--no-als", action="store_true")
+    parser.add_argument("--with-ranker", action="store_true",
+                        help="Include a 'kindling+ranker' model that uses LightGBM LambdaRank.")
     parser.add_argument("--output", type=Path, default=None)
     args = parser.parse_args(argv)
 
@@ -224,6 +229,7 @@ def main(argv: list[str] | None = None) -> int:
         k=args.k,
         max_eval_entities=args.max_eval_entities,
         include_als=not args.no_als,
+        include_ranker=args.with_ranker,
     )
     pretty = json.dumps(report, indent=2, default=str)
     if args.output is not None:

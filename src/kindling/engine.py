@@ -234,6 +234,7 @@ class Engine:
         self.ranker_negatives_per_positive = ranker_negatives_per_positive
         self.ranker_min_train_pairs = ranker_min_train_pairs
         self._ranker: "LightGBMRanker | None" = None
+        self._ranker_retrieval_hit_rate: float = 0.0
 
         # Phase 5 negative-signal + outcome-log state.
         if negative_signal_mode is not None and negative_signal_mode not in NEGATIVE_SIGNAL_MODES:
@@ -394,16 +395,23 @@ class Engine:
 
     def _fit_ranker(self) -> None:
         """Train a LightGBMRanker over the 9-signal feature matrix using
-        last-item holdout + random negative sampling.
+        last-item holdout + **retrieved-candidate negatives**.
 
-        Per entity with >=2 interactions: positive = the most recent item,
-        negatives = ``ranker_negatives_per_positive`` random items not in
-        the entity's owned set. Features computed via the existing fitted
-        signal stack (leakage acknowledged: signals saw the positive
-        item's training-time effect). For a production-grade version the
-        signals should be fit on train-early and labels drawn from train-
-        late, but the simpler one-fit version is honest enough to measure
-        whether LambdaRank helps vs. the linear blend.
+        Per entity with >=2 interactions:
+        - positive = the most recent item (held out).
+        - negatives = the top-K candidates the retriever produces from the
+          entity's prior history (same distribution as inference).
+
+        Training distribution == inference distribution. This fixes the
+        earlier random-negative sampler, which let LambdaRank learn the
+        trivially-discriminating "cooc > 0" rule useless at inference time.
+        See bench/reports/ADR-lightgbm-warm-regime.md for the measurement
+        that motivated this change.
+
+        Leakage caveat: signals are fit on the FULL interaction set
+        including the positive, so the positive's features are slightly
+        inflated. A leakage-free variant would refit signals per held-out
+        entity, which is prohibitive. Accepted v1 limitation.
         """
         try:
             from kindling.rank.lightgbm_ranker import _require_lightgbm
@@ -416,28 +424,28 @@ class Engine:
 
         assert self._interactions is not None
         assert self._item_graph is not None
+        assert self._cooc_retriever is not None
+        assert self._path_retriever is not None
 
-        # Per-entity ordering to pull out the last item as the positive.
         n_neg = max(1, self.ranker_negatives_per_positive)
+        group_size = n_neg + 1  # 1 positive + n_neg retrieved negatives
         rng = np.random.default_rng(self.seed + 7)
-        all_item_ids = self._item_graph.item_ids
-        n_items = len(all_item_ids)
-        if n_items < n_neg + 2:
-            self._ranker = None
-            return
 
         features_list: list[np.ndarray] = []
         labels_list: list[np.ndarray] = []
         groups: list[int] = []
 
-        # Iterate entities with enough history. Sample up to 2000 entities
-        # for training-time bound (ML-1M 6000 x 100 would be 600k rows;
-        # we cap to stay fast even on large datasets).
+        # Iterate entities with enough history. Cap at 2000 entities for a
+        # bounded training-time budget; plenty for LambdaRank to generalize.
         eligible_entities = [
             e for e, hist in self._history_by_entity.items() if len(hist) >= 2
         ]
         if len(eligible_entities) > 2000:
             eligible_entities = list(rng.choice(eligible_entities, size=2000, replace=False))
+
+        # Stats: how often does the retriever surface the held-out positive?
+        # Diagnostic for the ranker-has-something-to-learn question.
+        n_positive_in_retrieved = 0
 
         for entity in eligible_entities:
             history = self._history_by_entity.get(entity, ())
@@ -445,26 +453,48 @@ class Engine:
                 continue
             positive = history[-1]
             prior_history = history[:-1]
-            owned_set = set(prior_history)
-            owned_set.add(positive)
-            # Uniform negatives from items not in owned_set.
-            negatives: list[object] = []
-            while len(negatives) < n_neg:
-                pick_idx = int(rng.integers(0, n_items))
-                pick = all_item_ids[pick_idx]
-                if pick not in owned_set:
-                    negatives.append(pick)
-                    owned_set.add(pick)
+            prior_owned_arr = np.asarray(list(prior_history), dtype=object)
+            prior_owned_set = set(prior_history)
 
-            candidates_items = [positive, *negatives]
-            candidates = [
-                Candidate(item_id=c, score=0.0, source="ranker_training")
-                for c in candidates_items
-            ]
-            owned_arr = np.asarray(list(prior_history), dtype=object)
+            # Run the retriever exactly as recommend() does, but on the
+            # entity's history with the last item hidden.
+            raw_candidates = list(
+                self._cooc_retriever.retrieve(prior_owned_arr, self.retrieval_budget)
+            )
+            raw_candidates.extend(
+                self._path_retriever.retrieve(
+                    recent_history=prior_history,
+                    budget=self.retrieval_budget,
+                    exclude=prior_owned_set,
+                )
+            )
+            retrieved = _dedup_max_score(raw_candidates, self.retrieval_budget)
+            if not retrieved:
+                continue
+
+            # Only train on entities where the retriever surfaces the
+            # positive in its top-K. LambdaRank can only reorder what the
+            # retriever produces at inference time, so training on
+            # distribution-mismatched groups teaches the wrong function.
+            positive_in_topk = any(c.item_id == positive for c in retrieved[:n_neg])
+            if not positive_in_topk:
+                continue
+            n_positive_in_retrieved += 1
+
+            # Put the positive first, then the top-(n_neg) retrieved
+            # candidates excluding the positive, trimmed to group_size.
+            negatives = [c for c in retrieved[:n_neg] if c.item_id != positive]
+            negatives = negatives[: group_size - 1]
+            positive_candidate = Candidate(
+                item_id=positive, score=0.0, source="ranker_positive"
+            )
+            candidates = [positive_candidate, *negatives]
+            if len(candidates) < 2:
+                continue
+
             features = _compute_signal_features(
                 candidates=candidates,
-                owned_items=owned_arr,
+                owned_items=prior_owned_arr,
                 query_basket=frozenset(prior_history[-MAX_QUERY_BASKET_SIZE:]),
                 history=prior_history[-self.max_history_for_recommend :],
                 item_graph=self._item_graph,
@@ -479,7 +509,15 @@ class Engine:
                 item_cosine=self._item_cosine,
                 als_factors=self._als_factors,
             )
-            features_list.append(features.matrix)
+            # Stack the Bayesian blend's posterior-mean score as a 10th
+            # feature. Worst case, LambdaRank learns "just use the blend"
+            # and matches it; better cases use the raw signals to
+            # reorder locally. Without this the model has no baseline.
+            feat_matrix = features.matrix
+            if self._bayesian_blend is not None:
+                blend_col = self._bayesian_blend.score(features).reshape(-1, 1)
+                feat_matrix = np.hstack([feat_matrix, blend_col])
+            features_list.append(feat_matrix)
             labels = np.zeros(len(candidates), dtype=np.int32)
             labels[0] = 1
             labels_list.append(labels)
@@ -489,14 +527,27 @@ class Engine:
             self._ranker = None
             return
 
+        # Report the retrieval-hit rate: how often did the retriever
+        # surface the held-out positive in its top-K? Low hit rates mean
+        # LambdaRank is mostly learning "the positive isn't among the
+        # retrieved alternatives" which isn't useful; high hit rates mean
+        # it's learning to reorder retrieved candidates, which is exactly
+        # what we want it to do at inference time.
+        self._ranker_retrieval_hit_rate = (
+            n_positive_in_retrieved / max(len(groups), 1)
+        )
+
         X = np.vstack(features_list)
         y = np.concatenate(labels_list)
         group_arr = np.asarray(groups, dtype=np.int32)
 
+        # Regularize harder than the previous version - we have smaller
+        # groups (100 items each) and fewer groups (up to 2000), so a
+        # shallower tree with more samples per leaf fights overfitting.
         ranker = LightGBMRanker(
-            num_leaves=31,
+            num_leaves=15,
             learning_rate=0.05,
-            n_estimators=200,
+            n_estimators=150,
             random_state=int(self.seed),
         )
         ranker.fit(features=X, labels=y, groups=group_arr)
@@ -775,12 +826,17 @@ class Engine:
             ci_lower, ci_upper = None, None
             weights_for_explanation = dict(self._heuristic_blend.weights)
 
-        # Warm regime: LightGBM LambdaRank over the same feature matrix.
-        # The blend score + credible intervals above remain for explanation
-        # and uncertainty surfaces; the ranker replaces the score used for
-        # ordering. This is PRD §6.3's "warm regime handoff" in v1.
+        # Warm regime: LightGBM LambdaRank over the feature matrix +
+        # blend-mean-as-feature (10th column). The blend score +
+        # credible intervals above remain for explanation and uncertainty
+        # surfaces; the ranker replaces the score used for ordering.
+        # This is PRD §6.3's "warm regime handoff" in v1.
         if self._ranker is not None and self._ranker.is_fitted:
-            scores = self._ranker.score_features(features.matrix)
+            feat_matrix = features.matrix
+            if self._bayesian_blend is not None:
+                blend_col = np.asarray(scores).reshape(-1, 1)
+                feat_matrix = np.hstack([feat_matrix, blend_col])
+            scores = self._ranker.score_features(feat_matrix)
 
         # Stage 3 re-rank pipeline: lift -> diversity (DPP) -> calibration
         # -> temperature -> top-N. Each step transforms the score or the

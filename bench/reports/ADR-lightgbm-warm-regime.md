@@ -113,3 +113,71 @@ but the cost (massive NDCG regression) means it's not production-ready
 until the training generator is fixed. This is documented, tested, and
 persistence works — what's missing is the inference-matching training
 distribution.
+
+---
+
+## Update 2026-04-23: training fix applied, still doesn't help
+
+Three variants measured after the initial ADR:
+
+| Variant | ML-1M @1.0 | grocery-deep @1.0 |
+| ------- | ---------: | ----------------: |
+| baseline (no ranker) | **0.183** | **0.320** |
+| v1 random negatives | 0.112 | 0.247 |
+| v2 retrieved-candidate negatives, positive always included | 0.053 | 0.252 |
+| v3 retrieval-hit-only filter + blend-mean as 10th feature | 0.101 | 0.215 |
+
+None of the training-distribution fixes recovered baseline NDCG.
+Reports: [growth_grocery_ranker_v3.json](growth_grocery_ranker_v3.json),
+[growth_ml1m_ranker_v3.json](growth_ml1m_ranker_v3.json).
+
+### Why the ranker can't help right now
+
+The signal-audit ADR showed `only_cooc` reproduces the full blend on
+both datasets — meaning the other 8 signals carry **no independent
+information** beyond what cooccurrence already encodes. LambdaRank can
+only extract what's in its feature space; if that space is effectively
+1-dimensional (cooc), a linear blend is already optimal and a tree
+ensemble just adds overfitting noise.
+
+The training-distribution mismatch was real — fixing it made grocery
+slightly less bad (0.247 → 0.252). But it's a second-order problem on
+top of a first-order "features are redundant" problem. You cannot
+ranker your way out of a feature space that doesn't carry signal.
+
+### What this teaches us
+
+The architecture decision isn't "better LambdaRank training" — it's
+**more independent signals**. Three queued items each add a genuinely
+new information source:
+
+1. **HNSW over ALS factors as a retriever.** Produces candidates the
+   cooccurrence graph doesn't surface. Changes the input distribution
+   the blend/ranker scores, rather than adding another redundant
+   score-layer on the same candidates.
+2. **Persona signal** (per `kindling_PRD_supplement_persona_signal.md`).
+   Group-level taste matching, cold-start for new items. Captures
+   structure the cooc/path signals can't. Proposed HDBSCAN-based
+   clustering + TF-IDF matching.
+3. **Outcome-fed blend adaptation.** The Bayesian blend is currently
+   prior-dominated because the harness never calls
+   `report_outcomes()`. With real outcome feedback the blend's
+   weights would actually adapt to signal quality. The signal-audit
+   ADR shows that right now the posterior weights miscorrelate with
+   signal value (cosine 30% weight, 0% NDCG impact on ML-1M).
+
+Once any of (1), (2), (3) lands and the ablation shows independent
+information in the feature space, LambdaRank gets a chance to earn
+its compute. Until then, it's a deadweight option kept off by default.
+
+### Code state after this update
+
+- Training generator upgraded to retrieved-candidate negatives with
+  retrieval-hit filtering (`src/kindling/engine.py::_fit_ranker`).
+- Blend posterior mean included as a 10th feature so LambdaRank has a
+  floor to build on.
+- Regularization tightened: `num_leaves=15, n_estimators=150`.
+- None of the above made LambdaRank beat the linear blend given the
+  current feature space.
+- `use_ranker=False` remains the default. The code is preserved for
+  re-evaluation once independent signals arrive.
