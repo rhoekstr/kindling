@@ -323,13 +323,21 @@ def build_basket_index(
         items = session.items
         if len(items) < 2:
             continue
-        weight = _session_weight(session, decay_fn, reference_timestamp)
-        if weight <= 0.0:
+        base_weight = _session_weight(session, decay_fn, reference_timestamp)
+        if base_weight <= 0.0:
             continue
+        item_w = session.item_weights
         for k in range(len(items) - 1):
             next_item = items[k + 1]
             if next_item in items[: k + 1]:
                 # Already in the basket - not a next-add event. Skip.
+                continue
+            # Weight observation by destination item's rating weight so
+            # highly-rated next-adds contribute more than low-rated ones.
+            dest_w = float(item_w[k + 1]) if k + 1 < len(item_w) else 1.0
+            weight = base_weight * dest_w
+            if weight <= 0.0:
+                # Zero-rating destination contributes nothing to path_basket.
                 continue
             basket_items = items[: k + 1]
             if len(basket_items) > max_basket_size:

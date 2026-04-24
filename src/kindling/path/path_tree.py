@@ -162,13 +162,18 @@ def build_path_tree(
         items = session.items
         if len(items) < 3:
             continue
-        weight = _session_weight(session, decay_fn, reference_timestamp)
+        base_weight = _session_weight(session, decay_fn, reference_timestamp)
+        item_w = session.item_weights
         # For each position k, for each prefix length L in [2, max_prefix],
-        # record the (prefix, successor) pair.
+        # record the (prefix, successor) pair. Count increment is
+        # session_weight * destination_item_weight so highly-rated
+        # destinations contribute more to path statistics than low-rated.
         for k in range(1, len(items) - 1):
             successor = items[k + 1]
             if items[k] == successor:
                 continue  # same reasoning as TailIndex - skip duplicate emission
+            dest_w = float(item_w[k + 1]) if k + 1 < len(item_w) else 1.0
+            weight = base_weight * dest_w
             for length in range(2, max_prefix + 1):
                 start = k - length + 1
                 if start < 0:

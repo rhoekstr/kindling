@@ -15,7 +15,6 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from itertools import pairwise
 from typing import cast
 
 import numpy as np
@@ -156,14 +155,20 @@ def build_tail_index(
         items = session.items
         if len(items) < 2:
             continue
-        weight = _session_weight(session, decay_fn, reference_timestamp)
-        for a, b in pairwise(items):
+        base_weight = _session_weight(session, decay_fn, reference_timestamp)
+        # Per-item rating weight (empty tuple -> assume 1.0 per item).
+        item_w = session.item_weights
+        for k in range(len(items) - 1):
+            a, b = items[k], items[k + 1]
             if a == b:
                 # Tail signal treats self-loops as noise - a user re-rating
                 # the same item twice in a row tells us nothing about what
                 # item comes next.
                 continue
-            counts[a][b] += weight
+            # Weight by destination item's rating weight so high-rated
+            # next-items contribute more than low-rated ones.
+            dest_w = float(item_w[k + 1]) if k + 1 < len(item_w) else 1.0
+            counts[a][b] += base_weight * dest_w
 
     row_totals = {anchor: sum(row.values()) for anchor, row in counts.items()}
     return TailIndex(
