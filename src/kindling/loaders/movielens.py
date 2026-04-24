@@ -112,20 +112,27 @@ def load_raw(cache_dir: Path | None = None) -> tuple[pd.DataFrame, pd.DataFrame]
     return ratings, movies
 
 
-def to_interactions(ratings: pd.DataFrame) -> pd.DataFrame:
+def to_interactions(ratings: pd.DataFrame, drop_below_threshold: bool = False) -> pd.DataFrame:
     """Convert raw ML-1M ratings into kindling's canonical interaction format.
 
-    Ratings >= 4 are treated as positive interactions; lower ratings are
-    dropped. This is a standard implicit-feedback conversion for ML-1M.
-    Phase 1 doesn't use ratings directly; later phases may re-introduce them
-    via action_type="rate".
+    Preserves the ``rating`` column so the preprocessor can weight
+    positive signals by rating strength ((rating - 2.5) / 2.5 clipped to
+    [0, 1]) and the cost graph can treat low ratings as negatives.
+
+    ``drop_below_threshold=True`` reverts to the old Phase-1 behavior
+    (positive-only subset, binary implicit feedback). Default False
+    passes all ratings through.
     """
-    positive = ratings[ratings["rating"] >= 4].copy()
+    if drop_below_threshold:
+        df = ratings[ratings["rating"] >= 4].copy()
+    else:
+        df = ratings.copy()
     return pd.DataFrame(
         {
-            "entity_id": positive["user_id"].astype("int64").to_numpy(),
-            "item_id": positive["movie_id"].astype("int64").to_numpy(),
-            "timestamp": positive["timestamp"].to_numpy(),
+            "entity_id": df["user_id"].astype("int64").to_numpy(),
+            "item_id": df["movie_id"].astype("int64").to_numpy(),
+            "timestamp": df["timestamp"].to_numpy(),
+            "rating": df["rating"].astype("float32").to_numpy(),
         }
     )
 

@@ -96,17 +96,28 @@ def build_als_factors(
     # ALS columns align with the other signals at query time.
     n_items = len(item_graph_item_index)
 
+    from kindling.preprocess import weights_of
+
     rows = interactions["entity_id"].map(entity_index).to_numpy()
     cols = interactions["item_id"].map(lambda x: item_graph_item_index.get(x, -1)).to_numpy()
+    weights = weights_of(interactions)
     keep = cols >= 0
     rows = rows[keep]
     cols = cols[keep]
-    data = np.ones(rows.size, dtype=np.float32)
+    data = weights[keep].astype(np.float32)
     ui = sp.csr_matrix(
         (data, (rows, cols)), shape=(len(entities), n_items), dtype=np.float32
     )
     ui.sum_duplicates()
+    # Cap confidence at 1.0 per pair. Without rating (data=1), this preserves
+    # the prior implicit-feedback behavior exactly. With rating, 4-5 star
+    # pairs keep their elevated confidence while summed duplicates don't
+    # inflate unboundedly.
     ui.data = np.minimum(ui.data, 1.0)
+    # Drop zero-weight entries (ratings below threshold) so ALS doesn't
+    # treat them as observed with confidence 0 (which would be a no-op
+    # but wastes CSR slots).
+    ui.eliminate_zeros()
 
     model = AlternatingLeastSquares(
         factors=factors,

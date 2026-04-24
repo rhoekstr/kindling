@@ -88,15 +88,34 @@ class ItemGraph:
 
 
 def build_item_graph(interactions: pd.DataFrame) -> ItemGraph:
-    """Build an item co-occurrence graph from validated interactions."""
+    """Build an item co-occurrence graph from validated interactions.
+
+    Reads the per-row positive-preference weight from the preprocessor-
+    attached ``_interaction_weight`` column (falls back to ones when the
+    column is absent, which preserves the old binary-implicit behavior
+    and keeps unit tests building raw graphs without preprocess working).
+
+    For duplicate (entity, item) rows the builder keeps the MAX weight
+    so a rating upgrade overrides a prior lower-weight row.
+    """
+    from kindling.preprocess import weights_of
+
     if interactions.empty:
         return _empty_graph()
 
-    pairs = interactions[["entity_id", "item_id"]].drop_duplicates()
+    weights = weights_of(interactions)
+    pairs = interactions[["entity_id", "item_id"]].copy()
+    pairs["_w"] = weights
+    # Max weight per (entity, item) - handles duplicates and rating upgrades.
+    pairs = (
+        pairs.groupby(["entity_id", "item_id"], sort=False, as_index=False)["_w"].max()
+    )
+    # Drop pairs with zero weight - ratings below threshold contribute
+    # nothing to positive signals (cost graph handles them as negatives).
+    pairs = pairs[pairs["_w"] > 0.0]
+    if pairs.empty:
+        return _empty_graph()
 
-    # Sorted ids so the internal index is deterministic regardless of row
-    # order — critical for reproducibility and for stable tie-breaking in
-    # neighbor rankings.
     unique_items = np.sort(pairs["item_id"].unique())
     unique_entities = np.sort(pairs["entity_id"].unique())
     item_index = {item: idx for idx, item in enumerate(unique_items)}
@@ -105,9 +124,11 @@ def build_item_graph(interactions: pd.DataFrame) -> ItemGraph:
 
     row = pairs["entity_id"].map(entity_index).to_numpy(dtype=np.int64)
     col = pairs["item_id"].map(item_index).to_numpy(dtype=np.int64)
-    data = np.ones(len(pairs), dtype=np.float32)
+    data = pairs["_w"].to_numpy(dtype=np.float32)
 
-    # Bipartite user-item matrix U: entities x items, binary.
+    # Bipartite user-item matrix U: entities x items. Values are the
+    # positive-preference weights above; a binary dataset lands on data=1
+    # and recovers the old behavior exactly.
     bipartite = sparse.csr_matrix(
         (data, (row, col)),
         shape=(len(unique_entities), len(unique_items)),

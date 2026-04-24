@@ -79,6 +79,7 @@ from kindling.rerank.temperature import (
 from kindling.rerank.temperature import solve as solve_temperature
 from kindling.personas.config import PersonaConfig
 from kindling.personas.index import PersonaIndex
+from kindling.preprocess import InteractionContext, preprocess_interactions
 from kindling.rank.lightgbm_ranker import LightGBMRanker
 from kindling.repeat import (
     RepeatConfig,
@@ -189,6 +190,10 @@ class Engine:
         # dataset has legitimate repeat interactions (grocery, media,
         # replenishment). ML-1M-style no-repeat datasets don't need this.
         repeat_config: RepeatConfig | None = None,
+        # Rating handling. None = auto-detect from the rating column;
+        # True = force rating-weighted positive signals; False = force
+        # binary implicit feedback (ignore rating column).
+        use_ratings: bool | None = None,
     ) -> None:
         self.retrieval_budget = retrieval_budget
         self.decay: DecayProtocol = (
@@ -260,6 +265,10 @@ class Engine:
         # Repeat-consumption module state.
         self.repeat_config = repeat_config
         self._repeat_table: RepeatProfileTable | None = None
+
+        # Rating handling + preprocess-time context.
+        self.use_ratings = use_ratings
+        self._interaction_context: InteractionContext | None = None
         # Per-(entity, item) most-recent interaction timestamp. Used to
         # compute time_since_last at recommend time. Populated during
         # fit when the repeat module is enabled.
@@ -298,7 +307,15 @@ class Engine:
         """Validate, canonicalize, and build derived structures."""
         schema = validate_interactions(interactions)
         self._schema = schema
-        self._interactions = canonicalize(interactions, schema)
+        canonical = canonicalize(interactions, schema)
+        # Preprocess: attach the _interaction_weight column every positive
+        # signal reads. Auto-detects ratings; respects self.use_ratings
+        # override. Must happen before any signal is built.
+        canonical, context = preprocess_interactions(
+            canonical, use_ratings=self.use_ratings
+        )
+        self._interactions = canonical
+        self._interaction_context = context
         self._reference_timestamp = _reference_timestamp_from(self._interactions)
 
         self._session_inference = infer_sessions(self._interactions)

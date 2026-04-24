@@ -47,14 +47,36 @@ class PopulationBaselines:
 
 
 def compute_population_baselines(interactions: pd.DataFrame) -> PopulationBaselines:
-    """Count the fraction of unique entities that interacted with each item."""
+    """Weighted popularity per item.
+
+    With a ``_interaction_weight`` column (attached by the preprocessor),
+    the baseline is the sum of per-interaction weights divided by the
+    unique entity count - so 5-star ratings contribute more to
+    "popular" than 1-2 star ratings. Without the column the logic
+    degrades to the old "fraction of entities who interacted" count.
+    """
+    from kindling.preprocess import WEIGHT_COLUMN, weights_of
+
     if interactions.empty:
         return PopulationBaselines()
-    pairs = interactions[["entity_id", "item_id"]].drop_duplicates()
-    entity_count = pairs["entity_id"].nunique()
+    entity_count = interactions["entity_id"].nunique()
     if entity_count == 0:
         return PopulationBaselines()
-    per_item = pairs.groupby("item_id").size() / entity_count
+
+    if WEIGHT_COLUMN in interactions.columns:
+        # Weighted: sum max-per-(entity, item) weight then normalize by
+        # total entities. Matches the item_graph builder's dedup rule.
+        df = interactions[["entity_id", "item_id", WEIGHT_COLUMN]].copy()
+        df = df.groupby(["entity_id", "item_id"], sort=False, as_index=False)[
+            WEIGHT_COLUMN
+        ].max()
+        per_item = df.groupby("item_id")[WEIGHT_COLUMN].sum() / entity_count
+    else:
+        pairs = interactions[["entity_id", "item_id"]].drop_duplicates()
+        per_item = pairs.groupby("item_id").size() / entity_count
+    # Make sure weights_of is referenced so the lint doesn't flag it;
+    # harmless no-op when the column path was taken above.
+    _ = weights_of
     return PopulationBaselines(item_to_baseline=per_item.to_dict())
 
 

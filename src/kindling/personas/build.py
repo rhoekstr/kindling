@@ -206,14 +206,19 @@ def build_user_vectors(
     n_users = len(entity_order)
     n_items = len(item_ids)
 
+    from kindling.preprocess import weights_of
+
     user_idx = interactions["entity_id"].map(entity_id_to_user_idx).to_numpy()
     item_idx = interactions["item_id"].map(item_id_to_idx).to_numpy()
+    weights = weights_of(interactions)
     mask = ~(pd.isna(user_idx) | pd.isna(item_idx))
     user_idx = user_idx[mask].astype(np.int64)
     item_idx = item_idx[mask].astype(np.int64)
-
-    data = np.ones(len(user_idx), dtype=np.float32)
+    data = weights[mask].astype(np.float32)
     mat = sp.csr_matrix((data, (user_idx, item_idx)), shape=(n_users, n_items))
     mat.sum_duplicates()
+    # Cap at 1.0 per (user, item) so duplicate rating upgrades don't
+    # inflate the matrix unboundedly, and binary datasets (data=1)
+    # recover the old behavior exactly.
     mat.data = np.minimum(mat.data, 1.0)
     return mat
