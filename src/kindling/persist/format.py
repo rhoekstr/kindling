@@ -96,6 +96,7 @@ class EngineState:
     has_explicit_sessions: bool = False
     repeat_table: Any = None
     last_interaction_ts: Any = None
+    lightgcn: Any = None
 
 
 _Factory = Callable[..., Any]
@@ -189,6 +190,7 @@ def _snapshot(engine: "Engine") -> EngineState:
         has_explicit_sessions=engine._has_explicit_sessions,
         repeat_table=engine._repeat_table,
         last_interaction_ts=engine._last_interaction_ts,
+        lightgcn=engine._lightgcn,
         category_index=engine._category_index,
         drift_tracker=engine._drift_tracker,
         owned_by_entity=dict(engine._owned_by_entity),
@@ -292,6 +294,7 @@ def _restore(
     engine._retriever_stack = []  # lazy rebuild on first recommend
     engine._repeat_table = getattr(state, "repeat_table", None)
     engine._last_interaction_ts = getattr(state, "last_interaction_ts", None) or {}
+    engine._lightgcn = getattr(state, "lightgcn", None)
     # repeat_config itself isn't persisted (it holds user closures /
     # overrides that may reference unpicklable values). At load time we
     # build a minimal one so the recommend-time gate can check

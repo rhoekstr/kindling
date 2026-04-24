@@ -37,6 +37,7 @@ from kindling.blend.outcome_builder import OutcomeBuildConfig, build_outcomes
 from kindling.blend.priors import DataFeatures, construct_prior
 from kindling.explain import Explanation
 from kindling.graph.als_factors import ALSFactors, build_als_factors
+from kindling.graph.lightgcn import LightGCNConfig, LightGCNModel, build_lightgcn
 from kindling.graph.cost_graph import CostGraph, build_cost_graph
 from kindling.graph.item_cosine import ItemCosineMatrix, build_item_cosine_matrix
 from kindling.graph.item_graph import ItemGraph, build_item_graph
@@ -109,6 +110,7 @@ SIGNAL_ORDER: tuple[str, ...] = (
     "item_item_cosine",
     "als_factor",
     "persona",
+    "lightgcn",
 )
 NEGATIVE_SIGNAL_MODES = frozenset({"positive_only", "explicit", "implicit_from_impressions"})
 # Cap the query basket at recommend time. Full-history users (ML-1M power
@@ -194,6 +196,9 @@ class Engine:
         # True = force rating-weighted positive signals; False = force
         # binary implicit feedback (ignore rating column).
         use_ratings: bool | None = None,
+        # LightGCN signal (pure-numpy, two-stage: BPR-train base
+        # embeddings + inference-time graph propagation). Off by default.
+        lightgcn_config: LightGCNConfig | None = None,
     ) -> None:
         self.retrieval_budget = retrieval_budget
         self.decay: DecayProtocol = (
@@ -269,6 +274,10 @@ class Engine:
         # Rating handling + preprocess-time context.
         self.use_ratings = use_ratings
         self._interaction_context: InteractionContext | None = None
+
+        # LightGCN signal state (11th column in SignalFeatures).
+        self.lightgcn_config = lightgcn_config
+        self._lightgcn: LightGCNModel | None = None
         # Per-(entity, item) most-recent interaction timestamp. Used to
         # compute time_since_last at recommend time. Populated during
         # fit when the repeat module is enabled.
@@ -382,6 +391,16 @@ class Engine:
             iterations=8,
             random_state=self.seed,
         )
+
+        # LightGCN: pure-numpy BPR-trained base embeddings + K-layer graph
+        # propagation at inference. Off by default (lightgcn_config=None);
+        # opt in via Engine(lightgcn_config=LightGCNConfig(...)).
+        if self.lightgcn_config is not None:
+            self._lightgcn = build_lightgcn(
+                interactions=self._interactions,
+                item_graph_item_index=self._item_graph.item_index,
+                config=self.lightgcn_config,
+            )
 
         # Phase 4 re-rank state.
         self._population_baselines = compute_population_baselines(self._interactions)
@@ -701,6 +720,7 @@ class Engine:
                 item_cosine=self._item_cosine,
                 als_factors=self._als_factors,
                 persona_index=self._persona_index,
+                lightgcn=self._lightgcn,
             )
             # Stack the Bayesian blend's posterior-mean score as a 10th
             # feature. Worst case, LambdaRank learns "just use the blend"
@@ -842,6 +862,8 @@ class Engine:
             rng=self._rng,
             item_cosine=self._item_cosine,
             als_factors=self._als_factors,
+            persona_index=self._persona_index,
+            lightgcn=self._lightgcn,
         )
 
     # ---- introspection (PRD §10.2 power-user surface) ---------------------
@@ -1004,6 +1026,7 @@ class Engine:
             item_cosine=self._item_cosine,
             als_factors=self._als_factors,
             persona_index=self._persona_index,
+            lightgcn=self._lightgcn,
             posterior_mean=posterior_for_skip,
             skip_weight_threshold=self.skip_signal_weight_threshold,
         )
@@ -1718,6 +1741,7 @@ def _compute_signal_features(
     item_cosine: ItemCosineMatrix | None = None,
     als_factors: ALSFactors | None = None,
     persona_index: "PersonaIndex | None" = None,
+    lightgcn: "LightGCNModel | None" = None,
     posterior_mean: np.ndarray | None = None,
     skip_weight_threshold: float = 0.0,
 ) -> SignalFeatures:
@@ -1828,6 +1852,22 @@ def _compute_signal_features(
         matches = match_user(user_vec, persona_index)
         if matches.any():
             matrix[:, 9] = score_candidates(matches, persona_index, cand_ids)
+
+    # lightgcn (11th signal). Graph-propagated latent-factor dot product.
+    # Complements als_factor by using the full bipartite graph with
+    # symmetric-degree normalization rather than the ALS objective.
+    if lightgcn is not None and _hot(10):
+        cand_indices_gcn = np.fromiter(
+            (item_graph.item_index.get(c, -1) for c in cand_ids),
+            dtype=np.int64,
+            count=len(cand_ids),
+        )
+        valid_gcn = cand_indices_gcn >= 0
+        if valid_gcn.any():
+            gcn_scores = lightgcn.score_many(entity_id, cand_indices_gcn[valid_gcn])
+            full_gcn = np.zeros(len(cand_ids), dtype=np.float64)
+            full_gcn[valid_gcn] = gcn_scores
+            matrix[:, 10] = full_gcn
 
     return SignalFeatures(matrix=matrix, signal_names=SIGNAL_ORDER)
 

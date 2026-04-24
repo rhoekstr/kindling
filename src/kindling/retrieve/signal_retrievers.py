@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     from kindling.graph.als_factors import ALSFactors
     from kindling.graph.item_cosine import ItemCosineMatrix
     from kindling.graph.item_graph import ItemGraph
+    from kindling.graph.lightgcn import LightGCNModel
     from kindling.path.basket_index import BasketIndex, BasketSimilarity
     from kindling.path.path_tree import PathTree
     from kindling.path.tail_index import TailIndex
@@ -269,4 +270,36 @@ class PersonaRetriever:
             item_scores = item_scores + self.persona_index.cold_start_weight * cs_scores
         return _top_k_from_scores(
             self.item_ids, item_scores, exclude, budget, self.name
+        )
+
+
+@dataclass
+class LightGCNRetriever:
+    """Retriever driven by LightGCN's graph-smoothed latent factors.
+
+    score(c) = U_entity . V_c from the fitted LightGCNModel. Mirrors
+    ALSRetriever but uses graph-propagated embeddings so the retrieved
+    candidates can differ from ALS's (different objective, different
+    structural bias, potentially non-overlapping top-K).
+    """
+
+    lightgcn: "LightGCNModel"
+    item_graph: "ItemGraph"
+    item_ids: np.ndarray
+    name: str = "lightgcn"
+    budget_fraction: float = 1.0
+
+    def retrieve(
+        self,
+        entity_id: object,
+        budget: int,
+        exclude: set[object] | None = None,
+    ) -> list[Candidate]:
+        if budget <= 0:
+            return []
+        exclude = exclude if exclude is not None else set()
+        cand_indices = np.arange(len(self.item_ids), dtype=np.int64)
+        scores = self.lightgcn.score_many(entity_id, cand_indices)
+        return _top_k_from_scores(
+            self.item_ids, np.asarray(scores, dtype=np.float64), exclude, budget, self.name
         )
