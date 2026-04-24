@@ -49,6 +49,7 @@ from kindling.retrieve.protocol import Candidate
 from kindling.retrieve.signal_retrievers import (
     ALSRetriever,
     CosineRetriever,
+    LightGCNRetriever,
     PathBasketRetriever,
     PathFullRetriever,
     PathTailRetriever,
@@ -171,6 +172,24 @@ def _build_rankers(engine: Engine) -> dict[str, RankerFn]:
             return np.zeros(len(cands), dtype=np.float64)
         return score_candidates_persona(matches, persona_index, cands)
 
+    lightgcn = engine._lightgcn
+
+    def lightgcn_ranker(cands: list[object], ctx: dict[str, object]) -> np.ndarray:
+        if lightgcn is None:
+            return np.zeros(len(cands), dtype=np.float64)
+        entity_id = ctx["entity_id"]
+        cand_idx = np.fromiter(
+            (item_graph.item_index.get(c, -1) for c in cands),
+            dtype=np.int64,
+            count=len(cands),
+        )
+        valid = cand_idx >= 0
+        scores = np.zeros(len(cands), dtype=np.float64)
+        if valid.any():
+            s = lightgcn.score_many(entity_id, cand_idx[valid])
+            scores[valid] = s
+        return scores
+
     rankers: dict[str, RankerFn] = {
         "cooccurrence": cooc_ranker,
         "path_tail": path_tail_ranker,
@@ -183,6 +202,8 @@ def _build_rankers(engine: Engine) -> dict[str, RankerFn]:
         rankers["als_factor"] = als_ranker
     if persona_index is not None and persona_index.n_personas > 0:
         rankers["persona"] = persona_ranker
+    if lightgcn is not None:
+        rankers["lightgcn"] = lightgcn_ranker
     return rankers
 
 
@@ -212,6 +233,8 @@ def _retrieve(
             entity_id=entity_id, owned_items=owned, history=history,
             budget=budget, exclude=exclude,
         )
+    if name == "lightgcn":
+        return retriever.retrieve(entity_id=entity_id, budget=budget, exclude=exclude)  # type: ignore[attr-defined]
     raise ValueError(name)
 
 
@@ -231,6 +254,8 @@ def _build_retrievers(engine: Engine) -> dict[str, object]:
         retrievers["als_factor"] = ALSRetriever(engine._als_factors, engine._item_graph, item_ids)
     if engine._persona_index is not None and engine._persona_index.n_personas > 0:
         retrievers["persona"] = PersonaRetriever(engine._persona_index, item_ids)
+    if engine._lightgcn is not None:
+        retrievers["lightgcn"] = LightGCNRetriever(engine._lightgcn, engine._item_graph, item_ids)
     return retrievers
 
 
@@ -324,6 +349,7 @@ def run_matrix(
     )
 
     all_cells: list[MatrixCell] = []
+    per_fraction_fit_timings: dict[float, dict[str, float]] = {}
     for fraction in fractions:
         n_take = int(round(len(split.train) * fraction))
         sub = split.train.iloc[:n_take].reset_index(drop=True)
@@ -333,9 +359,15 @@ def run_matrix(
             clustering=KMeansClustering(n_clusters=30, random_state=0),
             min_activation_users=100,
         )
+        from kindling.graph.lightgcn import LightGCNConfig
+
+        lgcn_cfg = LightGCNConfig(
+            dim=64, n_epochs=10, batch_size=2048, min_users=50, min_items=50, seed=0
+        )
         t0 = time.perf_counter()
-        engine = Engine(persona_config=cfg).fit(sub)
-        print(f"  fit {time.perf_counter() - t0:.1f}s", flush=True)
+        engine = Engine(persona_config=cfg, lightgcn_config=lgcn_cfg).fit(sub)
+        print(f"  fit {time.perf_counter() - t0:.1f}s  per-subsystem={engine._fit_timings}", flush=True)
+        per_fraction_fit_timings.setdefault(fraction, dict(engine._fit_timings))
 
         train_items = cast(
             pd.Series,
@@ -414,6 +446,7 @@ def run_matrix(
         "retrieval_budget": retrieval_budget,
         "kindling_version": __version__,
         "cells": [c.as_dict() for c in all_cells],
+        "fit_timings_per_fraction": per_fraction_fit_timings,
     }
 
 

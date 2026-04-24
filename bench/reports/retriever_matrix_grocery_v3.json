@@ -1,0 +1,112 @@
+{
+  "dataset": "synthetic-grocery-deep",
+  "fractions": [
+    1.0
+  ],
+  "k": 10,
+  "retrieval_budget": 500,
+  "kindling_version": "0.0.1.dev0",
+  "cells": [
+    {
+      "dataset": "synthetic-grocery-deep",
+      "fraction": 1.0,
+      "retriever": "cooccurrence",
+      "ranker": "cooccurrence",
+      "ndcg_at_k": 0.31908233268459735,
+      "recall_topk": 0.7379454926624738,
+      "recall_budget": 1.0,
+      "mrr": 0.3509858240990317,
+      "p95_ms": 0.07462983485311266
+    },
+    {
+      "dataset": "synthetic-grocery-deep",
+      "fraction": 1.0,
+      "retriever": "path_tail",
+      "ranker": "path_tail",
+      "ndcg_at_k": 0.18069360046921898,
+      "recall_topk": 0.47379454926624737,
+      "recall_budget": 0.9958071278825996,
+      "mrr": 0.24789940434594523,
+      "p95_ms": 0.10689985938370225
+    },
+    {
+      "dataset": "synthetic-grocery-deep",
+      "fraction": 1.0,
+      "retriever": "path_full",
+      "ranker": "path_full",
+      "ndcg_at_k": 0.046736471555354424,
+      "recall_topk": 0.17819706498951782,
+      "recall_budget": 0.18029350104821804,
+      "mrr": 0.0926383481414928,
+      "p95_ms": 0.04593901103362439
+    },
+    {
+      "dataset": "synthetic-grocery-deep",
+      "fraction": 1.0,
+      "retriever": "path_basket",
+      "ranker": "path_basket",
+      "ndcg_at_k": 0.30429872282838016,
+      "recall_topk": 0.7316561844863732,
+      "recall_budget": 1.0,
+      "mrr": 0.3413497055006489,
+      "p95_ms": 12.536633026320487
+    },
+    {
+      "dataset": "synthetic-grocery-deep",
+      "fraction": 1.0,
+      "retriever": "item_item_cosine",
+      "ranker": "item_item_cosine",
+      "ndcg_at_k": 0.3197853787609234,
+      "recall_topk": 0.7421383647798742,
+      "recall_budget": 1.0,
+      "mrr": 0.3554157931516422,
+      "p95_ms": 0.11238497681915756
+    },
+    {
+      "dataset": "synthetic-grocery-deep",
+      "fraction": 1.0,
+      "retriever": "als_factor",
+      "ranker": "als_factor",
+      "ndcg_at_k": 0.2946910802617633,
+      "recall_topk": 0.7568134171907757,
+      "recall_budget": 1.0,
+      "mrr": 0.34940517786429737,
+      "p95_ms": 0.07563751423731445
+    },
+    {
+      "dataset": "synthetic-grocery-deep",
+      "fraction": 1.0,
+      "retriever": "persona",
+      "ranker": "persona",
+      "ndcg_at_k": 0.3154648334584155,
+      "recall_topk": 0.750524109014675,
+      "recall_budget": 1.0,
+      "mrr": 0.33877325213803205,
+      "p95_ms": 0.23243264295160757
+    },
+    {
+      "dataset": "synthetic-grocery-deep",
+      "fraction": 1.0,
+      "retriever": "lightgcn",
+      "ranker": "lightgcn",
+      "ndcg_at_k": 0.264790095035727,
+      "recall_topk": 0.6792452830188679,
+      "recall_budget": 0.8763102725366876,
+      "mrr": 0.30913613523676414,
+      "p95_ms": 0.05754410522058606
+    }
+  ],
+  "fit_timings_per_fraction": {
+    "1.0": {
+      "item_graph": 0.016990375006571412,
+      "tail_index": 0.02007270883768797,
+      "path_tree": 0.21399429207667708,
+      "basket_index": 0.5730822908226401,
+      "item_cosine": 0.006863208021968603,
+      "als": 0.13264604099094868,
+      "lightgcn": 2.4910761250648648,
+      "persona": 0.7071232090238482,
+      "bayesian_blend": 5.0356518749613315
+    }
+  }
+}

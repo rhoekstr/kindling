@@ -304,6 +304,12 @@ class Engine:
         self.gating_config = gating_config
         self._gate: GatingNetwork | None = None
         self._gate_context_cache: dict[object, np.ndarray] = {}
+
+        # Per-subsystem fit timings (seconds). Populated during fit()
+        # for benchmarks + diagnostics. Keys: item_graph, item_cosine,
+        # als, path_tree, tail_index, basket_index, persona, lightgcn,
+        # bayesian_blend, ranker, gate.
+        self._fit_timings: dict[str, float] = {}
         if gating_config is not None and gating_config.enabled:
             # Gate requires same-scale inputs at train + infer time.
             self.signal_normalization = "zscore"
@@ -364,19 +370,32 @@ class Engine:
             )
         )
 
+        import time as _time
+
+        _t0 = _time.perf_counter()
         self._item_graph = build_item_graph(self._interactions)
+        self._fit_timings["item_graph"] = _time.perf_counter() - _t0
+
+        _t0 = _time.perf_counter()
         self._tail_index = build_tail_index(
             sessions, decay=self.decay, reference_timestamp=self._reference_timestamp
         )
+        self._fit_timings["tail_index"] = _time.perf_counter() - _t0
+
+        _t0 = _time.perf_counter()
         self._path_tree = build_path_tree(
             sessions,
             max_prefix=self.max_path_prefix,
             decay=self.decay,
             reference_timestamp=self._reference_timestamp,
         )
+        self._fit_timings["path_tree"] = _time.perf_counter() - _t0
+
+        _t0 = _time.perf_counter()
         self._basket_index = build_basket_index(
             sessions, decay=self.decay, reference_timestamp=self._reference_timestamp
         )
+        self._fit_timings["basket_index"] = _time.perf_counter() - _t0
 
         # Kept for backward compatibility with the ranker-training
         # code path and the outcome-builder helper. The Engine's
@@ -404,15 +423,18 @@ class Engine:
             ],
             dtype=np.float64,
         )
+        _t0 = _time.perf_counter()
         self._item_cosine = build_item_cosine_matrix(
             cooccurrence=self._item_graph.adjacency,
             item_counts=ordered_counts,
             top_k=200,
         )
+        self._fit_timings["item_cosine"] = _time.perf_counter() - _t0
 
         # ALS latent factors (9th signal). Optional: graceful no-op if
         # `implicit` isn't installed. Small factor count (32) keeps fit
         # time sub-second on ML-1M scale.
+        _t0 = _time.perf_counter()
         self._als_factors = build_als_factors(
             interactions=self._interactions,
             item_graph_item_index=self._item_graph.item_index,
@@ -420,16 +442,19 @@ class Engine:
             iterations=8,
             random_state=self.seed,
         )
+        self._fit_timings["als"] = _time.perf_counter() - _t0
 
         # LightGCN: pure-numpy BPR-trained base embeddings + K-layer graph
         # propagation at inference. Off by default (lightgcn_config=None);
         # opt in via Engine(lightgcn_config=LightGCNConfig(...)).
         if self.lightgcn_config is not None:
+            _t0 = _time.perf_counter()
             self._lightgcn = build_lightgcn(
                 interactions=self._interactions,
                 item_graph_item_index=self._item_graph.item_index,
                 config=self.lightgcn_config,
             )
+            self._fit_timings["lightgcn"] = _time.perf_counter() - _t0
 
         # Phase 4 re-rank state.
         self._population_baselines = compute_population_baselines(self._interactions)
@@ -490,17 +515,23 @@ class Engine:
         # fits because it produces the 10th column of SignalFeatures
         # that both downstream consumers read.
         if self.persona_config is not None and self.persona_config.enabled:
+            _t0 = _time.perf_counter()
             self._fit_persona_index()
+            self._fit_timings["persona"] = _time.perf_counter() - _t0
 
         # Repeat-consumption module. Independent of blend/ranker fits;
         # lives as a post-scoring multiplier, so ordering doesn't matter.
         if self.repeat_config is not None and self.repeat_config.enabled:
+            _t0 = _time.perf_counter()
             self._fit_repeat_module()
+            self._fit_timings["repeat"] = _time.perf_counter() - _t0
 
         # Bayesian blend: prior from data features + VI fit on the
         # chronological tail.
         if self.use_bayesian_blend:
+            _t0 = _time.perf_counter()
             self._fit_bayesian_blend(path_basis, sessions_count=len(sessions))
+            self._fit_timings["bayesian_blend"] = _time.perf_counter() - _t0
 
         # Build the data-adaptive retriever stack now that all fitted
         # state is available (item_graph, path indexes, als_factors,
@@ -516,14 +547,18 @@ class Engine:
         # via last-item holdout + negative sampling. Silent no-op when
         # `lightgbm` isn't installed or training data is too small.
         if self.use_ranker:
+            _t0 = _time.perf_counter()
             self._fit_ranker()
+            self._fit_timings["ranker"] = _time.perf_counter() - _t0
 
         # Gating network. Trained BPR-style on the fitted signal stack;
         # replaces Bayesian-blend posterior mean for scoring when fitted.
         if self.gating_config is not None and self.gating_config.enabled:
+            _t0 = _time.perf_counter()
             self._gate = fit_gating_network(self, self.gating_config)
             if self._gate is not None:
                 self._gate_context_cache = _compute_gate_context(self)
+            self._fit_timings["gate"] = _time.perf_counter() - _t0
 
         return self
 
