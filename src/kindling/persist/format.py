@@ -97,6 +97,8 @@ class EngineState:
     repeat_table: Any = None
     last_interaction_ts: Any = None
     lightgcn: Any = None
+    gate: Any = None
+    gate_context_cache: Any = None
 
 
 _Factory = Callable[..., Any]
@@ -191,6 +193,8 @@ def _snapshot(engine: "Engine") -> EngineState:
         repeat_table=engine._repeat_table,
         last_interaction_ts=engine._last_interaction_ts,
         lightgcn=engine._lightgcn,
+        gate=engine._gate,
+        gate_context_cache=engine._gate_context_cache,
         category_index=engine._category_index,
         drift_tracker=engine._drift_tracker,
         owned_by_entity=dict(engine._owned_by_entity),
@@ -300,6 +304,10 @@ def _restore(
     # behavior. Explicit "none" overrides via setattr post-load.
     if not hasattr(engine, "signal_normalization"):
         engine.signal_normalization = "zscore"
+    engine._gate = getattr(state, "gate", None)
+    engine._gate_context_cache = getattr(state, "gate_context_cache", None) or {}
+    if not hasattr(engine, "gating_config"):
+        engine.gating_config = None
     # repeat_config itself isn't persisted (it holds user closures /
     # overrides that may reference unpicklable values). At load time we
     # build a minimal one so the recommend-time gate can check

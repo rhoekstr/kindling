@@ -1,0 +1,35 @@
+{
+  "dataset": "movielens-1m",
+  "k": 10,
+  "n_eval_entities": 500,
+  "kindling_version": "0.0.1.dev0",
+  "results": [
+    {
+      "method": "bayesian",
+      "fit_seconds": 363.2851704170462,
+      "recommend_p95_ms": 224.597873352468,
+      "ndcg_at_k": 0.28795872498259983,
+      "recall_at_k": 0.0464641792014382,
+      "mrr": 0.4556047619047619,
+      "n_eval_entities": 500
+    },
+    {
+      "method": "gating",
+      "fit_seconds": 1994.2869859589264,
+      "recommend_p95_ms": 228.60386320389807,
+      "ndcg_at_k": 0.291148842290828,
+      "recall_at_k": 0.04884553213133231,
+      "mrr": 0.45324126984126983,
+      "n_eval_entities": 500
+    },
+    {
+      "method": "rrf",
+      "fit_seconds": 363.2851704170462,
+      "recommend_p95_ms": 295.01747149042785,
+      "ndcg_at_k": 0.28649214060571476,
+      "recall_at_k": 0.05125668021066112,
+      "mrr": 0.4416404761904762,
+      "n_eval_entities": 500
+    }
+  ]
+}

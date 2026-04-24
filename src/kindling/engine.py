@@ -38,6 +38,8 @@ from kindling.blend.outcome_builder import OutcomeBuildConfig, build_outcomes
 from kindling.blend.priors import DataFeatures, construct_prior
 from kindling.explain import Explanation
 from kindling.graph.als_factors import ALSFactors, build_als_factors
+from kindling.gate import GatingConfig, GatingNetwork, fit_gating_network
+from kindling.gate.features import compute_context_features as _compute_gate_context
 from kindling.graph.lightgcn import LightGCNConfig, LightGCNModel, build_lightgcn
 from kindling.graph.cost_graph import CostGraph, build_cost_graph
 from kindling.graph.item_cosine import ItemCosineMatrix, build_item_cosine_matrix
@@ -209,6 +211,12 @@ class Engine:
         # with the Bayesian blend's current priors (the priors were
         # calibrated against raw magnitudes). See ADR-score-normalization.
         signal_normalization: NormalizeMode = "none",
+        # Gating network (pure-numpy MLP) producing per-entity softmax
+        # weights over the K signals. When enabled, its output replaces
+        # the Bayesian blend's posterior mean for scoring, and the
+        # engine forces signal_normalization="zscore" internally so
+        # the gate trains + infers on the same scale.
+        gating_config: GatingConfig | None = None,
     ) -> None:
         self.retrieval_budget = retrieval_budget
         self.decay: DecayProtocol = (
@@ -291,6 +299,14 @@ class Engine:
 
         # Per-query signal-column normalization mode.
         self.signal_normalization: NormalizeMode = signal_normalization
+
+        # Gating network state.
+        self.gating_config = gating_config
+        self._gate: GatingNetwork | None = None
+        self._gate_context_cache: dict[object, np.ndarray] = {}
+        if gating_config is not None and gating_config.enabled:
+            # Gate requires same-scale inputs at train + infer time.
+            self.signal_normalization = "zscore"
         # Per-(entity, item) most-recent interaction timestamp. Used to
         # compute time_since_last at recommend time. Populated during
         # fit when the repeat module is enabled.
@@ -501,6 +517,13 @@ class Engine:
         # `lightgbm` isn't installed or training data is too small.
         if self.use_ranker:
             self._fit_ranker()
+
+        # Gating network. Trained BPR-style on the fitted signal stack;
+        # replaces Bayesian-blend posterior mean for scoring when fitted.
+        if self.gating_config is not None and self.gating_config.enabled:
+            self._gate = fit_gating_network(self, self.gating_config)
+            if self._gate is not None:
+                self._gate_context_cache = _compute_gate_context(self)
 
         return self
 
@@ -1077,6 +1100,21 @@ class Engine:
             scores = self._heuristic_blend.score(features)
             ci_lower, ci_upper = None, None
             weights_for_explanation = dict(self._heuristic_blend.weights)
+
+        # Gating network: per-entity learned softmax over the K signals.
+        # When fitted, its weights replace whatever the blend computed
+        # for ordering. Credible intervals above remain (from Bayesian
+        # path) for uncertainty-surfacing consumers - the gate doesn't
+        # provide its own CIs in v1.
+        if self._gate is not None:
+            ctx = self._gate_context_cache.get(entity_id)
+            if ctx is not None:
+                gate_weights = self._gate.forward(ctx)
+                scores = np.asarray(features.matrix @ gate_weights, dtype=np.float64)
+                weights_for_explanation = {
+                    name: float(w)
+                    for name, w in zip(features.signal_names, gate_weights, strict=True)
+                }
 
         # Warm regime: LightGBM LambdaRank over the feature matrix +
         # blend-mean-as-feature (10th column). The blend score +
