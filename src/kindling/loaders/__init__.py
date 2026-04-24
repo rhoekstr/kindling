@@ -5,15 +5,29 @@ RetailRocket, and two synthetic generators. Each loader returns a
 ``DatasetSplit``.
 """
 
-from kindling.loaders import amazon, instacart, movielens, retailrocket, synthetic
+from kindling.loaders import (
+    amazon,
+    dunnhumby,
+    gowalla,
+    instacart,
+    movielens,
+    retailrocket,
+    synthetic,
+    tafeng,
+    yelp,
+)
 from kindling.loaders._base import DatasetLoader, DatasetSplit
 
 __all__ = [
     "DatasetLoader",
     "DatasetSplit",
     "amazon",
+    "dunnhumby",
+    "gowalla",
     "instacart",
     "movielens",
     "retailrocket",
     "synthetic",
+    "tafeng",
+    "yelp",
 ]

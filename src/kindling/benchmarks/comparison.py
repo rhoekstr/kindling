@@ -31,7 +31,17 @@ from kindling.benchmarks.baselines import (
 )
 from kindling.benchmarks.metrics import MetricReport, aggregate
 from kindling.engine import Engine
-from kindling.loaders import movielens, retailrocket, synthetic
+from kindling.loaders import (
+    amazon,
+    dunnhumby,
+    gowalla,
+    instacart,
+    movielens,
+    retailrocket,
+    synthetic,
+    tafeng,
+    yelp,
+)
 from kindling.loaders._base import DatasetSplit
 
 
@@ -136,6 +146,12 @@ def _evaluate(
     )
 
 
+def _cache_dir() -> Path:
+    import os
+
+    return Path(os.environ.get("KINDLING_CACHE_DIR", Path.home() / ".cache" / "kindling"))
+
+
 def _load_dataset(name: str, test_fraction: float) -> DatasetSplit:
     if name == "movielens-1m":
         return movielens.load_1m(test_fraction=test_fraction)
@@ -160,14 +176,42 @@ def _load_dataset(name: str, test_fraction: float) -> DatasetSplit:
             items_per_session=10,
             test_fraction=test_fraction,
         )
+    cache = _cache_dir()
     if name == "retailrocket":
-        import os
-        from pathlib import Path
-
-        cache = Path(os.environ.get("KINDLING_CACHE_DIR", Path.home() / ".cache" / "kindling"))
-        data_dir = cache / "retailrocket"
-        return retailrocket.load(data_dir, test_fraction=test_fraction)
+        return retailrocket.load(cache / "retailrocket", test_fraction=test_fraction)
+    if name == "instacart":
+        return instacart.load(cache / "instacart", test_fraction=test_fraction)
+    if name == "gowalla":
+        return gowalla.load(cache / "gowalla", test_fraction=test_fraction)
+    if name == "yelp2018":
+        return yelp.load(cache / "yelp2018", test_fraction=test_fraction)
+    if name == "tafeng":
+        return tafeng.load(cache / "tafeng", test_fraction=test_fraction)
+    if name == "dunnhumby":
+        return dunnhumby.load(cache / "dunnhumby", test_fraction=test_fraction)
+    if name == "amazon-beauty":
+        return _load_amazon_5core(cache / "amazon-beauty", test_fraction=test_fraction, label="amazon-beauty")
+    if name == "amazon-book":
+        return _load_amazon_5core(cache / "amazon-book", test_fraction=test_fraction, label="amazon-book")
     raise ValueError(f"Unknown dataset: {name}")
+
+
+def _load_amazon_5core(data_dir: Path, test_fraction: float, label: str) -> DatasetSplit:
+    """Resolve a 5-core JSON.gz under ``data_dir`` and call the amazon loader."""
+    candidates = sorted(data_dir.glob("*5*.json*")) if data_dir.exists() else []
+    if not candidates:
+        raise amazon.AmazonReviewsDataNotAvailableError(
+            f"No 5-core JSON file found under {data_dir} for {label}. "
+            "Download a 5-core category JSONL.gz from https://nijianmo.github.io/amazon/"
+        )
+    split = amazon.load(candidates[0], test_fraction=test_fraction)
+    return DatasetSplit(
+        name=label,
+        train=split.train,
+        test=split.test,
+        items=split.items,
+        description=f"{label}: {split.description}",
+    )
 
 
 def run_comparison(
@@ -240,7 +284,19 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--dataset",
         default="movielens-1m",
-        choices=["movielens-1m", "synthetic-grocery", "synthetic-grocery-deep", "retailrocket"],
+        choices=[
+            "movielens-1m",
+            "synthetic-grocery",
+            "synthetic-grocery-deep",
+            "retailrocket",
+            "instacart",
+            "gowalla",
+            "yelp2018",
+            "tafeng",
+            "dunnhumby",
+            "amazon-beauty",
+            "amazon-book",
+        ],
     )
     parser.add_argument("--k", type=int, default=10)
     parser.add_argument("--max-eval-entities", type=int, default=2000)
