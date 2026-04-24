@@ -112,7 +112,19 @@ def compute_cold_start_weights(
         overperf = np.where(expected > 0.0, affinity_dense / expected, 0.0)
     overperf[overperf <= overperformance_threshold] = 0.0
 
-    return sp.csr_matrix(overperf, dtype=np.float64)
+    # log1p-compress the raw ratios and L2-normalize per persona row so
+    # cold-start entries live on the same scale as the main persona
+    # vectors (which are L2-normalized TF-IDF). Raw overperformance
+    # ratios can be 100-1000x on long-tail catalogs (ML-1M-style: niche
+    # items with tiny base rates) which blows out the fixed scalar
+    # cold_start_weight. log1p bounds growth at log(1+x), L2-norm
+    # puts each row in unit sphere same as persona_vectors.
+    log_over = np.log1p(np.clip(overperf - overperformance_threshold, 0.0, None))
+    norms = np.sqrt((log_over * log_over).sum(axis=1, keepdims=True))
+    norms = np.where(norms > 0.0, norms, 1.0)
+    normalized = log_over / norms
+
+    return sp.csr_matrix(normalized, dtype=np.float64)
 
 
 def n_persona_max(n_personas: int) -> int:

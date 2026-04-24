@@ -54,7 +54,10 @@ class PersonaConfig:
     min_activation_users: int = 1000
     cold_start_overperformance_threshold: float = 1.0
     cold_start_min_interactions: int = 1
-    cold_start_weight: float = 0.25
+    # Matches the L2-normalized main persona_vectors scale after the
+    # cold_start_weights log1p+L2 normalization fix. 0.5 keeps main
+    # persona signal dominant while letting cold-start contribute.
+    cold_start_weight: float = 0.5
 
     def resolved_clustering(self) -> "ClusteringProtocol":
         """Return a concrete clustering instance, defaulting to HDBSCAN."""

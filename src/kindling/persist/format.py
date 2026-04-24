@@ -93,6 +93,7 @@ class EngineState:
     als_factors: Any = None
     ranker: Any = None
     persona_index: Any = None
+    has_explicit_sessions: bool = False
 
 
 _Factory = Callable[..., Any]
@@ -183,6 +184,7 @@ def _snapshot(engine: "Engine") -> EngineState:
         als_factors=engine._als_factors,
         ranker=engine._ranker,
         persona_index=engine._persona_index,
+        has_explicit_sessions=engine._has_explicit_sessions,
         category_index=engine._category_index,
         drift_tracker=engine._drift_tracker,
         owned_by_entity=dict(engine._owned_by_entity),
@@ -282,6 +284,8 @@ def _restore(
     engine._item_cosine = getattr(state, "item_cosine", None)
     engine._als_factors = getattr(state, "als_factors", None)
     engine._persona_index = getattr(state, "persona_index", None)
+    engine._has_explicit_sessions = getattr(state, "has_explicit_sessions", False)
+    engine._retriever_stack = []  # lazy rebuild on first recommend
     engine._ranker = getattr(state, "ranker", None)
     engine.use_ranker = False
     engine.ranker_negatives_per_positive = 99

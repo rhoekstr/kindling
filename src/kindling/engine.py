@@ -82,6 +82,7 @@ from kindling.personas.index import PersonaIndex
 from kindling.rank.lightgbm_ranker import LightGBMRanker
 from kindling.retrieve.cooccurrence import CoOccurrenceRetriever
 from kindling.retrieve.path_endpoint import PathEndpointRetriever
+from kindling.retrieve.policy import RetrieverEntry, build_retriever_stack
 from kindling.retrieve.protocol import Candidate
 
 DEFAULT_RETRIEVAL_BUDGET = 500
@@ -246,6 +247,14 @@ class Engine:
         self.persona_config = persona_config
         self._persona_index: PersonaIndex | None = None
 
+        # Data-adaptive retriever stack (ADR-retriever-union). Built at
+        # fit time from engine fitted state + DataFeatures. Populated on
+        # first recommend() after load via _ensure_retriever_stack().
+        self._retriever_stack: list[RetrieverEntry] = []
+        # Cached for post-load stack rebuild (the only DataFeatures
+        # field the stack gates on).
+        self._has_explicit_sessions: bool = False
+
         # Phase 5 negative-signal + outcome-log state.
         if negative_signal_mode is not None and negative_signal_mode not in NEGATIVE_SIGNAL_MODES:
             raise ValueError(
@@ -296,6 +305,10 @@ class Engine:
             sessions, decay=self.decay, reference_timestamp=self._reference_timestamp
         )
 
+        # Kept for backward compatibility with the ranker-training
+        # code path and the outcome-builder helper. The Engine's
+        # primary retrieval path uses self._retriever_stack (built below)
+        # instead - see ADR-retriever-union.md.
         self._cooc_retriever = CoOccurrenceRetriever(self._item_graph)
         self._path_retriever = PathEndpointRetriever(self._path_tree, self._tail_index)
 
@@ -400,6 +413,16 @@ class Engine:
         # chronological tail.
         if self.use_bayesian_blend:
             self._fit_bayesian_blend(path_basis, sessions_count=len(sessions))
+
+        # Build the data-adaptive retriever stack now that all fitted
+        # state is available (item_graph, path indexes, als_factors,
+        # item_cosine, persona_index). DataFeatures drives the gating
+        # (session-specific retrievers only when sessions are explicit).
+        features = self._compute_data_features(len(sessions))
+        self._has_explicit_sessions = features.has_explicit_sessions
+        self._retriever_stack = build_retriever_stack(
+            engine=self, features=features, retrieval_budget=self.retrieval_budget
+        )
 
         # Warm-regime LambdaRank over the 9-signal feature matrix. Trained
         # via last-item holdout + negative sampling. Silent no-op when
@@ -838,8 +861,6 @@ class Engine:
           ``emphasis="distinctive"``.
         """
         self._require_fitted()
-        assert self._cooc_retriever is not None
-        assert self._path_retriever is not None
         assert self._tail_index is not None
         assert self._path_tree is not None
         assert self._basket_index is not None
@@ -849,14 +870,18 @@ class Engine:
         history = self._history_by_entity.get(entity_id, ())
         query_basket: frozenset[object] = frozenset(history[-MAX_QUERY_BASKET_SIZE:])
 
-        # Stage 1: retrieve from both sources, union + dedup.
-        raw_candidates = list(self._cooc_retriever.retrieve(owned_items, self.retrieval_budget))
-        raw_candidates.extend(
-            self._path_retriever.retrieve(
-                recent_history=history, budget=self.retrieval_budget, exclude=owned_set
-            )
+        # Stage 1: run the data-adaptive retriever stack + RRF fuse.
+        # Each retriever produces its own ranked candidate list; RRF
+        # merges them by rank (score-scale-independent). Replaces the
+        # max-score merge that was dominated by cooc's raw-magnitude
+        # scores (ADR-retriever-union).
+        candidates = self._retrieve_rrf(
+            entity_id=entity_id,
+            owned_items=owned_items,
+            owned_set=owned_set,
+            history=history,
+            query_basket=query_basket,
         )
-        candidates = _dedup_max_score(raw_candidates, self.retrieval_budget)
 
         if constraints:
             candidates = apply_constraints(candidates, constraints)
@@ -1035,6 +1060,91 @@ class Engine:
                 credible_coverage=(self.credible_coverage if ci_lower is not None else None),
             )
             for i in top
+        ]
+
+    def _ensure_retriever_stack(self) -> None:
+        """Rebuild the retriever stack if missing (post-load state)."""
+        if self._retriever_stack or self._item_graph is None:
+            return
+        # DataFeatures is only used for the has_explicit_sessions gate,
+        # which we cached at fit time. Build a minimal stand-in here.
+        from kindling.blend.priors import DataFeatures
+
+        features = DataFeatures(
+            graph_density=0.0,
+            clustering_coefficient=0.0,
+            session_density=0.0,
+            catalog_to_entity_ratio=0.0,
+            n_interactions=0,
+            has_explicit_sessions=self._has_explicit_sessions,
+        )
+        self._retriever_stack = build_retriever_stack(
+            engine=self, features=features, retrieval_budget=self.retrieval_budget
+        )
+
+    def _retrieve_rrf(
+        self,
+        entity_id: object,
+        owned_items: np.ndarray,
+        owned_set: set[object],
+        history: tuple[object, ...],
+        query_basket: frozenset[object],
+        rrf_k: float = 60.0,
+    ) -> list[Candidate]:
+        """Reciprocal Rank Fusion over the data-adaptive retriever stack.
+
+        For each retriever, get its ranked candidate list, then accumulate
+        ``rrf_weight / (rrf_k + rank)`` per item across retrievers. Items
+        appearing high across multiple retrievers win. Score-scale-
+        independent, so cooc's raw-magnitude scores don't dominate.
+        """
+        self._ensure_retriever_stack()
+        stack = self._retriever_stack
+        if not stack:
+            return []
+
+        rrf_scores: dict[object, float] = {}
+        first_source: dict[object, str] = {}
+        for entry in stack:
+            name = entry.name
+            r = entry.retriever
+            per_budget = entry.budget
+            weight = entry.rrf_weight
+            if name == "cooccurrence":
+                cands = r.retrieve(owned_items, per_budget)  # type: ignore[attr-defined]
+            elif name == "item_item_cosine":
+                cands = r.retrieve(  # type: ignore[attr-defined]
+                    owned_items=owned_items, budget=per_budget, exclude=owned_set
+                )
+            elif name == "als_factor":
+                cands = r.retrieve(  # type: ignore[attr-defined]
+                    entity_id=entity_id, budget=per_budget, exclude=owned_set
+                )
+            elif name == "path_basket":
+                cands = r.retrieve(  # type: ignore[attr-defined]
+                    query_basket=query_basket, budget=per_budget, exclude=owned_set
+                )
+            elif name == "persona":
+                cands = r.retrieve(  # type: ignore[attr-defined]
+                    entity_id=entity_id,
+                    owned_items=owned_items,
+                    history=history,
+                    budget=per_budget,
+                    exclude=owned_set,
+                )
+            else:
+                continue
+            for rank_zero, c in enumerate(cands):
+                if c.item_id in owned_set:
+                    continue
+                delta = weight / (rrf_k + (rank_zero + 1))
+                rrf_scores[c.item_id] = rrf_scores.get(c.item_id, 0.0) + delta
+                first_source.setdefault(c.item_id, name)
+
+        ordered = sorted(rrf_scores.items(), key=lambda kv: -kv[1])[: self.retrieval_budget]
+        return [
+            Candidate(item_id=item, score=score, source=first_source.get(item, "rrf"))
+            for item, score in ordered
         ]
 
     def _cold_start_fallback(
