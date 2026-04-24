@@ -26,6 +26,7 @@ import pandas as pd
 
 from kindling._native import NATIVE_AVAILABLE, kindling_native
 from kindling.blend.bayesian import BayesianBlend
+from kindling.blend.normalize import NormalizeMode, normalize_columns
 from kindling.blend.decorrelate import DecorrelationBasis, fit_decorrelation
 from kindling.blend.diagnostics import DiagnosticsReport, run_diagnostics
 from kindling.blend.heuristic import PATH_FAMILY, HeuristicBlend, SignalFeatures
@@ -199,6 +200,15 @@ class Engine:
         # LightGCN signal (pure-numpy, two-stage: BPR-train base
         # embeddings + inference-time graph propagation). Off by default.
         lightgcn_config: LightGCNConfig | None = None,
+        # Signal-column normalization applied between feature computation
+        # and blend scoring. Default "none" preserves the historical
+        # architecture where cooc's raw-magnitude dominance compensated
+        # for its under-weighted prior. "zscore" puts every column on
+        # the same scale - correct for the gating network and RRF-style
+        # aggregation, but produces regressions when paired directly
+        # with the Bayesian blend's current priors (the priors were
+        # calibrated against raw magnitudes). See ADR-score-normalization.
+        signal_normalization: NormalizeMode = "none",
     ) -> None:
         self.retrieval_budget = retrieval_budget
         self.decay: DecayProtocol = (
@@ -278,6 +288,9 @@ class Engine:
         # LightGCN signal state (11th column in SignalFeatures).
         self.lightgcn_config = lightgcn_config
         self._lightgcn: LightGCNModel | None = None
+
+        # Per-query signal-column normalization mode.
+        self.signal_normalization: NormalizeMode = signal_normalization
         # Per-(entity, item) most-recent interaction timestamp. Used to
         # compute time_since_last at recommend time. Populated during
         # fit when the repeat module is enabled.
@@ -1030,6 +1043,15 @@ class Engine:
             posterior_mean=posterior_for_skip,
             skip_weight_threshold=self.skip_signal_weight_threshold,
         )
+        # Per-query normalization so no signal's raw magnitude dominates
+        # the linear blend. Applied IN PLACE to features.matrix - blend
+        # scoring and any downstream use see the normalized values.
+        # Fixes the "dead in the blend" pattern ADR-signal-audit documented.
+        if self.signal_normalization != "none":
+            features = SignalFeatures(
+                matrix=normalize_columns(features.matrix, mode=self.signal_normalization),
+                signal_names=features.signal_names,
+            )
         # Stage 2: score via LambdaRank (warm regime), Bayesian blend mean
         # (cold regime), or heuristic blend (no Bayesian).  All three paths
         # operate on the same SignalFeatures. LambdaRank replaces the raw
@@ -1091,7 +1113,11 @@ class Engine:
                     time_since_last_seconds=time_since,
                     one_shot_epsilon=one_shot_eps,
                 )
-            scores = scores * multipliers
+            # Convert multiplier to additive log-penalty. Preserves
+            # multiplier=1.0 -> zero change, gives strong suppression
+            # for pattern-4 (log(1e-3) ~= -6.9), and composes correctly
+            # with negative z-scored blend scores.
+            scores = scores + np.log(np.maximum(multipliers, 1e-20))
 
         # Stage 3 re-rank pipeline: lift -> diversity (DPP) -> calibration
         # -> temperature -> top-N. Each step transforms the score or the

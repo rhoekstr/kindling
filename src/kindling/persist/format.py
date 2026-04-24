@@ -295,6 +295,11 @@ def _restore(
     engine._repeat_table = getattr(state, "repeat_table", None)
     engine._last_interaction_ts = getattr(state, "last_interaction_ts", None) or {}
     engine._lightgcn = getattr(state, "lightgcn", None)
+    # signal_normalization may be absent from old saves; default to
+    # "zscore" so the loaded engine picks up the new normalization
+    # behavior. Explicit "none" overrides via setattr post-load.
+    if not hasattr(engine, "signal_normalization"):
+        engine.signal_normalization = "zscore"
     # repeat_config itself isn't persisted (it holds user closures /
     # overrides that may reference unpicklable values). At load time we
     # build a minimal one so the recommend-time gate can check

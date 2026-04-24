@@ -78,13 +78,13 @@ def test_recommendations_carry_debug_signal_payload() -> None:
     assert "signals" in debug
     for name in ("path_full", "path_tail", "path_basket", "cooccurrence"):
         assert name in debug["signals"]
-    # The dominant signal is recorded
-    assert debug["dominant_signal"] in {
-        "path_full",
-        "path_tail",
-        "path_basket",
-        "cooccurrence",
-    }
+    # The dominant signal is recorded and is one of the known signals.
+    # After z-score normalization any signal can dominate (not just
+    # path-family or cooc) - the dominance pattern now reflects
+    # relative signal quality rather than raw-magnitude dominance.
+    from kindling.engine import SIGNAL_ORDER
+
+    assert debug["dominant_signal"] in set(SIGNAL_ORDER)
 
 
 _PHASE3_DF = pd.DataFrame(
