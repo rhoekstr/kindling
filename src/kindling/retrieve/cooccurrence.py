@@ -30,7 +30,12 @@ class CoOccurrenceRetriever:
         self.graph = graph
         self.budget_fraction = budget_fraction
 
-    def retrieve(self, owned_items: np.ndarray, budget: int) -> list[Candidate]:
+    def retrieve(
+        self,
+        owned_items: np.ndarray,
+        budget: int,
+        include_owned: bool = False,
+    ) -> list[Candidate]:
         if self.graph.n_items == 0 or owned_items.size == 0 or budget <= 0:
             return []
 
@@ -50,6 +55,7 @@ class CoOccurrenceRetriever:
                 adj.indptr.astype(np.int32, copy=False),
                 owned_indices,
                 int(budget),
+                include_owned,
             )
             return [
                 Candidate(
@@ -65,8 +71,11 @@ class CoOccurrenceRetriever:
         summed = self.graph.adjacency[owned_indices].sum(axis=0)
         scores = np.asarray(summed).ravel()
 
-        # Exclude the owned items themselves.
-        scores[owned_indices] = 0.0
+        # Zero out owned positions unless include_owned=True (the
+        # repeat-consumption module needs owned items to remain
+        # candidates so the multiplier can decide suppression).
+        if not include_owned:
+            scores[owned_indices] = 0.0
 
         # Deterministic ordering: positives first, sort descending by
         # score with ties broken on idx ascending. Matches the Rust

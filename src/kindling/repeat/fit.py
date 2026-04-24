@@ -31,15 +31,30 @@ if TYPE_CHECKING:
     from kindling.graph.item_graph import ItemGraph
 
 
-def _confidence(n_obs: int, fit_quality: float) -> float:
-    """Combine observation count and fit quality into [0, 1] confidence.
+def _confidence(
+    n_obs_intervals: int,
+    fit_quality: float,
+    n_users: int,
+    pattern_4_prob: float,
+) -> float:
+    """Pattern-aware confidence in [0, 1].
 
-    n_obs saturation: min(1.0, n_obs / 20). Above 20 observations we
-    treat the item as fully-observed; below, confidence scales linearly.
-    fit_quality already lives in [0, 1] (from period detection).
+    Distributional patterns (1/2/3) need observed INTERVALS for KDE /
+    prototype matching to be reliable. If we have few intervals, we
+    trust the classification less.
+
+    Pattern 4 (one-shot) is scored from the REPEAT RATE, which is
+    reliable as soon as we've seen enough users (even if none of them
+    repeated). A movie that 1000 users rated exactly once is a very
+    high-confidence one-shot.
+
+    We blend the two confidences by the pattern-4 probability: mostly-
+    pattern-4 items get rate-based confidence, mostly-distributional
+    items get interval-based confidence.
     """
-    obs_factor = min(1.0, n_obs / 20.0)
-    return float(obs_factor * fit_quality)
+    dist_conf = min(1.0, n_obs_intervals / 20.0) * fit_quality
+    rate_conf = min(1.0, n_users / 10.0)
+    return float(pattern_4_prob * rate_conf + (1.0 - pattern_4_prob) * dist_conf)
 
 
 def fit_repeat_profiles(
@@ -154,7 +169,12 @@ def fit_repeat_profiles(
         )
         pattern = dominant_pattern(probs)
         refractory = period_s * default_refractory_multiplier
-        confidence = _confidence(own_intervals.size, fit_quality)
+        confidence = _confidence(
+            n_obs_intervals=own_intervals.size,
+            fit_quality=fit_quality,
+            n_users=n_users,
+            pattern_4_prob=probs[Pattern.ONE_SHOT],
+        )
 
         profiles[item] = RepeatProfile(
             pattern=pattern,

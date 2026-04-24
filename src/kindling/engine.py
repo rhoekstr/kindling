@@ -1191,6 +1191,16 @@ class Engine:
         if not stack:
             return []
 
+        # When repeat-consumption is active, owned_set is empty (caller
+        # passed set()) and we also want the cooc retriever to include
+        # owned items in its candidate list so the multiplier can
+        # choose suppression per-pattern.
+        include_owned = (
+            self.repeat_config is not None
+            and self.repeat_config.enabled
+            and self._repeat_table is not None
+        )
+
         rrf_scores: dict[object, float] = {}
         first_source: dict[object, str] = {}
         for entry in stack:
@@ -1199,7 +1209,9 @@ class Engine:
             per_budget = entry.budget
             weight = entry.rrf_weight
             if name == "cooccurrence":
-                cands = r.retrieve(owned_items, per_budget)  # type: ignore[attr-defined]
+                cands = r.retrieve(  # type: ignore[attr-defined]
+                    owned_items, per_budget, include_owned=include_owned
+                )
             elif name == "item_item_cosine":
                 cands = r.retrieve(  # type: ignore[attr-defined]
                     owned_items=owned_items, budget=per_budget, exclude=owned_set

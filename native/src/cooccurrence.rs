@@ -68,6 +68,7 @@ fn cooccurrence_retrieve(
     indptr: PyReadonlyArray1<'_, i32>,
     owned_indices: Vec<usize>,
     budget: usize,
+    include_owned: Option<bool>,
 ) -> (Vec<i64>, Vec<f64>) {
     if budget == 0 {
         return (Vec::new(), Vec::new());
@@ -86,9 +87,13 @@ fn cooccurrence_retrieve(
             summed[col] += data[k] as f64;
         }
     }
-    // Zero out owned positions so the entity never recommends its own items.
-    for &row in &owned_indices {
-        summed[row] = 0.0;
+    // Zero out owned positions unless the caller opts to include them
+    // (repeat-consumption module needs owned items to remain candidates
+    // so the multiplier can decide suppression per-pattern).
+    if !include_owned.unwrap_or(false) {
+        for &row in &owned_indices {
+            summed[row] = 0.0;
+        }
     }
 
     // Collect (score, idx) for positives, then do a partial sort up
