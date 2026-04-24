@@ -80,6 +80,12 @@ from kindling.rerank.temperature import solve as solve_temperature
 from kindling.personas.config import PersonaConfig
 from kindling.personas.index import PersonaIndex
 from kindling.rank.lightgbm_ranker import LightGBMRanker
+from kindling.repeat import (
+    RepeatConfig,
+    RepeatProfileTable,
+    fit_repeat_profiles,
+    multiplier as repeat_multiplier,
+)
 from kindling.retrieve.cooccurrence import CoOccurrenceRetriever
 from kindling.retrieve.path_endpoint import PathEndpointRetriever
 from kindling.retrieve.policy import RetrieverEntry, build_retriever_stack
@@ -179,6 +185,10 @@ class Engine:
         # Persona signal (PRD supplement). Off by default - opt in via
         # Engine(persona_config=PersonaConfig(enabled=True, ...)).
         persona_config: PersonaConfig | None = None,
+        # Repeat-consumption module. Off by default - opt in when your
+        # dataset has legitimate repeat interactions (grocery, media,
+        # replenishment). ML-1M-style no-repeat datasets don't need this.
+        repeat_config: RepeatConfig | None = None,
     ) -> None:
         self.retrieval_budget = retrieval_budget
         self.decay: DecayProtocol = (
@@ -246,6 +256,14 @@ class Engine:
         # Persona signal state (10th column in SignalFeatures).
         self.persona_config = persona_config
         self._persona_index: PersonaIndex | None = None
+
+        # Repeat-consumption module state.
+        self.repeat_config = repeat_config
+        self._repeat_table: RepeatProfileTable | None = None
+        # Per-(entity, item) most-recent interaction timestamp. Used to
+        # compute time_since_last at recommend time. Populated during
+        # fit when the repeat module is enabled.
+        self._last_interaction_ts: dict[tuple[object, object], float] = {}
 
         # Data-adaptive retriever stack (ADR-retriever-union). Built at
         # fit time from engine fitted state + DataFeatures. Populated on
@@ -409,6 +427,11 @@ class Engine:
         if self.persona_config is not None and self.persona_config.enabled:
             self._fit_persona_index()
 
+        # Repeat-consumption module. Independent of blend/ranker fits;
+        # lives as a post-scoring multiplier, so ordering doesn't matter.
+        if self.repeat_config is not None and self.repeat_config.enabled:
+            self._fit_repeat_module()
+
         # Bayesian blend: prior from data features + VI fit on the
         # chronological tail.
         if self.use_bayesian_blend:
@@ -515,6 +538,35 @@ class Engine:
                 overperformance_threshold=cfg.cold_start_overperformance_threshold,
             )
             self._persona_index.cold_start_weight = cfg.cold_start_weight
+
+    def _fit_repeat_module(self) -> None:
+        """Build the repeat-profile table + per-(entity, item) last-seen
+        timestamps. Silent no-op when the input lacks a timestamp column.
+        """
+        assert self._interactions is not None
+        assert self.repeat_config is not None
+        if "timestamp" not in self._interactions.columns:
+            self._repeat_table = RepeatProfileTable()
+            return
+
+        self._repeat_table = fit_repeat_profiles(
+            interactions=self._interactions,
+            item_graph=self._item_graph,
+            config=self.repeat_config,
+        )
+
+        # Build last-seen timestamp per (entity, item). Used at recommend
+        # time to compute time_since_last.
+        df = self._interactions[["entity_id", "item_id", "timestamp"]].copy()
+        df["timestamp"] = pd.to_datetime(df["timestamp"]).astype("datetime64[ns]")
+        df["ts_s"] = df["timestamp"].astype("int64") // 1_000_000_000
+        # groupby last - since df is sorted by timestamp after fit ingestion
+        # (sort happens in fit_repeat_profiles via stable mergesort), we
+        # just take the max timestamp per pair.
+        last_ts = df.groupby(["entity_id", "item_id"])["ts_s"].max()
+        self._last_interaction_ts = {
+            (ent, item): float(ts) for (ent, item), ts in last_ts.items()
+        }
 
     def _fit_ranker(self) -> None:
         """Train a LightGBMRanker over the 9-signal feature matrix using
@@ -870,6 +922,17 @@ class Engine:
         history = self._history_by_entity.get(entity_id, ())
         query_basket: frozenset[object] = frozenset(history[-MAX_QUERY_BASKET_SIZE:])
 
+        # When repeat-consumption is enabled, owned items are NOT excluded
+        # from retrieval - the multiplier after scoring decides what to
+        # suppress (pattern-4 / too-recent replenishment) vs. re-surface
+        # (pattern-1 / past-refractory items).
+        repeat_active = (
+            self.repeat_config is not None
+            and self.repeat_config.enabled
+            and self._repeat_table is not None
+        )
+        retrieval_exclude: set[object] = set() if repeat_active else owned_set
+
         # Stage 1: run the data-adaptive retriever stack + RRF fuse.
         # Each retriever produces its own ranked candidate list; RRF
         # merges them by rank (score-scale-independent). Replaces the
@@ -878,7 +941,7 @@ class Engine:
         candidates = self._retrieve_rrf(
             entity_id=entity_id,
             owned_items=owned_items,
-            owned_set=owned_set,
+            owned_set=retrieval_exclude,
             history=history,
             query_basket=query_basket,
         )
@@ -964,6 +1027,31 @@ class Engine:
                 blend_col = np.asarray(scores).reshape(-1, 1)
                 feat_matrix = np.hstack([feat_matrix, blend_col])
             scores = self._ranker.score_features(feat_matrix)
+
+        # Repeat-consumption multiplier (between stage 2 and stage 3).
+        # For each candidate, look up the entity's last interaction with
+        # that item; compute a per-item multiplier from the profile;
+        # multiply into the score. Non-owned candidates get multiplier
+        # 1.0 (no history, no adjustment). Rerank then sees the
+        # time-adjusted scores and won't diversify over suppressed items.
+        if repeat_active and self._repeat_table is not None:
+            one_shot_eps = float(self.repeat_config.one_shot_epsilon)  # type: ignore[union-attr]
+            ref_ts = (
+                float(self._reference_timestamp)
+                if self._reference_timestamp is not None
+                else 0.0
+            )
+            multipliers = np.ones(len(candidates), dtype=np.float64)
+            for i, c in enumerate(candidates):
+                last_ts = self._last_interaction_ts.get((entity_id, c.item_id))
+                time_since = None if last_ts is None else max(ref_ts - last_ts, 0.0)
+                profile = self._repeat_table.get(c.item_id)
+                multipliers[i] = repeat_multiplier(
+                    profile=profile,
+                    time_since_last_seconds=time_since,
+                    one_shot_epsilon=one_shot_eps,
+                )
+            scores = scores * multipliers
 
         # Stage 3 re-rank pipeline: lift -> diversity (DPP) -> calibration
         # -> temperature -> top-N. Each step transforms the score or the

@@ -94,6 +94,8 @@ class EngineState:
     ranker: Any = None
     persona_index: Any = None
     has_explicit_sessions: bool = False
+    repeat_table: Any = None
+    last_interaction_ts: Any = None
 
 
 _Factory = Callable[..., Any]
@@ -185,6 +187,8 @@ def _snapshot(engine: "Engine") -> EngineState:
         ranker=engine._ranker,
         persona_index=engine._persona_index,
         has_explicit_sessions=engine._has_explicit_sessions,
+        repeat_table=engine._repeat_table,
+        last_interaction_ts=engine._last_interaction_ts,
         category_index=engine._category_index,
         drift_tracker=engine._drift_tracker,
         owned_by_entity=dict(engine._owned_by_entity),
@@ -286,6 +290,18 @@ def _restore(
     engine._persona_index = getattr(state, "persona_index", None)
     engine._has_explicit_sessions = getattr(state, "has_explicit_sessions", False)
     engine._retriever_stack = []  # lazy rebuild on first recommend
+    engine._repeat_table = getattr(state, "repeat_table", None)
+    engine._last_interaction_ts = getattr(state, "last_interaction_ts", None) or {}
+    # repeat_config itself isn't persisted (it holds user closures /
+    # overrides that may reference unpicklable values). At load time we
+    # build a minimal one so the recommend-time gate can check
+    # ``repeat_config.enabled`` without special-casing None.
+    if engine._repeat_table is not None and getattr(engine, "repeat_config", None) is None:
+        from kindling.repeat import RepeatConfig
+
+        engine.repeat_config = RepeatConfig(enabled=True)
+    elif not hasattr(engine, "repeat_config"):
+        engine.repeat_config = None
     engine._ranker = getattr(state, "ranker", None)
     engine.use_ranker = False
     engine.ranker_negatives_per_positive = 99
