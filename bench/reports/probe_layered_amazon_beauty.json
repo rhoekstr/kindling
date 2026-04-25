@@ -1,0 +1,88 @@
+{
+  "dataset": "amazon-beauty",
+  "k": 10,
+  "n_eval_entities": 500,
+  "z_threshold": 2.0,
+  "boost_multiplier": 3.0,
+  "kindling_version": "0.0.1.dev0",
+  "cells": [
+    {
+      "dataset": "amazon-beauty",
+      "variant": "cooc_alone",
+      "ndcg_at_k": 0.03019776729126138,
+      "recall_topk": 0.09,
+      "recall_budget": 0.356,
+      "mrr": 0.042307142857142856,
+      "p95_ms": 1.2018285109661517,
+      "n_eval_entities": 500
+    },
+    {
+      "dataset": "amazon-beauty",
+      "variant": "layered_cooc+pb",
+      "ndcg_at_k": 0.030278967825472246,
+      "recall_topk": 0.09,
+      "recall_budget": 0.356,
+      "mrr": 0.042446031746031745,
+      "p95_ms": 2.3492377833463247,
+      "n_eval_entities": 500,
+      "diagnostic": {
+        "boost": 1.618079055815935,
+        "pb_fire_rate": 0.017498767352960406
+      }
+    },
+    {
+      "dataset": "amazon-beauty",
+      "variant": "layered_cooc+sc",
+      "ndcg_at_k": 0.02986650740316486,
+      "recall_topk": 0.09,
+      "recall_budget": 0.356,
+      "mrr": 0.040938095238095246,
+      "p95_ms": 0.8078894461505115,
+      "n_eval_entities": 500,
+      "diagnostic": {
+        "boost": 1.618079055815935,
+        "sc_fire_rate": 0.022278838038895205
+      }
+    },
+    {
+      "dataset": "amazon-beauty",
+      "variant": "layered_cooc+tc",
+      "ndcg_at_k": 0.030129753327955193,
+      "recall_topk": 0.088,
+      "recall_budget": 0.356,
+      "mrr": 0.04208571428571428,
+      "p95_ms": 0.9213077020831404,
+      "n_eval_entities": 500,
+      "diagnostic": {
+        "boost": 1.618079055815935,
+        "tc_fire_rate": 0.04405981284749546
+      }
+    },
+    {
+      "dataset": "amazon-beauty",
+      "variant": "layered_cooc+stack",
+      "ndcg_at_k": 0.030085683763745513,
+      "recall_topk": 0.09,
+      "recall_budget": 0.356,
+      "mrr": 0.04219603174603175,
+      "p95_ms": 2.7521979762241244,
+      "n_eval_entities": 500,
+      "diagnostic": {
+        "boost": 1.618079055815935,
+        "path_basket_fire_rate": 0.017498767352960406,
+        "session_cooc_fire_rate": 0.022278838038895205,
+        "temporal_cooc_fire_rate": 0.04405981284749546
+      }
+    },
+    {
+      "dataset": "amazon-beauty",
+      "variant": "bayesian_blend",
+      "ndcg_at_k": 0.02005797775845658,
+      "recall_topk": 0.068,
+      "recall_budget": 0.068,
+      "mrr": 0.025913492063492066,
+      "p95_ms": 5.0212981645017845,
+      "n_eval_entities": 500
+    }
+  ]
+}

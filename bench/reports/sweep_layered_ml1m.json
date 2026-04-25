@@ -1,0 +1,223 @@
+{
+  "dataset": "movielens-1m",
+  "k": 10,
+  "n_eval_entities": 500,
+  "kindling_version": "0.0.1.dev0",
+  "cooc_alone_ndcg": 0.2877035353404814,
+  "cooc_alone_mrr": 0.45612380952380954,
+  "best_cell": {
+    "z_threshold": 2.5,
+    "boost_multiplier": 5.0,
+    "ndcg_at_k": 0.2910593266703969,
+    "mrr": 0.45596746031746027,
+    "recall_topk": 0.716,
+    "fire_rates": {
+      "path_basket_fire_rate": 0.026336,
+      "temporal_cooc_fire_rate": 0.032451999999999995
+    }
+  },
+  "delta_vs_cooc": 0.003355791329915536,
+  "default_cell": {
+    "z_threshold": 2.0,
+    "boost_multiplier": 3.0,
+    "ndcg_at_k": 0.2877729953903325,
+    "mrr": 0.45507063492063493,
+    "recall_topk": 0.712,
+    "fire_rates": {
+      "path_basket_fire_rate": 0.048552000000000005,
+      "temporal_cooc_fire_rate": 0.050408000000000015
+    }
+  },
+  "layer_meaningfulness_sample": {
+    "path_basket": {
+      "ok": 100,
+      "skip": 0
+    },
+    "session_cooc": {
+      "ok": 0,
+      "skip": 100
+    },
+    "temporal_cooc": {
+      "ok": 100,
+      "skip": 0
+    }
+  },
+  "grid": [
+    {
+      "z_threshold": 1.5,
+      "boost_multiplier": 1.0,
+      "ndcg_at_k": 0.28716076479988273,
+      "mrr": 0.4541460317460318,
+      "recall_topk": 0.712,
+      "fire_rates": {
+        "path_basket_fire_rate": 0.085784,
+        "temporal_cooc_fire_rate": 0.08144399999999999
+      }
+    },
+    {
+      "z_threshold": 1.5,
+      "boost_multiplier": 2.0,
+      "ndcg_at_k": 0.2872119150529954,
+      "mrr": 0.45417380952380954,
+      "recall_topk": 0.712,
+      "fire_rates": {
+        "path_basket_fire_rate": 0.085784,
+        "temporal_cooc_fire_rate": 0.08144399999999999
+      }
+    },
+    {
+      "z_threshold": 1.5,
+      "boost_multiplier": 3.0,
+      "ndcg_at_k": 0.28740405250165785,
+      "mrr": 0.4540071428571429,
+      "recall_topk": 0.712,
+      "fire_rates": {
+        "path_basket_fire_rate": 0.085784,
+        "temporal_cooc_fire_rate": 0.08144399999999999
+      }
+    },
+    {
+      "z_threshold": 1.5,
+      "boost_multiplier": 5.0,
+      "ndcg_at_k": 0.28713683231440684,
+      "mrr": 0.45363809523809523,
+      "recall_topk": 0.712,
+      "fire_rates": {
+        "path_basket_fire_rate": 0.085784,
+        "temporal_cooc_fire_rate": 0.08144399999999999
+      }
+    },
+    {
+      "z_threshold": 2.0,
+      "boost_multiplier": 1.0,
+      "ndcg_at_k": 0.28753436358670814,
+      "mrr": 0.45517380952380954,
+      "recall_topk": 0.712,
+      "fire_rates": {
+        "path_basket_fire_rate": 0.048552000000000005,
+        "temporal_cooc_fire_rate": 0.050408000000000015
+      }
+    },
+    {
+      "z_threshold": 2.0,
+      "boost_multiplier": 2.0,
+      "ndcg_at_k": 0.2873063066277293,
+      "mrr": 0.45517380952380954,
+      "recall_topk": 0.712,
+      "fire_rates": {
+        "path_basket_fire_rate": 0.048552000000000005,
+        "temporal_cooc_fire_rate": 0.050408000000000015
+      }
+    },
+    {
+      "z_threshold": 2.0,
+      "boost_multiplier": 3.0,
+      "ndcg_at_k": 0.2877729953903325,
+      "mrr": 0.45507063492063493,
+      "recall_topk": 0.712,
+      "fire_rates": {
+        "path_basket_fire_rate": 0.048552000000000005,
+        "temporal_cooc_fire_rate": 0.050408000000000015
+      }
+    },
+    {
+      "z_threshold": 2.0,
+      "boost_multiplier": 5.0,
+      "ndcg_at_k": 0.28745821077539113,
+      "mrr": 0.4547373015873015,
+      "recall_topk": 0.712,
+      "fire_rates": {
+        "path_basket_fire_rate": 0.048552000000000005,
+        "temporal_cooc_fire_rate": 0.050408000000000015
+      }
+    },
+    {
+      "z_threshold": 2.5,
+      "boost_multiplier": 1.0,
+      "ndcg_at_k": 0.28785581552113604,
+      "mrr": 0.455215873015873,
+      "recall_topk": 0.712,
+      "fire_rates": {
+        "path_basket_fire_rate": 0.026336,
+        "temporal_cooc_fire_rate": 0.032451999999999995
+      }
+    },
+    {
+      "z_threshold": 2.5,
+      "boost_multiplier": 2.0,
+      "ndcg_at_k": 0.28847068575977314,
+      "mrr": 0.45570158730158733,
+      "recall_topk": 0.716,
+      "fire_rates": {
+        "path_basket_fire_rate": 0.026336,
+        "temporal_cooc_fire_rate": 0.032451999999999995
+      }
+    },
+    {
+      "z_threshold": 2.5,
+      "boost_multiplier": 3.0,
+      "ndcg_at_k": 0.2894146963624144,
+      "mrr": 0.45579523809523814,
+      "recall_topk": 0.716,
+      "fire_rates": {
+        "path_basket_fire_rate": 0.026336,
+        "temporal_cooc_fire_rate": 0.032451999999999995
+      }
+    },
+    {
+      "z_threshold": 2.5,
+      "boost_multiplier": 5.0,
+      "ndcg_at_k": 0.2910593266703969,
+      "mrr": 0.45596746031746027,
+      "recall_topk": 0.716,
+      "fire_rates": {
+        "path_basket_fire_rate": 0.026336,
+        "temporal_cooc_fire_rate": 0.032451999999999995
+      }
+    },
+    {
+      "z_threshold": 3.0,
+      "boost_multiplier": 1.0,
+      "ndcg_at_k": 0.2874265027422221,
+      "mrr": 0.45601984126984124,
+      "recall_topk": 0.708,
+      "fire_rates": {
+        "path_basket_fire_rate": 0.013944000000000002,
+        "temporal_cooc_fire_rate": 0.020316000000000004
+      }
+    },
+    {
+      "z_threshold": 3.0,
+      "boost_multiplier": 2.0,
+      "ndcg_at_k": 0.2882385434516115,
+      "mrr": 0.45690952380952377,
+      "recall_topk": 0.714,
+      "fire_rates": {
+        "path_basket_fire_rate": 0.013944000000000002,
+        "temporal_cooc_fire_rate": 0.020316000000000004
+      }
+    },
+    {
+      "z_threshold": 3.0,
+      "boost_multiplier": 3.0,
+      "ndcg_at_k": 0.28876099702162306,
+      "mrr": 0.45707857142857145,
+      "recall_topk": 0.714,
+      "fire_rates": {
+        "path_basket_fire_rate": 0.013944000000000002,
+        "temporal_cooc_fire_rate": 0.020316000000000004
+      }
+    },
+    {
+      "z_threshold": 3.0,
+      "boost_multiplier": 5.0,
+      "ndcg_at_k": 0.2900150005004671,
+      "mrr": 0.4573563492063492,
+      "recall_topk": 0.714,
+      "fire_rates": {
+        "path_basket_fire_rate": 0.013944000000000002,
+        "temporal_cooc_fire_rate": 0.020316000000000004
+      }
+    }
+  ]
+}

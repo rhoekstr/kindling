@@ -1,0 +1,88 @@
+{
+  "dataset": "synthetic-grocery-deep",
+  "k": 10,
+  "n_eval_entities": 500,
+  "z_threshold": 2.0,
+  "boost_multiplier": 3.0,
+  "kindling_version": "0.0.1.dev0",
+  "cells": [
+    {
+      "dataset": "synthetic-grocery-deep",
+      "variant": "cooc_alone",
+      "ndcg_at_k": 0.31908233268459735,
+      "recall_topk": 0.7379454926624738,
+      "recall_budget": 1.0,
+      "mrr": 0.3509858240990317,
+      "p95_ms": 0.6780689698643981,
+      "n_eval_entities": 500
+    },
+    {
+      "dataset": "synthetic-grocery-deep",
+      "variant": "layered_cooc+pb",
+      "ndcg_at_k": 0.3193653760941013,
+      "recall_topk": 0.7358490566037735,
+      "recall_budget": 1.0,
+      "mrr": 0.35328940800638914,
+      "p95_ms": 16.799753531813618,
+      "n_eval_entities": 500,
+      "diagnostic": {
+        "boost": 381.336,
+        "pb_fire_rate": 0.06299707851801084
+      }
+    },
+    {
+      "dataset": "synthetic-grocery-deep",
+      "variant": "layered_cooc+sc",
+      "ndcg_at_k": 0.31862955250528313,
+      "recall_topk": 0.7337526205450734,
+      "recall_budget": 1.0,
+      "mrr": 0.34925293667432034,
+      "p95_ms": 0.364370213355869,
+      "n_eval_entities": 500,
+      "diagnostic": {
+        "boost": 381.336,
+        "sc_fire_rate": 0.0654224154232971
+      }
+    },
+    {
+      "dataset": "synthetic-grocery-deep",
+      "variant": "layered_cooc+tc",
+      "ndcg_at_k": 0.3191824750695406,
+      "recall_topk": 0.7337526205450734,
+      "recall_budget": 1.0,
+      "mrr": 0.3511580313467106,
+      "p95_ms": 0.35544628044590354,
+      "n_eval_entities": 500,
+      "diagnostic": {
+        "boost": 381.336,
+        "tc_fire_rate": 0.06376184218003572
+      }
+    },
+    {
+      "dataset": "synthetic-grocery-deep",
+      "variant": "layered_cooc+stack",
+      "ndcg_at_k": 0.32081376567769465,
+      "recall_topk": 0.7379454926624738,
+      "recall_budget": 1.0,
+      "mrr": 0.35428188745798805,
+      "p95_ms": 16.739324782975014,
+      "n_eval_entities": 500,
+      "diagnostic": {
+        "boost": 381.336,
+        "path_basket_fire_rate": 0.06299707851801084,
+        "session_cooc_fire_rate": 0.0654224154232971,
+        "temporal_cooc_fire_rate": 0.06376184218003572
+      }
+    },
+    {
+      "dataset": "synthetic-grocery-deep",
+      "variant": "bayesian_blend",
+      "ndcg_at_k": 0.31967283436745825,
+      "recall_topk": 0.7379454926624738,
+      "recall_budget": 0.7379454926624738,
+      "mrr": 0.3513585238428006,
+      "p95_ms": 27.107595594134178,
+      "n_eval_entities": 500
+    }
+  ]
+}

@@ -1,0 +1,88 @@
+{
+  "dataset": "movielens-1m",
+  "k": 10,
+  "n_eval_entities": 500,
+  "z_threshold": 2.0,
+  "boost_multiplier": 3.0,
+  "kindling_version": "0.0.1.dev0",
+  "cells": [
+    {
+      "dataset": "movielens-1m",
+      "variant": "cooc_alone",
+      "ndcg_at_k": 0.2877035353404814,
+      "recall_topk": 0.712,
+      "recall_budget": 0.974,
+      "mrr": 0.45612380952380954,
+      "p95_ms": 4.8400813713669715,
+      "n_eval_entities": 500
+    },
+    {
+      "dataset": "movielens-1m",
+      "variant": "layered_cooc+pb",
+      "ndcg_at_k": 0.2875208231517435,
+      "recall_topk": 0.712,
+      "recall_budget": 0.974,
+      "mrr": 0.45504285714285714,
+      "p95_ms": 205.38191021187222,
+      "n_eval_entities": 500,
+      "diagnostic": {
+        "boost": 1492.0596174316406,
+        "pb_fire_rate": 0.048552000000000005
+      }
+    },
+    {
+      "dataset": "movielens-1m",
+      "variant": "layered_cooc+sc",
+      "ndcg_at_k": 0.2877035353404814,
+      "recall_topk": 0.712,
+      "recall_budget": 0.974,
+      "mrr": 0.45612380952380954,
+      "p95_ms": 4.76219799602404,
+      "n_eval_entities": 500,
+      "diagnostic": {
+        "boost": 1492.0596174316406,
+        "sc_fire_rate": 0.0
+      }
+    },
+    {
+      "dataset": "movielens-1m",
+      "variant": "layered_cooc+tc",
+      "ndcg_at_k": 0.28796176058361744,
+      "recall_topk": 0.712,
+      "recall_budget": 0.974,
+      "mrr": 0.45617380952380954,
+      "p95_ms": 6.901531189214419,
+      "n_eval_entities": 500,
+      "diagnostic": {
+        "boost": 1492.0596174316406,
+        "tc_fire_rate": 0.050408000000000015
+      }
+    },
+    {
+      "dataset": "movielens-1m",
+      "variant": "layered_cooc+stack",
+      "ndcg_at_k": 0.2877729953903325,
+      "recall_topk": 0.712,
+      "recall_budget": 0.974,
+      "mrr": 0.45507063492063493,
+      "p95_ms": 207.29204538511112,
+      "n_eval_entities": 500,
+      "diagnostic": {
+        "boost": 1492.0596174316406,
+        "path_basket_fire_rate": 0.048552000000000005,
+        "session_cooc_fire_rate": 0.0,
+        "temporal_cooc_fire_rate": 0.050408000000000015
+      }
+    },
+    {
+      "dataset": "movielens-1m",
+      "variant": "bayesian_blend",
+      "ndcg_at_k": 0.2877993153155786,
+      "recall_topk": 0.712,
+      "recall_budget": 0.712,
+      "mrr": 0.45543809523809525,
+      "p95_ms": 44.55195438349619,
+      "n_eval_entities": 500
+    }
+  ]
+}
