@@ -1,0 +1,111 @@
+{
+  "dataset": "yelp2018",
+  "k": 10,
+  "n_eval_entities": 500,
+  "kindling_version": "0.0.1.dev0",
+  "calibration": {
+    "best_z": 2.5,
+    "best_boost": 3.0,
+    "n_users_evaluated": 100,
+    "elapsed_seconds": 0.20734266680665314,
+    "fallback_to_default": true,
+    "grid_results": [
+      {
+        "z": 2.0,
+        "boost": 1.0,
+        "ndcg": 0.02491044429324596,
+        "mrr": 0.033440476190476194
+      },
+      {
+        "z": 2.0,
+        "boost": 3.0,
+        "ndcg": 0.02489885446128874,
+        "mrr": 0.033412698412698415
+      },
+      {
+        "z": 2.0,
+        "boost": 5.0,
+        "ndcg": 0.02489885446128874,
+        "mrr": 0.033412698412698415
+      },
+      {
+        "z": 2.5,
+        "boost": 1.0,
+        "ndcg": 0.02491044429324596,
+        "mrr": 0.033440476190476194
+      },
+      {
+        "z": 2.5,
+        "boost": 3.0,
+        "ndcg": 0.02491044429324596,
+        "mrr": 0.033440476190476194
+      },
+      {
+        "z": 2.5,
+        "boost": 5.0,
+        "ndcg": 0.025054257668957462,
+        "mrr": 0.033773809523809525
+      },
+      {
+        "z": 3.0,
+        "boost": 1.0,
+        "ndcg": 0.02491044429324596,
+        "mrr": 0.033440476190476194
+      },
+      {
+        "z": 3.0,
+        "boost": 3.0,
+        "ndcg": 0.025054257668957462,
+        "mrr": 0.033773809523809525
+      },
+      {
+        "z": 3.0,
+        "boost": 5.0,
+        "ndcg": 0.025054257668957462,
+        "mrr": 0.033773809523809525
+      }
+    ]
+  },
+  "cells": [
+    {
+      "dataset": "yelp2018",
+      "variant": "cooc_alone",
+      "ndcg_at_k": 0.03655727898311255,
+      "recall_topk": 0.22,
+      "recall_budget": 0.882,
+      "mrr": 0.09159761904761905,
+      "p95_ms": 3.3918312634341388,
+      "n_eval_entities": 500
+    },
+    {
+      "dataset": "yelp2018",
+      "variant": "layered_default",
+      "ndcg_at_k": 0.03644399835008569,
+      "recall_topk": 0.218,
+      "recall_budget": 0.882,
+      "mrr": 0.09132539682539682,
+      "p95_ms": 3.502855612896382,
+      "n_eval_entities": 500
+    },
+    {
+      "dataset": "yelp2018",
+      "variant": "layered_adaptive(z=2.5,b=3.0)",
+      "ndcg_at_k": 0.03644399835008569,
+      "recall_topk": 0.218,
+      "recall_budget": 0.882,
+      "mrr": 0.09132539682539682,
+      "p95_ms": 3.4802625188603997,
+      "n_eval_entities": 500
+    },
+    {
+      "dataset": "yelp2018",
+      "variant": "bayesian_blend",
+      "ndcg_at_k": 0.03632389585679662,
+      "recall_topk": 0.22,
+      "recall_budget": 0.22,
+      "mrr": 0.09062539682539682,
+      "p95_ms": 13.45727143343538,
+      "n_eval_entities": 500
+    }
+  ]
+}

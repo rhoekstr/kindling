@@ -1,0 +1,111 @@
+{
+  "dataset": "synthetic-grocery-deep",
+  "k": 10,
+  "n_eval_entities": 500,
+  "kindling_version": "0.0.1.dev0",
+  "calibration": {
+    "best_z": 2.5,
+    "best_boost": 3.0,
+    "n_users_evaluated": 100,
+    "elapsed_seconds": 1.5646721250377595,
+    "fallback_to_default": false,
+    "grid_results": [
+      {
+        "z": 2.0,
+        "boost": 1.0,
+        "ndcg": 0.4386209116956954,
+        "mrr": 0.47891269841269846
+      },
+      {
+        "z": 2.0,
+        "boost": 3.0,
+        "ndcg": 0.43649578641236814,
+        "mrr": 0.4807301587301588
+      },
+      {
+        "z": 2.0,
+        "boost": 5.0,
+        "ndcg": 0.4382692358786523,
+        "mrr": 0.47948015873015876
+      },
+      {
+        "z": 2.5,
+        "boost": 1.0,
+        "ndcg": 0.44121677677542925,
+        "mrr": 0.4783015873015873
+      },
+      {
+        "z": 2.5,
+        "boost": 3.0,
+        "ndcg": 0.4419369145045053,
+        "mrr": 0.47756349206349213
+      },
+      {
+        "z": 2.5,
+        "boost": 5.0,
+        "ndcg": 0.4379717403050909,
+        "mrr": 0.47324206349206355
+      },
+      {
+        "z": 3.0,
+        "boost": 1.0,
+        "ndcg": 0.43641532710598574,
+        "mrr": 0.4782301587301588
+      },
+      {
+        "z": 3.0,
+        "boost": 3.0,
+        "ndcg": 0.44413285119751644,
+        "mrr": 0.49163492063492065
+      },
+      {
+        "z": 3.0,
+        "boost": 5.0,
+        "ndcg": 0.4412936059793167,
+        "mrr": 0.49006349206349215
+      }
+    ]
+  },
+  "cells": [
+    {
+      "dataset": "synthetic-grocery-deep",
+      "variant": "cooc_alone",
+      "ndcg_at_k": 0.31908233268459735,
+      "recall_topk": 0.7379454926624738,
+      "recall_budget": 1.0,
+      "mrr": 0.3509858240990317,
+      "p95_ms": 16.26878557726741,
+      "n_eval_entities": 500
+    },
+    {
+      "dataset": "synthetic-grocery-deep",
+      "variant": "layered_default",
+      "ndcg_at_k": 0.32129423799325263,
+      "recall_topk": 0.7379454926624738,
+      "recall_budget": 1.0,
+      "mrr": 0.3538850620611627,
+      "p95_ms": 16.242995869833976,
+      "n_eval_entities": 500
+    },
+    {
+      "dataset": "synthetic-grocery-deep",
+      "variant": "layered_adaptive(z=2.5,b=3.0)",
+      "ndcg_at_k": 0.32129423799325263,
+      "recall_topk": 0.7379454926624738,
+      "recall_budget": 1.0,
+      "mrr": 0.3538850620611627,
+      "p95_ms": 16.31312423851341,
+      "n_eval_entities": 500
+    },
+    {
+      "dataset": "synthetic-grocery-deep",
+      "variant": "bayesian_blend",
+      "ndcg_at_k": 0.31967283436745825,
+      "recall_topk": 0.7379454926624738,
+      "recall_budget": 0.7379454926624738,
+      "mrr": 0.3513585238428006,
+      "p95_ms": 26.558630540966984,
+      "n_eval_entities": 500
+    }
+  ]
+}

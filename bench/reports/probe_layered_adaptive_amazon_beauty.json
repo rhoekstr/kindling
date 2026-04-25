@@ -1,0 +1,111 @@
+{
+  "dataset": "amazon-beauty",
+  "k": 10,
+  "n_eval_entities": 500,
+  "kindling_version": "0.0.1.dev0",
+  "calibration": {
+    "best_z": 3.0,
+    "best_boost": 5.0,
+    "n_users_evaluated": 100,
+    "elapsed_seconds": 0.18975400016643107,
+    "fallback_to_default": false,
+    "grid_results": [
+      {
+        "z": 2.0,
+        "boost": 1.0,
+        "ndcg": 0.31623108511865466,
+        "mrr": 0.3166904761904762
+      },
+      {
+        "z": 2.0,
+        "boost": 3.0,
+        "ndcg": 0.319588333607197,
+        "mrr": 0.3119722222222222
+      },
+      {
+        "z": 2.0,
+        "boost": 5.0,
+        "ndcg": 0.31637293509407594,
+        "mrr": 0.29845634920634917
+      },
+      {
+        "z": 2.5,
+        "boost": 1.0,
+        "ndcg": 0.3112137611900967,
+        "mrr": 0.3095198412698413
+      },
+      {
+        "z": 2.5,
+        "boost": 3.0,
+        "ndcg": 0.3230402411947106,
+        "mrr": 0.3123571428571429
+      },
+      {
+        "z": 2.5,
+        "boost": 5.0,
+        "ndcg": 0.3285713786245354,
+        "mrr": 0.313718253968254
+      },
+      {
+        "z": 3.0,
+        "boost": 1.0,
+        "ndcg": 0.3134007124902342,
+        "mrr": 0.3107738095238095
+      },
+      {
+        "z": 3.0,
+        "boost": 3.0,
+        "ndcg": 0.32942232739643457,
+        "mrr": 0.3163690476190476
+      },
+      {
+        "z": 3.0,
+        "boost": 5.0,
+        "ndcg": 0.3372343599149261,
+        "mrr": 0.32405158730158734
+      }
+    ]
+  },
+  "cells": [
+    {
+      "dataset": "amazon-beauty",
+      "variant": "cooc_alone",
+      "ndcg_at_k": 0.03019776729126138,
+      "recall_topk": 0.09,
+      "recall_budget": 0.356,
+      "mrr": 0.042307142857142856,
+      "p95_ms": 2.528122544754295,
+      "n_eval_entities": 500
+    },
+    {
+      "dataset": "amazon-beauty",
+      "variant": "layered_default",
+      "ndcg_at_k": 0.030869602403725573,
+      "recall_topk": 0.092,
+      "recall_budget": 0.356,
+      "mrr": 0.04346349206349207,
+      "p95_ms": 2.5914544123224914,
+      "n_eval_entities": 500
+    },
+    {
+      "dataset": "amazon-beauty",
+      "variant": "layered_adaptive(z=3.0,b=5.0)",
+      "ndcg_at_k": 0.031001763933578005,
+      "recall_topk": 0.094,
+      "recall_budget": 0.356,
+      "mrr": 0.04321587301587301,
+      "p95_ms": 2.636098477523773,
+      "n_eval_entities": 500
+    },
+    {
+      "dataset": "amazon-beauty",
+      "variant": "bayesian_blend",
+      "ndcg_at_k": 0.02005797775845658,
+      "recall_topk": 0.068,
+      "recall_budget": 0.068,
+      "mrr": 0.025913492063492066,
+      "p95_ms": 4.944376891944556,
+      "n_eval_entities": 500
+    }
+  ]
+}

@@ -98,18 +98,40 @@ The three `path_*` signals decompose prefix mining into:
 low ratings under `mode="explicit"`) increase cost; the ranker
 subtracts cost from positive scores.
 
-### 2.3 LightGCN — pure-numpy, two-stage
+### 2.3 LightGCN — pure-numpy, end-to-end gradient through K layers
 
-`ADR-lightgcn-numpy.md`. To avoid PyTorch we split:
-- **Train stage**: BPR-train base embeddings *without* layer
-  propagation in the loop. Hand-computed sigmoid-cross-entropy
-  gradients in numpy, Adam-style adaptive LR.
-- **Inference stage**: at query time, apply K-layer normalized
-  adjacency propagation + layer-mean to the trained base embeddings.
+`ADR-lightgcn-numpy.md`. The earlier two-stage shortcut (BPR-train base
+embeddings; propagate only at inference) is **abandoned** as of Apr
+2026 — it broke badly on sparse bipartite graphs (yelp2018: NDCG 0.013
+vs cooc 0.037, recall@budget 0.43 vs 0.88; amazon-beauty similarly).
+The base BPR optimized raw dot products, but inference served smoothed
+`mean(E^(0..K))` — the gradient never told the base embeddings
+"after propagation, you should still differentiate positives from
+negatives," so propagation homogenized them.
 
-Loses some theoretical unity vs end-to-end propagation but
-benchmarks show it lands within ~1-2% NDCG of the paper's results
-on grocery and ml1m, and ships without a deep-learning runtime.
+The current implementation:
+
+- **Forward (per batch step)**: stack base embeddings, propagate K
+  layers `E^(k+1) = A_hat · E^(k)`, layer-mean to `E_final`, score
+  BPR triples on `E_final`.
+- **Backward (analytic)**: build sparse `dL/dE_final` from the BPR
+  triples; propagate it back through K layers. Because A_hat is
+  symmetric for the bipartite `[[0, U_norm], [U_norm.T, 0]]` block,
+  backward propagation has the same matmul structure (and cost) as
+  forward: `dL/dE^(0) = (1/(K+1)) · sum_{k=0..K} A_hat^k @ dL/dE_final`.
+- **Sparse L2** on the BPR-triple base rows only (matches the paper).
+- **Defaults**: n_epochs=30, batch_size=8192. Per-step cost is
+  dominated by the 2K sparse matmuls, not the batch — bigger batches
+  are essentially free.
+
+Validated on yelp2018: recall@budget jumped 0.43 → 0.77, confirming
+the model now retrieves the right neighborhoods. NDCG ~62% lift
+(0.013 → 0.021) — the remaining gap to cooc is hyperparameter
+territory (published LightGCN runs 1000 epochs vs our 30, plus hard-
+negative mining), not architectural.
+
+Cost: ml1m LightGCN fit went 30s → 30s+ (TBD on re-run); yelp went
+74s → 660s. Acceptable for the architectural correctness gain.
 
 ### 2.4 Persona signal — HDBSCAN + UMAP, cold-start aware
 
@@ -225,7 +247,103 @@ scoring path**. The retrieval-stage RRF fusion is a separate
 mechanism (already shipped) and is the recommended fusion at the
 retrieval layer.
 
-### 4.4 Headline numbers — full-data, 500 eval entities
+### 4.4 Cooc + adaptive boosting (Apr 2026)
+
+A fourth scoring architecture: cooccurrence as the primary, plus a
+cumulative stack of one-tailed z-gated boost layers. Frames the
+problem as "cooc rules; refinement signals nudge, only when they
+fire confidently."
+
+```
+score(c) = cooc(c) + sum_layers boost · I[ z_layer(c) > tau ]
+```
+
+Each layer (path_basket, session_cooccurrence, temporal_cooccurrence)
+contributes an additive boost only when the candidate's one-tailed
+z-score within the layer's *non-zero subset* exceeds `tau`. Boost
+magnitude is calibrated to `boost_multiplier × median(adjacent gaps
+in cooc top-20)` — physical units, ~3 rank positions per firing
+layer.
+
+**Why one-tailed:** sparse refinement signals have asymmetric
+semantics. High path_basket score on `c` = "yes, this confidently
+appears in baskets near recent activity." Low score = "the index has
+no data on `c`," not "c is bad." Boosts only — never penalties.
+
+**Why z over the non-zero subset:** with 80% zero candidates, z over
+all candidates makes σ tiny and almost everything fires. Z over the
+non-zero population gives a fair "stand out among items that
+registered any signal."
+
+**Two-stage gating (data-shape aware):**
+
+1. **Per-layer meaningfulness gate** at fit time
+   (`is_layer_meaningful`): rejects layers with too-few-nonzero,
+   low fire rate (<1%, layer is silent), or high fire rate (>30%,
+   z-threshold isn't being selective). path_basket is auto-skipped
+   on no-session datasets; session_cooccurrence shares the
+   rating-burst guard with the temporal kernel.
+2. **Per-candidate z-threshold** at recommend time: only candidates
+   with confident layer signal get the boost.
+
+**Auto-calibration** (`blend/layered_calibrator.py`): at fit time,
+sweep a 3×3 grid over (z ∈ {2.0, 2.5, 3.0}) × (boost ∈ {1.0, 3.0,
+5.0}) using leave-3-random-items-out on a 200-user sample, pick the
+config that maximizes held-out NDCG@10. Default-preference tie-break
+(z=2.5, b=3.0) when cells score within 0.003 NDCG. Cost: 0.2-12s
+depending on dataset size.
+
+**Headline numbers** (full-data, 500 eval entities):
+
+| dataset | cooc | bayesian blend | adaptive layered | vs blend |
+|---|---:|---:|---:|---:|
+| grocery-deep | 0.3191 | 0.3197 | **0.3213** | **+0.5%** |
+| ml1m | 0.2877 | 0.2878 | **0.2894** | **+0.6%** |
+| amazon-beauty | 0.0302 | 0.0201 | **0.0310** | **+54%** |
+| yelp2018 | 0.0366 | 0.0363 | 0.0364 | +0.0% |
+
+Calibrator picks per dataset:
+
+- grocery-deep: z=2.5, b=3.0 (matches manual-sweep optimum)
+- ml1m: z=2.5, b=3.0 (default-preference fallback; manual optimum
+  was z=2.5, b=5.0; gap ~0.6% NDCG)
+- amazon-beauty: z=3.0, b=5.0 (matches manual-sweep optimum)
+- yelp: fallback to default (only 1 layer fires; nothing to
+  discriminate)
+
+**Two architectural strengths over Bayesian blend:**
+
+1. **Robust to bad-signal-mix datasets.** amazon-beauty has 8
+   events/user; signals like lightgcn / persona / cosine are all
+   worse than cooc on it. Bayesian blend can't downweight them
+   enough — its NDCG is **33% below cooc** (0.0201 vs 0.0302).
+   Adaptive layered's z-gate ignores the noisy contributions and
+   stays at cooc baseline + selective boosts → +54% vs blend.
+2. **Clean fallback when no info available.** yelp has only 1
+   active layer (temporal_cooc, near-redundant with cooc). The
+   calibrator's fallback-to-default + all-cells-tied detection
+   keeps the engine at cooc baseline; no regression vs cooc-alone
+   under noise.
+
+**Cost** (per `Engine.recommend()` call):
+
+| architecture | p95 ms (grocery) | p95 ms (ml1m) |
+|---|---:|---:|
+| cooc_alone | 0.7 | 4.8 |
+| layered_adaptive | 16.7 | 4-7 |
+| bayesian_blend | 27.1 | 44.6 |
+
+Layered is **faster than Bayesian blend** (no VI-posterior dot-
+product at query time, just a sparse-matvec per layer + boost
+arithmetic).
+
+**Status**: shipped as a probe + auto-calibrator + 14 unit tests.
+Engine integration as `scoring="layered_adaptive"` is queued. When
+shipped as default, the Bayesian blend becomes the opt-in
+calibrated-uncertainty mode (when users want credible intervals);
+adaptive boosting becomes the default scorer.
+
+### 4.5 Headline numbers — full-data, 500 eval entities
 
 `ADR-scoring-architecture.md`:
 
@@ -247,49 +365,170 @@ retrieval layer.
 
 ---
 
-## 5. Standalone-signal results (the "cooc dominates" finding)
+## 5. Standalone-signal results across 6 datasets
 
-`ADR-standalone-retrievers.md` + `bench/reports/retriever_matrix_*_v3.json`.
+`bench/reports/retriever_matrix_*_v5.json` (or v4 for ml1m / yelp /
+amazon-book where pure-count mode means kernel changes are no-ops).
 
-Each signal as both retriever AND ranker (i.e. the entire pipeline
-collapsed onto one column), full data, 500 eval entities, k=10:
+Each signal as both retriever AND ranker (the entire pipeline
+collapsed onto one column), full data, 500 eval entities, k=10.
+
+### 5.1 temporal_cooccurrence — the headline result
+
+The newest signal (Apr 2026) wins or ties on 5 of 6 datasets:
+
+| dataset | events/user | cooc NDCG | **temporal_cooc NDCG** | Δ | kernel mode |
+|---|---:|---:|---:|---:|---|
+| grocery-deep | 108 | 0.319 | **0.322** | +0.9% | hybrid (gmm) |
+| ml1m | 142 | 0.288 | **0.300** | **+4.2%** | pure-count (rating-burst) |
+| yelp2018 | 39 | 0.037 | **0.038** | +2.7% | pure-count (no timestamps) |
+| amazon-book | 46 | 0.026 | 0.026 | 0.0% | pure-count |
+| amazon-beauty | 8 | 0.030 | **0.031** | +3.3% | hybrid (gmm) |
+| gowalla | 30 | **0.035** | 0.026 | -25.7% ⚠ | hybrid (gmm) |
+
+Two mechanisms drive the lift, working independently:
+
+1. **Hybrid temporal kernel** (`weight = 1 + α · logistic(dt)`,
+   default α=1). On real-session data, close-in-time pair contributions
+   get up to 2× weight; far pairs decay back to the +1 cooc baseline.
+   The +1 baseline preserves candidate-pool coverage on long-time-
+   horizon datasets — replacing the prior "weight = logistic(dt)"
+   formulation that dropped legitimate cross-time pairs.
+
+2. **Per-user history cap** (default 200 most-recent events). On
+   power-rater datasets like ml1m where some users have 500+
+   ratings, the cap concentrates pair counts on recent co-ratings,
+   acting as implicit recency truncation. This is the entire +4.2%
+   lift on ml1m where the kernel itself is auto-disabled.
+
+**Auto-detect logic** (`graph/temporal_interaction.calibrate_kernel`):
+
+- No timestamps → `strategy="pure_count"`, kernel disabled.
+- GMM bimodality LLR < 10 → `strategy="pure_count"`, kernel disabled.
+- GMM midpoint < 300s → `strategy="rating_burst_detected"`, kernel
+  disabled. The "session structure" is rating-burst UI ordering, not
+  consumption adjacency. (ml1m midpoint 87s falls here.)
+- Otherwise → `strategy="gmm"`, hybrid kernel active.
+
+**The gowalla outlier** (-26% NDCG) is honest about a domain-specific
+limitation: check-in temporal proximity reflects *geographic locality*
+(visiting nearby places the same day), not *taste correlation*. The
+candidate-pool defect is fixed (R@B 0.335 → 0.465 matches cooc 0.467
+under the hybrid kernel), but the kernel's prior that "close-in-time
+pairs are more informative" is the wrong prior here. Future work:
+either per-domain α tuning or a held-out kernel-vs-no-kernel
+auto-tuner at fit time.
+
+### 5.2 Full per-dataset standalone tables
 
 **grocery-deep:**
 
-| signal | NDCG | Recall@10 | MRR | p95 ms |
+| signal | NDCG | Recall@10 | Recall@budget | p95 ms |
 |---|---:|---:|---:|---:|
-| item_item_cosine | 0.3198 | 0.7421 | 0.3554 | 0.11 |
-| cooccurrence | 0.3191 | 0.7379 | 0.3510 | 0.07 |
-| persona | 0.3155 | 0.7505 | 0.3388 | 0.23 |
-| path_basket | 0.3043 | 0.7317 | 0.3413 | 12.5 |
-| als_factor | 0.2947 | 0.7568 | 0.3494 | 0.08 |
-| lightgcn | 0.2648 | 0.6792 | 0.3091 | 0.06 |
-| path_tail | 0.1807 | 0.4738 | 0.2479 | 0.11 |
-| path_full | 0.0467 | 0.1782 | 0.0926 | 0.05 |
+| **temporal_cooccurrence** | **0.322** | **0.753** | 1.000 | 0.6 |
+| item_item_cosine | 0.320 | 0.742 | 1.000 | 0.1 |
+| cooccurrence | 0.319 | 0.738 | 1.000 | 0.2 |
+| persona | 0.315 | 0.751 | 1.000 | 0.2 |
+| path_basket | 0.304 | 0.732 | 1.000 | 12.5 |
+| path_tail | 0.181 | 0.474 | 0.996 | 0.1 |
+| lightgcn | 0.101 | 0.392 | 0.912 | 0.4 |
+| path_full | 0.047 | 0.178 | 0.180 | 0.05 |
 
 **ml1m:**
 
-| signal | NDCG | Recall@10 | MRR | p95 ms |
+| signal | NDCG | Recall@10 | Recall@budget | p95 ms |
 |---|---:|---:|---:|---:|
-| item_item_cosine | 0.2919 | 0.706 | 0.4533 | 0.85 |
-| cooccurrence | 0.2877 | 0.712 | 0.4561 | 1.43 |
-| als_factor | 0.2804 | 0.728 | 0.4504 | 0.39 |
-| lightgcn | 0.2774 | 0.706 | 0.4364 | 0.37 |
-| persona | 0.2148 | 0.726 | 0.3718 | 0.82 |
-| path_tail | 0.1456 | 0.538 | 0.2647 | 0.63 |
-| path_basket | 0.0855 | 0.336 | 0.1505 | 282.13 |
-| path_full | 0.0266 | 0.128 | 0.0722 | 0.38 |
+| **temporal_cooccurrence** | **0.300** | **0.724** | 0.978 | 1.6 |
+| item_item_cosine | 0.292 | 0.706 | 0.978 | 0.9 |
+| cooccurrence | 0.288 | 0.712 | 0.974 | 2.6 |
+| lightgcn | 0.278 | 0.708 | 0.976 | 0.4 |
+| persona | 0.216 | 0.716 | 0.978 | 0.8 |
+| path_tail | 0.140 | 0.522 | 0.834 | 0.6 |
+| path_basket | 0.076 | 0.322 | 0.878 | 282 |
+| path_full | 0.025 | 0.114 | 0.114 | 0.4 |
 
-The pattern: **cooccurrence and item-item cosine are within ~1% of
-the full Bayesian blend on both datasets.** The blend's NDCG advantage
-over its best single signal is 0.0% (grocery) / -0.4% (ml1m).
-`ADR-signal-audit.md` confirmed `only_cooc ≈ full blend`.
+**yelp2018** (academic split, no timestamps):
 
-What this means for the architecture: **the ceiling isn't a better
-blender, it's adding candidates that the cooc graph doesn't reach.**
-Queued: HNSW-over-LightGCN-embeddings retriever, real session data
-(RetailRocket / Instacart / Amazon — now all loadable), outcome
-feedback to the Bayesian posterior.
+| signal | NDCG | Recall@10 | Recall@budget |
+|---|---:|---:|---:|
+| **temporal_cooccurrence** | **0.038** | 0.214 | **0.890** |
+| cooccurrence | 0.037 | 0.220 | 0.882 |
+| persona | 0.027 | 0.176 | 0.822 |
+| lightgcn | 0.021 | 0.126 | 0.768 |
+| path_* | 0.000 | 0.000 | 0.000 |
+
+**amazon-beauty** (5-core JSONL, 178k interactions, 8 events/user):
+
+| signal | NDCG | Recall@10 | Recall@budget |
+|---|---:|---:|---:|
+| **temporal_cooccurrence** | **0.031** | 0.090 | **0.392** |
+| cooccurrence | 0.030 | 0.090 | 0.356 |
+| item_item_cosine | 0.024 | 0.070 | 0.284 |
+| persona | 0.020 | 0.062 | 0.340 |
+| path_basket | 0.018 | 0.050 | 0.244 |
+| path_tail | 0.013 | 0.048 | 0.066 |
+| lightgcn | 0.006 | 0.024 | 0.146 |
+| path_full | 0.001 | 0.006 | 0.006 |
+
+**amazon-book** (LightGCN academic split, 2.4M, no timestamps):
+
+| signal | NDCG | Recall@10 | Recall@budget |
+|---|---:|---:|---:|
+| item_item_cosine | **0.048** | **0.236** | **0.846** |
+| cooccurrence | 0.026 | 0.142 | 0.718 |
+| temporal_cooccurrence | 0.026 | 0.148 | 0.776 |
+| path_*, persona | 0.000 | 0.000 | 0.000 |
+
+**gowalla** (SNAP raw check-ins, 5.76M, 30 events/user):
+
+| signal | NDCG | Recall@10 | Recall@budget |
+|---|---:|---:|---:|
+| **cooccurrence** | **0.035** | **0.132** | **0.467** |
+| temporal_cooccurrence | 0.026 | 0.087 | 0.465 |
+| path_tail | 0.016 | 0.041 | 0.048 |
+| item_item_cosine | 0.015 | 0.062 | 0.351 |
+| path_basket | 0.011 | 0.021 | 0.093 |
+| path_full | 0.000 | 0.000 | 0.000 |
+
+### 5.3 Deactivated signals
+
+- **`path_full`**: consistently the weakest signal (NDCG 0.000-0.047
+  across all datasets). Skipped in `_compute_signal_features` while
+  staying in SIGNAL_ORDER for back-compat. Bayesian posterior naturally
+  drives weight to 0 over a column of zeros. The matrix harness still
+  scores it on demand for diagnostic purposes.
+
+- **`interaction_network`**: built and probed (random walks on the
+  temporal graph). Lost to direct cooc on grocery (0.290 vs 0.319) and
+  matched cooc on ml1m via pure-count. Walk machinery added latency
+  (~70ms p95 vs 0.2ms for direct cooc lookup) without ranking value.
+  Module retained at `retrieve/interaction_network.py` for research
+  but not wired into the engine's blend.
+
+- **`interaction_neighborhood`**: built with 5 pluggable centrality
+  measures (betweenness, pagerank, eigenvector, degree, closeness).
+  Probed only on grocery (no winner; betweenness was the *worst*
+  centrality, contradicting the proposal's hypothesis). Not wired
+  into the engine pending dataset-shape evaluation.
+
+### 5.4 What this means for the architecture
+
+The cooc-dominance pattern from `ADR-signal-audit.md` is no longer
+strict: `temporal_cooccurrence` gives the first reproducible NDCG
+lift on real recommendation data without changing the blend. The lift
+mechanism is data-driven (history cap on dense data, hybrid kernel on
+session data) and dataset-shape-aware (auto-detect rating-burst
+timestamps).
+
+**Queued work** (in priority order):
+1. Per-domain α tuning or held-out kernel-vs-no-kernel auto-tuner —
+   gowalla shows the kernel can be wrong even when timestamps look
+   real, and a fit-time eval would catch this.
+2. Global recency decay on all signals (cosine / ALS / persona /
+   cost) — the +4.2% on ml1m from the implicit history cap suggests
+   explicit decay would compound across signals.
+3. HNSW-over-LightGCN retriever — still the candidate-expansion play
+   for cases where temporal_cooc doesn't help.
 
 ### 5.1 Per-subsystem fit timings
 
@@ -515,7 +754,7 @@ older snapshots.
 | score-normalization | shipped 4-mode; default `none` pending priors re-tune |
 | scoring-architecture | Bayesian default; gating opt-in; RRF measurement-only |
 | persona-signal | HDBSCAN + UMAP; log1p L2-norm cold-start |
-| lightgcn-numpy | two-stage train/inference, no PyTorch |
+| lightgcn-numpy | **end-to-end gradient through K layers (Apr 2026)** — two-stage shortcut abandoned after yelp collapse |
 | repeat-consumption | additive log-penalty for ONE_SHOT |
 | rating-aware-signals | rating → `_interaction_weight` flows through cooc/path/cost |
 | retriever-ranker-matrix | default `use_ranker=False` |
