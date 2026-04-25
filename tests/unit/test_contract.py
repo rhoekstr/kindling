@@ -47,7 +47,9 @@ def test_rejects_null_entity_id() -> None:
 
 
 def test_rejects_unknown_action_type() -> None:
-    df = pd.DataFrame({"entity_id": [1], "item_id": [2], "action_type": ["purchase"]})
+    # "purchase" became canonical (tafeng / dunnhumby loaders).
+    # An invented action type still rejects.
+    df = pd.DataFrame({"entity_id": [1], "item_id": [2], "action_type": ["teleport"]})
     with pytest.raises(InteractionContractError, match="unknown"):
         validate_interactions(df)
 

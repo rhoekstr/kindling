@@ -197,20 +197,74 @@ def _load_dataset(name: str, test_fraction: float) -> DatasetSplit:
 
 
 def _load_amazon_5core(data_dir: Path, test_fraction: float, label: str) -> DatasetSplit:
-    """Resolve a 5-core JSON.gz under ``data_dir`` and call the amazon loader."""
-    candidates = sorted(data_dir.glob("*5*.json*")) if data_dir.exists() else []
-    if not candidates:
+    """Resolve an Amazon dataset under ``data_dir``.
+
+    Two formats supported, in priority order:
+    1. McAuley 5-core JSONL.gz (preferred - has timestamps + ratings).
+    2. LightGCN academic train.txt/test.txt split (no timestamps;
+       used as a fallback when the JSONL isn't available locally).
+    """
+    if not data_dir.exists():
         raise amazon.AmazonReviewsDataNotAvailableError(
-            f"No 5-core JSON file found under {data_dir} for {label}. "
-            "Download a 5-core category JSONL.gz from https://nijianmo.github.io/amazon/"
+            f"Amazon data dir {data_dir} does not exist."
         )
-    split = amazon.load(candidates[0], test_fraction=test_fraction)
+    candidates = sorted(data_dir.glob("*5*.json*"))
+    if candidates:
+        split = amazon.load(candidates[0], test_fraction=test_fraction)
+        return DatasetSplit(
+            name=label,
+            train=split.train,
+            test=split.test,
+            items=split.items,
+            description=f"{label}: {split.description}",
+        )
+    # LightGCN academic split fallback.
+    train_path = data_dir / "train.txt"
+    test_path = data_dir / "test.txt"
+    if train_path.exists() and test_path.exists():
+        return _load_academic_split(train_path, test_path, name=label, action_type="rate")
+    raise amazon.AmazonReviewsDataNotAvailableError(
+        f"No 5-core JSON file or LightGCN academic split (train.txt/test.txt) "
+        f"under {data_dir} for {label}. "
+        "Download a 5-core category JSONL.gz from "
+        "https://snap.stanford.edu/data/amazon/productGraph/categoryFiles/ "
+        "or the academic split from "
+        "https://github.com/gusye1234/LightGCN-PyTorch/tree/master/data"
+    )
+
+
+def _load_academic_split(
+    train_path: Path, test_path: Path, name: str, action_type: str
+) -> DatasetSplit:
+    """Parse a LightGCN-style train.txt/test.txt pair.
+
+    Each line: ``user_id item_id1 item_id2 ...``. No timestamps; path
+    signals will degrade to manual_fallback sessions.
+    """
+    train_rows: list[tuple[str, str]] = []
+    test_rows: list[tuple[str, str]] = []
+    for path, sink in [(train_path, train_rows), (test_path, test_rows)]:
+        with open(path, encoding="utf-8") as fh:
+            for line in fh:
+                parts = line.split()
+                if len(parts) < 2:
+                    continue
+                user = parts[0]
+                for it in parts[1:]:
+                    sink.append((user, it))
+    train = pd.DataFrame(train_rows, columns=["entity_id", "item_id"])
+    train["action_type"] = action_type
+    test = pd.DataFrame(test_rows, columns=["entity_id", "item_id"])
+    test["action_type"] = action_type
     return DatasetSplit(
-        name=label,
-        train=split.train,
-        test=split.test,
-        items=split.items,
-        description=f"{label}: {split.description}",
+        name=name,
+        train=train,
+        test=test,
+        items=None,
+        description=(
+            f"{name}: LightGCN academic split (NGCF/LightGCN benchmark); "
+            "no timestamps, path signals degrade to manual_fallback sessions."
+        ),
     )
 
 

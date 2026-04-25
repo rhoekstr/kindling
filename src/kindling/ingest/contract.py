@@ -16,7 +16,17 @@ import pandas as pd
 REQUIRED_COLUMNS = ("entity_id", "item_id")
 OPTIONAL_COLUMNS = ("timestamp", "session_id", "action_type", "rating")
 VALID_ACTION_TYPES = frozenset(
-    {"add", "remove", "positive_rating", "negative_rating", "rate", "view"}
+    {
+        "add",                # cart add, basket add, session add (positive)
+        "remove",             # explicit removal (negative for cost graph)
+        "positive_rating",    # explicit positive rating
+        "negative_rating",    # explicit negative rating
+        "rate",               # generic rating event (sign captured in rating col)
+        "view",               # impression / view (weak positive)
+        "review",             # written review (yelp / amazon) - treated like rate
+        "purchase",           # transaction (tafeng / dunnhumby) - strong positive
+        "checkin",            # location check-in (gowalla) - positive engagement
+    }
 )
 
 

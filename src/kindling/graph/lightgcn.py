@@ -1,4 +1,4 @@
-"""LightGCN signal, pure-numpy implementation.
+"""LightGCN signal, pure-numpy implementation (full end-to-end gradient).
 
 LightGCN (He et al., SIGIR 2020) is a graph convolutional network for
 collaborative filtering. Core mechanism: K-layer embedding propagation
@@ -6,29 +6,39 @@ over the bipartite user-item graph with symmetric degree normalization,
 no nonlinearity, no feature transformation. Final user/item embeddings
 are a layer-combination (arithmetic mean here) of E^(0), E^(1), ..., E^(K).
 
-This file intentionally avoids PyTorch. The simplification versus the
-reference implementation:
+This file intentionally avoids PyTorch by implementing the gradient
+through K propagation layers analytically:
 
-    Paper:   forward pass propagates; backward pass flows through K
-             sparse matmuls via autograd.
-    Here:    base embeddings E^(0) are trained with BPR loss using just
-             the dot product of E^(0) (no propagation inside the
-             training loop). After training, we propagate K layers and
-             combine to produce the served embeddings.
+    Forward (per batch step):
+        E^(0)        = base embeddings (the trainable parameters)
+        E^(k+1)      = A_hat @ E^(k)              for k = 0..K-1
+        E_final      = (1/(K+1)) sum_{k=0..K} E^(k)
+        score(u,i)   = E_final[u] . E_final[i]
+        loss         = -log sigmoid(score(u, i_pos) - score(u, i_neg))
 
-This gives us 80% of LightGCN's structural advantage (graph-smoothed
-latent factors that generalize across items with no direct cooc)
-without the custom autograd code a full-fidelity implementation would
-need. The two-stage recipe is well-established in the GNN literature;
-calling it "LightGCN-lite" to be honest.
+    Backward (analytic):
+        dL/dE_final  = sparse build from BPR triples
+        dL/dE^(0)    = (1/(K+1)) sum_{k=0..K} A_hat^k @ dL/dE_final
 
-Training loss is BPR with mini-batch SGD, rating-aware positive
-sampling (pairs weighted by the preprocessor's ``_interaction_weight``
-column so 5-star pairs are sampled more than 3-star), and uniform
-negative sampling from items the entity hasn't interacted with.
+        Because A_hat is symmetric for the bipartite block adjacency
+        ``[[0, U_norm], [U_norm.T, 0]]``, A_hat^T = A_hat, so the
+        backward propagation has the same structure (and cost) as the
+        forward propagation.
 
-Scoring: dot product of the final (layer-combined) user and item
-embeddings.
+This is the full end-to-end LightGCN training objective — base
+embeddings are optimized so that AFTER propagation they differentiate
+positives from negatives. The earlier two-stage shortcut (BPR on raw
+base, propagate only at inference) was abandoned because it
+underperformed badly on sparse bipartite graphs (yelp2018 lightgcn
+collapsed to NDCG 0.013 vs cooc 0.037, recall@budget 0.43 vs 0.88).
+The fix recovers the train/inference alignment.
+
+Training: full end-to-end BPR with mini-batch SGD, rating-aware
+positive sampling, vectorized uniform negative sampling, sparse-on-base
+L2 regularization.
+
+Scoring: dot product of the final (propagated + layer-combined) user
+and item embeddings.
 """
 
 from __future__ import annotations
@@ -42,14 +52,22 @@ import scipy.sparse as sp
 
 @dataclass
 class LightGCNConfig:
-    """Knobs. Defaults are the paper's suggested values where applicable."""
+    """Knobs. Defaults are the paper's suggested values where applicable.
+
+    With end-to-end propagation in the BPR loop, each step is roughly
+    ``2K`` sparse matmuls of cost ``O(nnz(A) * dim)``. For a 1.2M-edge
+    graph (yelp2018), K=3, dim=64 → ~500M flops/step. We compensate
+    with a bigger default ``batch_size`` (8192) so steps_per_epoch
+    stays manageable; the propagation cost is per-step, not per-triple,
+    so larger batches are essentially free here.
+    """
 
     dim: int = 64
     n_layers: int = 3
     learning_rate: float = 0.005
     weight_decay: float = 1e-4
-    n_epochs: int = 20
-    batch_size: int = 2048
+    n_epochs: int = 30
+    batch_size: int = 8192
     negatives_per_positive: int = 1
     seed: int = 0
     use_rating_weights: bool = True
@@ -194,86 +212,144 @@ def _train_bpr(
     ui: sp.csr_matrix,
     cfg: LightGCNConfig,
 ) -> tuple[np.ndarray | None, np.ndarray | None, int]:
-    """Train base embeddings via BPR loss with SGD."""
+    """End-to-end BPR with gradient through K-layer LightGCN propagation.
+
+    Forward, per batch step:
+        E^(0)        = stack(e_u, e_i)                         (n_u + n_i, dim)
+        E^(k+1)[u]   = ui_norm @ E^(k)[i]                      (n_u, dim)
+        E^(k+1)[i]   = ui_norm.T @ E^(k)[u]                    (n_i, dim)
+        E_final      = (1/(K+1)) sum_{k=0..K} E^(k)
+        s_pos        = E_final[u] . E_final[i_pos]             (B,)
+        s_neg        = E_final[u] . E_final[i_neg]             (B,)
+        loss         = -log sigmoid(s_pos - s_neg)
+
+    Backward (analytic):
+        dL/d_diff    = -sigmoid(-(s_pos - s_neg))              (B,)
+        Sparse on E_final:
+            dL/dE_final[u]      += -dL/d_diff * (E_final[ip] - E_final[in])
+            dL/dE_final[ip]     += -dL/d_diff * E_final[u]
+            dL/dE_final[in]     += +dL/d_diff * E_final[u]
+        Through layer-mean: dL/dE^(k) = (1/(K+1)) * dL/dE_final
+        Through propagation: A_hat is symmetric, so the backward
+        propagation has the same structure (and cost) as forward:
+            dL/dE^(0) = (1/(K+1)) * sum_{k=0..K} A_hat^k @ dL/dE_final
+        which expands to repeating the bipartite matmul structure
+        ``g_u <- ui_norm @ g_i; g_i <- ui_norm.T @ g_u``.
+
+    L2 regularization is applied sparsely on the BPR-triple base rows
+    only — matching the published LightGCN formulation and avoiding
+    decay on nodes the gradient backprop doesn't directly select.
+    """
     n_users, n_items = ui.shape
     rng = np.random.default_rng(cfg.seed)
 
-    # Initialize: small random normals. Xavier-like but modest variance.
+    # Initialize: small random normals.
     e_u = rng.normal(0, 0.01, size=(n_users, cfg.dim)).astype(np.float32)
     e_i = rng.normal(0, 0.01, size=(n_items, cfg.dim)).astype(np.float32)
 
-    # Build per-user positive item lists and weights for sampling.
-    ui_csr = ui.tocsr()
-    owned: list[np.ndarray] = [
-        ui_csr.indices[ui_csr.indptr[u] : ui_csr.indptr[u + 1]] for u in range(n_users)
-    ]
-    owned_weights: list[np.ndarray] = [
-        ui_csr.data[ui_csr.indptr[u] : ui_csr.indptr[u + 1]] for u in range(n_users)
-    ]
-    owned_sets: list[set[int]] = [set(arr.tolist()) for arr in owned]
+    # Build symmetrically-normalized bipartite adjacency once.
+    d_u = np.asarray(ui.sum(axis=1)).ravel()
+    d_i = np.asarray(ui.sum(axis=0)).ravel()
+    with np.errstate(divide="ignore", invalid="ignore"):
+        d_u_inv_sqrt = np.where(d_u > 0, 1.0 / np.sqrt(d_u), 0.0)
+        d_i_inv_sqrt = np.where(d_i > 0, 1.0 / np.sqrt(d_i), 0.0)
+    ui_norm = (sp.diags(d_u_inv_sqrt) @ ui @ sp.diags(d_i_inv_sqrt)).tocsr()
+    ui_norm_t = ui_norm.T.tocsr()  # cache transpose for repeated access
 
-    # Flat positive pool: one (user, item, weight) triple per observed pair.
+    # Per-user owned sets for negative-sampling rejection.
+    ui_csr = ui.tocsr()
+    owned_sets: list[set[int]] = [
+        set(ui_csr.indices[ui_csr.indptr[u] : ui_csr.indptr[u + 1]].tolist())
+        for u in range(n_users)
+    ]
+
+    # Flat positive pool.
     rows_flat, cols_flat = ui_csr.nonzero()
     weights_flat = np.asarray(ui_csr.data, dtype=np.float32)
     n_positives = rows_flat.size
     if n_positives == 0:
         return None, None, 0
 
-    # Rating-aware positive sampling: probability proportional to weight.
     if cfg.use_rating_weights and weights_flat.std() > 0:
         probs = weights_flat / weights_flat.sum()
     else:
         probs = np.full(n_positives, 1.0 / n_positives, dtype=np.float64)
 
-    steps_per_epoch = max(1, n_positives // cfg.batch_size)
+    K = cfg.n_layers
+    layer_scale = np.float32(1.0 / (K + 1))
+    lr = cfg.learning_rate
+    wd = cfg.weight_decay
+    decay_mul = np.float32(1.0 - lr * wd)
+    B = cfg.batch_size
+    steps_per_epoch = max(1, n_positives // B)
     n_trained = 0
-    for epoch in range(cfg.n_epochs):
-        for _ in range(steps_per_epoch):
-            # Sample positives.
-            pos_idx = rng.choice(n_positives, size=cfg.batch_size, p=probs, replace=True)
+
+    for _epoch in range(cfg.n_epochs):
+        for _step in range(steps_per_epoch):
+            # ---- Sample BPR triples ----
+            pos_idx = rng.choice(n_positives, size=B, p=probs, replace=True)
             u_batch = rows_flat[pos_idx]
             i_pos = cols_flat[pos_idx]
 
-            # Sample negatives per positive: uniform from items NOT in user's owned set.
-            # Rejection-sample until we hit a non-owned item. For small owned sets
-            # this is fast; for users who own most items, it's still O(few) tries.
-            i_neg = np.empty_like(i_pos)
-            for k in range(len(u_batch)):
-                u = u_batch[k]
-                owned_k = owned_sets[u]
+            # Vectorized negative sampling with rejection on owned set.
+            # First-shot uniform; resample only the conflicts (typically <5%).
+            i_neg = rng.integers(0, n_items, size=B).astype(np.int64)
+            for k in range(B):
                 tries = 0
-                while tries < 20:
-                    cand = int(rng.integers(0, n_items))
-                    if cand not in owned_k:
-                        i_neg[k] = cand
-                        break
-                    tries += 1
-                else:
-                    # Fallback: any item. Rare when users own < catalog.
+                while int(i_neg[k]) in owned_sets[int(u_batch[k])] and tries < 20:
                     i_neg[k] = int(rng.integers(0, n_items))
+                    tries += 1
 
-            # Forward: score difference.
-            eu = e_u[u_batch]
-            eip = e_i[i_pos]
-            ein = e_i[i_neg]
-            diff = np.einsum("bd,bd->b", eu, eip) - np.einsum("bd,bd->b", eu, ein)
-            # BPR loss: -log sigmoid(diff). Gradient wrt diff = -sigmoid(-diff).
-            s_neg_diff = _sigmoid_stable(-diff).astype(np.float32)  # (batch,)
+            # ---- Forward propagation: build E_final from current e_u, e_i ----
+            # Keep upper (user) and lower (item) blocks as separate arrays
+            # to avoid n_u+n_i x dim vstacks every step.
+            cur_u, cur_i = e_u, e_i
+            acc_u, acc_i = e_u.copy(), e_i.copy()
+            for _ in range(K):
+                new_u = ui_norm @ cur_i           # (n_u, dim)
+                new_i = ui_norm_t @ cur_u         # (n_i, dim)
+                cur_u, cur_i = new_u, new_i
+                acc_u += cur_u
+                acc_i += cur_i
+            ef_u = acc_u * layer_scale            # (n_u, dim)
+            ef_i = acc_i * layer_scale            # (n_i, dim)
 
-            # Chain-rule to each embedding (plus L2 regularization).
-            grad_scale = s_neg_diff[:, None]  # (batch, 1)
-            # d loss / d eu = -s_neg_diff * (eip - ein) + wd * eu
-            dE_u = -grad_scale * (eip - ein) + cfg.weight_decay * eu
-            # d loss / d eip = -s_neg_diff * eu + wd * eip
-            dE_ip = -grad_scale * eu + cfg.weight_decay * eip
-            # d loss / d ein = +s_neg_diff * eu + wd * ein
-            dE_in = grad_scale * eu + cfg.weight_decay * ein
+            # ---- Score the BPR triples on E_final ----
+            eu = ef_u[u_batch]
+            eip = ef_i[i_pos]
+            ein = ef_i[i_neg]
+            diff = (eu * eip).sum(axis=1) - (eu * ein).sum(axis=1)
+            s_neg_d = _sigmoid_stable(-diff).astype(np.float32)  # (B,)
+            scale = -s_neg_d[:, None]
 
-            lr = cfg.learning_rate
-            # Atomic batched updates.
-            np.add.at(e_u, u_batch, -lr * dE_u)
-            np.add.at(e_i, i_pos, -lr * dE_ip)
-            np.add.at(e_i, i_neg, -lr * dE_in)
+            # ---- Build sparse dL/dE_final ----
+            dL_u = np.zeros_like(e_u)
+            dL_i = np.zeros_like(e_i)
+            np.add.at(dL_u, u_batch, scale * (eip - ein))
+            np.add.at(dL_i, i_pos, scale * eu)
+            np.add.at(dL_i, i_neg, -scale * eu)
+
+            # ---- Backward through propagation + layer-mean ----
+            # dL/dE^(0) = layer_scale * sum_{k=0..K} A_hat^k @ dL/dE_final
+            cur_gu, cur_gi = dL_u, dL_i
+            acc_gu, acc_gi = dL_u.copy(), dL_i.copy()
+            for _ in range(K):
+                new_gu = ui_norm @ cur_gi
+                new_gi = ui_norm_t @ cur_gu
+                cur_gu, cur_gi = new_gu, new_gi
+                acc_gu += cur_gu
+                acc_gi += cur_gi
+            dE_u = acc_gu * layer_scale
+            dE_i = acc_gi * layer_scale
+
+            # ---- Apply gradient ----
+            e_u -= lr * dE_u
+            e_i -= lr * dE_i
+
+            # Sparse L2 reg on the BPR-triple base rows (matches paper).
+            e_u[u_batch] *= decay_mul
+            e_i[i_pos] *= decay_mul
+            e_i[i_neg] *= decay_mul
 
             # NaN guard.
             if not np.isfinite(e_u).all() or not np.isfinite(e_i).all():
@@ -305,8 +381,9 @@ def _propagate_and_combine(
     # Degrees.
     d_u = np.asarray(ui.sum(axis=1)).ravel()  # (n_u,)
     d_i = np.asarray(ui.sum(axis=0)).ravel()  # (n_i,)
-    d_u_inv_sqrt = np.where(d_u > 0, 1.0 / np.sqrt(d_u), 0.0)
-    d_i_inv_sqrt = np.where(d_i > 0, 1.0 / np.sqrt(d_i), 0.0)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        d_u_inv_sqrt = np.where(d_u > 0, 1.0 / np.sqrt(d_u), 0.0)
+        d_i_inv_sqrt = np.where(d_i > 0, 1.0 / np.sqrt(d_i), 0.0)
     ui_norm = sp.diags(d_u_inv_sqrt) @ ui @ sp.diags(d_i_inv_sqrt)
 
     # Stacked initial embeddings.

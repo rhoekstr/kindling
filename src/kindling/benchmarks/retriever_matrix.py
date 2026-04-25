@@ -361,8 +361,12 @@ def run_matrix(
         )
         from kindling.graph.lightgcn import LightGCNConfig
 
+        # Use the LightGCNConfig defaults (n_epochs=30, batch_size=8192) which
+        # are tuned for the end-to-end-gradient training architecture. The
+        # earlier 10-epoch config was calibrated for the abandoned two-stage
+        # shortcut and undertrains the real model.
         lgcn_cfg = LightGCNConfig(
-            dim=64, n_epochs=10, batch_size=2048, min_users=50, min_items=50, seed=0
+            dim=64, min_users=50, min_items=50, seed=0
         )
         t0 = time.perf_counter()
         engine = Engine(persona_config=cfg, lightgcn_config=lgcn_cfg).fit(sub)
@@ -455,7 +459,19 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--dataset",
         default="synthetic-grocery-deep",
-        choices=["movielens-1m", "synthetic-grocery", "synthetic-grocery-deep"],
+        choices=[
+            "movielens-1m",
+            "synthetic-grocery",
+            "synthetic-grocery-deep",
+            "retailrocket",
+            "instacart",
+            "gowalla",
+            "yelp2018",
+            "tafeng",
+            "dunnhumby",
+            "amazon-beauty",
+            "amazon-book",
+        ],
     )
     parser.add_argument("--fractions", default="0.2,0.4,0.6,0.8,1.0")
     parser.add_argument("--cross", action="store_true",
