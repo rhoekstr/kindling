@@ -1,0 +1,114 @@
+{
+  "dataset": "movielens-1m",
+  "fractions": [
+    1.0
+  ],
+  "k": 10,
+  "retrieval_budget": 500,
+  "kindling_version": "0.0.1.dev0",
+  "cells": [
+    {
+      "dataset": "movielens-1m",
+      "fraction": 1.0,
+      "retriever": "cooccurrence",
+      "ranker": "cooccurrence",
+      "ndcg_at_k": 0.2877035353404814,
+      "recall_topk": 0.712,
+      "recall_budget": 0.974,
+      "mrr": 0.45612380952380954,
+      "p95_ms": 2.885441645048558
+    },
+    {
+      "dataset": "movielens-1m",
+      "fraction": 1.0,
+      "retriever": "path_tail",
+      "ranker": "path_tail",
+      "ndcg_at_k": 0.14014409662109859,
+      "recall_topk": 0.522,
+      "recall_budget": 0.834,
+      "mrr": 0.2596428571428571,
+      "p95_ms": 0.47329368535429234
+    },
+    {
+      "dataset": "movielens-1m",
+      "fraction": 1.0,
+      "retriever": "path_full",
+      "ranker": "path_full",
+      "ndcg_at_k": 0.025120041085889,
+      "recall_topk": 0.114,
+      "recall_budget": 0.114,
+      "mrr": 0.06892698412698414,
+      "p95_ms": 0.28321074787527317
+    },
+    {
+      "dataset": "movielens-1m",
+      "fraction": 1.0,
+      "retriever": "path_basket",
+      "ranker": "path_basket",
+      "ndcg_at_k": 0.0762887482879272,
+      "recall_topk": 0.322,
+      "recall_budget": 0.878,
+      "mrr": 0.13462936507936507,
+      "p95_ms": 211.488874151837
+    },
+    {
+      "dataset": "movielens-1m",
+      "fraction": 1.0,
+      "retriever": "item_item_cosine",
+      "ranker": "item_item_cosine",
+      "ndcg_at_k": 0.291850467789901,
+      "recall_topk": 0.706,
+      "recall_budget": 0.978,
+      "mrr": 0.4533,
+      "p95_ms": 0.886043766513466
+    },
+    {
+      "dataset": "movielens-1m",
+      "fraction": 1.0,
+      "retriever": "persona",
+      "ranker": "persona",
+      "ndcg_at_k": 0.2162425640680646,
+      "recall_topk": 0.716,
+      "recall_budget": 0.978,
+      "mrr": 0.3981301587301588,
+      "p95_ms": 0.9061667020432647
+    },
+    {
+      "dataset": "movielens-1m",
+      "fraction": 1.0,
+      "retriever": "lightgcn",
+      "ranker": "lightgcn",
+      "ndcg_at_k": 0.2782322339645016,
+      "recall_topk": 0.708,
+      "recall_budget": 0.976,
+      "mrr": 0.4394960317460318,
+      "p95_ms": 0.36507083568722004
+    },
+    {
+      "dataset": "movielens-1m",
+      "fraction": 1.0,
+      "retriever": "temporal_cooccurrence",
+      "ranker": "temporal_cooccurrence",
+      "ndcg_at_k": 0.30017633651564996,
+      "recall_topk": 0.724,
+      "recall_budget": 0.978,
+      "mrr": 0.47722619047619047,
+      "p95_ms": 2.4903774145059283
+    }
+  ],
+  "fit_timings_per_fraction": {
+    "1.0": {
+      "item_graph": 0.3940455839037895,
+      "session_cooc_graph": 2.0829029381275177e-06,
+      "tail_index": 0.20751237496733665,
+      "path_tree": 2.0801228329073638,
+      "basket_index": 50.43957124999724,
+      "item_cosine": 0.38425441714935005,
+      "als": 0.00013408390805125237,
+      "lightgcn": 203.97478604107164,
+      "temporal_graph": 5.903008374851197,
+      "persona": 18.23414312512614,
+      "bayesian_blend": 16.83989966707304
+    }
+  }
+}

@@ -48,6 +48,10 @@ from kindling.graph.lightgcn import LightGCNConfig, LightGCNModel, build_lightgc
 from kindling.graph.cost_graph import CostGraph, build_cost_graph
 from kindling.graph.item_cosine import ItemCosineMatrix, build_item_cosine_matrix
 from kindling.graph.item_graph import ItemGraph, build_item_graph
+from kindling.graph.session_cooccurrence import (
+    SessionCooccurrenceGraph,
+    build_session_cooccurrence_graph,
+)
 from kindling.ingest.contract import (
     InteractionSchema,
     canonicalize,
@@ -119,6 +123,7 @@ SIGNAL_ORDER: tuple[str, ...] = (
     "persona",
     "lightgcn",
     "temporal_cooccurrence",
+    "session_cooccurrence",
 )
 # Deactivated signals: the column remains in SIGNAL_ORDER for back-compat
 # but _compute_signal_features leaves it at zero and the Bayesian posterior
@@ -263,6 +268,7 @@ class Engine:
         self._session_inference: SessionInference | None = None
 
         self._item_graph: ItemGraph | None = None
+        self._session_cooc_graph: SessionCooccurrenceGraph | None = None
         self._tail_index: TailIndex | None = None
         self._path_tree: PathTree | None = None
         self._basket_index: BasketIndex | None = None
@@ -395,6 +401,21 @@ class Engine:
         _t0 = _time.perf_counter()
         self._item_graph = build_item_graph(self._interactions)
         self._fit_timings["item_graph"] = _time.perf_counter() - _t0
+
+        # Session-cooccurrence: items co-occurring in the same session,
+        # row dimension = session_id (vs item_graph's entity_id rows).
+        # Auto-skips datasets without deep enough sessions; the
+        # _compute_signal_features helper sees None and zero-fills the
+        # column.
+        _t0 = _time.perf_counter()
+        self._session_cooc_graph = build_session_cooccurrence_graph(
+            interactions=self._interactions,
+            item_index=self._item_graph.item_index,
+            session_ids=self._session_inference.session_ids,
+            session_strategy=self._session_inference.strategy,
+            session_gap_seconds=self._session_inference.gap_threshold_seconds,
+        )
+        self._fit_timings["session_cooc_graph"] = _time.perf_counter() - _t0
 
         _t0 = _time.perf_counter()
         self._tail_index = build_tail_index(
@@ -824,6 +845,7 @@ class Engine:
                 persona_index=self._persona_index,
                 lightgcn=self._lightgcn,
                 temporal_graph=self._temporal_graph,
+                session_cooc_graph=self._session_cooc_graph,
             )
             # Stack the Bayesian blend's posterior-mean score as a 10th
             # feature. Worst case, LambdaRank learns "just use the blend"
@@ -968,6 +990,7 @@ class Engine:
             persona_index=self._persona_index,
             lightgcn=self._lightgcn,
             temporal_graph=self._temporal_graph,
+            session_cooc_graph=self._session_cooc_graph,
         )
 
     # ---- introspection (PRD §10.2 power-user surface) ---------------------
@@ -1132,6 +1155,7 @@ class Engine:
             persona_index=self._persona_index,
             lightgcn=self._lightgcn,
             temporal_graph=self._temporal_graph,
+            session_cooc_graph=self._session_cooc_graph,
             posterior_mean=posterior_for_skip,
             skip_weight_threshold=self.skip_signal_weight_threshold,
         )
@@ -1876,6 +1900,7 @@ def _compute_signal_features(
     persona_index: "PersonaIndex | None" = None,
     lightgcn: "LightGCNModel | None" = None,
     temporal_graph: "TemporalInteractionGraph | None" = None,
+    session_cooc_graph: "SessionCooccurrenceGraph | None" = None,
     posterior_mean: np.ndarray | None = None,
     skip_weight_threshold: float = 0.0,
 ) -> SignalFeatures:
@@ -2034,6 +2059,33 @@ def _compute_signal_features(
                 out_tc = np.zeros(len(cand_ids), dtype=np.float64)
                 out_tc[valid_tc] = tc_full[cand_indices_tc[valid_tc]]
                 matrix[:, 11] = out_tc
+
+    # session_cooccurrence (13th signal). Same scoring shape as cooc,
+    # but the underlying graph counts session-co-membership (S.T @ S
+    # with S indexed by session_id) instead of entity-co-occurrence.
+    # The graph is None when sessions aren't deep enough (<30% of
+    # sessions have 2+ items by default), in which case the column
+    # stays zero and the Bayesian posterior learns weight 0.
+    if session_cooc_graph is not None and session_cooc_graph.n_edges > 0 and _hot(12):
+        owned_idx_sc = np.fromiter(
+            (session_cooc_graph.item_index.get(o, -1) for o in owned_items.tolist()),
+            dtype=np.int64, count=owned_items.size,
+        ) if owned_items.size else np.empty(0, dtype=np.int64)
+        owned_idx_sc = owned_idx_sc[owned_idx_sc >= 0]
+        if owned_idx_sc.size > 0:
+            excl_set_sc = {int(i) for i in owned_idx_sc.tolist()}
+            sc_full = session_cooc_graph.score_against_owned(
+                owned_idx_sc, exclude_indices=excl_set_sc,
+            )
+            cand_indices_sc = np.fromiter(
+                (session_cooc_graph.item_index.get(c, -1) for c in cand_ids),
+                dtype=np.int64, count=len(cand_ids),
+            )
+            valid_sc = cand_indices_sc >= 0
+            if valid_sc.any():
+                out_sc = np.zeros(len(cand_ids), dtype=np.float64)
+                out_sc[valid_sc] = sc_full[cand_indices_sc[valid_sc]]
+                matrix[:, 12] = out_sc
 
     return SignalFeatures(matrix=matrix, signal_names=SIGNAL_ORDER)
 

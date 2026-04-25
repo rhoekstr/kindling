@@ -218,6 +218,34 @@ def _build_rankers(engine: Engine) -> dict[str, RankerFn]:
             out[valid] = scores_full[cand_idx[valid]]
         return out
 
+    session_cooc_graph = engine._session_cooc_graph
+
+    def session_cooc_ranker(cands: list[object], ctx: dict[str, object]) -> np.ndarray:
+        if session_cooc_graph is None or session_cooc_graph.n_edges == 0:
+            return np.zeros(len(cands), dtype=np.float64)
+        owned = cast(np.ndarray, ctx["owned"])
+        if owned.size == 0:
+            return np.zeros(len(cands), dtype=np.float64)
+        owned_idx = np.fromiter(
+            (session_cooc_graph.item_index.get(o, -1) for o in owned.tolist()),
+            dtype=np.int64, count=owned.size,
+        )
+        owned_idx = owned_idx[owned_idx >= 0]
+        if owned_idx.size == 0:
+            return np.zeros(len(cands), dtype=np.float64)
+        scores_full = session_cooc_graph.score_against_owned(
+            owned_idx, exclude_indices={int(i) for i in owned_idx.tolist()}
+        )
+        cand_idx = np.fromiter(
+            (session_cooc_graph.item_index.get(c, -1) for c in cands),
+            dtype=np.int64, count=len(cands),
+        )
+        valid = cand_idx >= 0
+        out = np.zeros(len(cands), dtype=np.float64)
+        if valid.any():
+            out[valid] = scores_full[cand_idx[valid]]
+        return out
+
     rankers: dict[str, RankerFn] = {
         "cooccurrence": cooc_ranker,
         "path_tail": path_tail_ranker,
@@ -234,6 +262,8 @@ def _build_rankers(engine: Engine) -> dict[str, RankerFn]:
         rankers["lightgcn"] = lightgcn_ranker
     if temporal_graph is not None and temporal_graph.n_edges > 0:
         rankers["temporal_cooccurrence"] = temporal_cooc_ranker
+    if session_cooc_graph is not None and session_cooc_graph.n_edges > 0:
+        rankers["session_cooccurrence"] = session_cooc_ranker
     return rankers
 
 
@@ -268,6 +298,10 @@ def _retrieve(
     if name == "temporal_cooccurrence":
         return retriever.retrieve(  # type: ignore[attr-defined]
             owned_items=owned, history=history, budget=budget, exclude=exclude,
+        )
+    if name == "session_cooccurrence":
+        return retriever.retrieve(  # type: ignore[attr-defined]
+            owned_items=owned, budget=budget, exclude=exclude,
         )
     raise ValueError(name)
 
@@ -324,6 +358,57 @@ class _TemporalCoocRetriever:
         ]
 
 
+class _SessionCoocRetriever:
+    """Direct lookup on the session-cooccurrence graph (S.T @ S where
+    S is session-row indexed). Mirrors the cooccurrence retriever shape."""
+
+    name = "session_cooccurrence"
+    budget_fraction = 1.0
+
+    def __init__(self, session_cooc_graph, item_ids: np.ndarray) -> None:
+        self.graph = session_cooc_graph
+        self.item_ids = item_ids
+
+    def retrieve(
+        self, owned_items: np.ndarray, budget: int,
+        exclude: set[object] | None = None,
+    ) -> list[Candidate]:
+        if owned_items.size == 0 or self.graph is None or self.graph.n_edges == 0:
+            return []
+        owned_idx = np.fromiter(
+            (self.graph.item_index.get(o, -1) for o in owned_items.tolist()),
+            dtype=np.int64, count=owned_items.size,
+        )
+        owned_idx = owned_idx[owned_idx >= 0]
+        if owned_idx.size == 0:
+            return []
+        exclude_idx = {int(i) for i in owned_idx.tolist()}
+        if exclude:
+            for it in exclude:
+                idx = self.graph.item_index.get(it, -1)
+                if idx >= 0:
+                    exclude_idx.add(int(idx))
+        scores = self.graph.score_against_owned(owned_idx, exclude_indices=exclude_idx)
+        if scores.max() <= 0:
+            return []
+        if budget < scores.size:
+            top_idx = np.argpartition(-scores, budget)[:budget]
+            top_idx = top_idx[scores[top_idx] > 0]
+            order = np.argsort(-scores[top_idx])
+            top_idx = top_idx[order]
+        else:
+            top_idx = np.argsort(-scores)
+            top_idx = top_idx[scores[top_idx] > 0]
+        return [
+            Candidate(
+                item_id=self.graph.item_ids[i],
+                score=float(scores[i]),
+                source="session_cooccurrence",
+            )
+            for i in top_idx
+        ]
+
+
 def _build_retrievers(engine: Engine) -> dict[str, object]:
     item_ids = np.asarray(engine.item_graph.item_ids, dtype=object)
     retrievers: dict[str, object] = {
@@ -345,6 +430,10 @@ def _build_retrievers(engine: Engine) -> dict[str, object]:
     if engine._temporal_graph is not None and engine._temporal_graph.n_edges > 0:
         retrievers["temporal_cooccurrence"] = _TemporalCoocRetriever(
             engine._temporal_graph, item_ids
+        )
+    if engine._session_cooc_graph is not None and engine._session_cooc_graph.n_edges > 0:
+        retrievers["session_cooccurrence"] = _SessionCoocRetriever(
+            engine._session_cooc_graph, item_ids
         )
     return retrievers
 
