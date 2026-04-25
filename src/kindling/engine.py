@@ -52,6 +52,7 @@ from kindling.graph.session_cooccurrence import (
     SessionCooccurrenceGraph,
     build_session_cooccurrence_graph,
 )
+from kindling.blend.layered import LayeredConfig, layered_score
 from kindling.ingest.contract import (
     InteractionSchema,
     canonicalize,
@@ -237,6 +238,16 @@ class Engine:
         # engine forces signal_normalization="zscore" internally so
         # the gate trains + infers on the same scale.
         gating_config: GatingConfig | None = None,
+        # Cooc + adaptive boosting (the "layered" scoring architecture).
+        # When enabled, replaces the Bayesian blend at recommend time
+        # with: cooc primary + cumulative one-tailed z-gated boost
+        # layers (path_basket / session_cooccurrence /
+        # temporal_cooccurrence). LayeredAutoCalibrator runs at fit
+        # time to pick (z_threshold, boost_multiplier) per dataset.
+        # Disable Bayesian blend independently if you don't need
+        # credible intervals - layered doesn't produce them.
+        layered_scoring: bool = False,
+        layered_config: "LayeredConfig | None" = None,
     ) -> None:
         self.retrieval_budget = retrieval_budget
         self.decay: DecayProtocol = (
@@ -330,6 +341,15 @@ class Engine:
         self.gating_config = gating_config
         self._gate: GatingNetwork | None = None
         self._gate_context_cache: dict[object, np.ndarray] = {}
+
+        # Layered (cooc + adaptive boosting) scoring state.
+        self.layered_scoring = layered_scoring
+        self.layered_config: LayeredConfig | None = layered_config
+        # Populated at fit time when layered_scoring=True. The
+        # auto-calibrator picks (z_threshold, boost_multiplier) per
+        # dataset shape. Can also be passed explicitly to skip
+        # auto-calibration.
+        self._layered_calibration: object | None = None
 
         # Per-subsystem fit timings (seconds). Populated during fit()
         # for benchmarks + diagnostics. Keys: item_graph, item_cosine,
@@ -611,6 +631,21 @@ class Engine:
             if self._gate is not None:
                 self._gate_context_cache = _compute_gate_context(self)
             self._fit_timings["gate"] = _time.perf_counter() - _t0
+
+        # Layered (cooc + adaptive boosting) auto-calibration. Sweeps
+        # (z_threshold, boost_multiplier) on a leave-out slice of
+        # training data and picks the cell with highest held-out
+        # NDCG@10. When the user explicitly passed a layered_config,
+        # use it verbatim and skip the sweep.
+        if self.layered_scoring:
+            _t0 = _time.perf_counter()
+            if self.layered_config is None:
+                from kindling.blend.layered_calibrator import calibrate
+
+                cal = calibrate(self)
+                self.layered_config = cal.best_config
+                self._layered_calibration = cal
+            self._fit_timings["layered_calibration"] = _time.perf_counter() - _t0
 
         return self
 
@@ -1208,6 +1243,26 @@ class Engine:
                     name: float(w)
                     for name, w in zip(features.signal_names, gate_weights, strict=True)
                 }
+
+        # Layered scoring: cooc primary + cumulative one-tailed z-gated
+        # boost layers. Replaces blend/gate scoring when enabled.
+        # Auto-calibrated (z, boost) was picked at fit time. Pulls
+        # individual layer columns directly from the SignalFeatures
+        # matrix.
+        if self.layered_scoring and self.layered_config is not None:
+            primary_idx = SIGNAL_ORDER.index("cooccurrence")
+            primary = features.matrix[:, primary_idx]
+            layer_indices = []
+            for layer_name in ("path_basket", "session_cooccurrence", "temporal_cooccurrence"):
+                if layer_name in SIGNAL_ORDER:
+                    layer_indices.append(SIGNAL_ORDER.index(layer_name))
+            layers = [features.matrix[:, idx] for idx in layer_indices]
+            scores = layered_score(primary, layers, config=self.layered_config)
+            weights_for_explanation = {
+                "cooccurrence": 1.0,
+                "layered_z": float(self.layered_config.z_threshold),
+                "layered_boost_multiplier": float(self.layered_config.boost_multiplier),
+            }
 
         # Warm regime: LightGBM LambdaRank over the feature matrix +
         # blend-mean-as-feature (10th column). The blend score +

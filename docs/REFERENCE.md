@@ -337,11 +337,43 @@ Layered is **faster than Bayesian blend** (no VI-posterior dot-
 product at query time, just a sparse-matvec per layer + boost
 arithmetic).
 
-**Status**: shipped as a probe + auto-calibrator + 14 unit tests.
-Engine integration as `scoring="layered_adaptive"` is queued. When
-shipped as default, the Bayesian blend becomes the opt-in
-calibrated-uncertainty mode (when users want credible intervals);
-adaptive boosting becomes the default scorer.
+**Status (Apr 2026)**: shipped as a probe + auto-calibrator + 49
+unit tests + **engine integration**. The user-facing API:
+
+```python
+from kindling import Engine
+
+# Adaptive boosting (auto-calibrated)
+engine = Engine(layered_scoring=True).fit(train)
+recs = engine.recommend(entity_id=u, n=10)
+# Inspect calibrator's pick:
+print(engine.layered_config)            # LayeredConfig(z_threshold=2.5, ...)
+print(engine._layered_calibration)      # CalibrationResult with grid trace
+
+# Or pass an explicit config to skip auto-calibration
+from kindling.blend.layered import LayeredConfig
+engine = Engine(
+    layered_scoring=True,
+    layered_config=LayeredConfig(z_threshold=2.5, boost_multiplier=5.0),
+).fit(train)
+```
+
+End-to-end engine validation:
+
+| dataset | Bayesian blend | layered (auto) | delta |
+|---|---:|---:|---:|
+| grocery-deep | 0.3197 | 0.3198 | +0.04% (parity) |
+| amazon-beauty | 0.0201 | 0.0308 | **+53.5%** |
+
+amazon-beauty's blend-catastrophe → layered-rescue is reproducible
+via the engine API directly. Calibration adds 0.2-12s to fit time
+(negligible vs total).
+
+Bayesian blend is **not deprecated**. It remains the right choice
+when calibrated credible intervals matter (uncertainty surfacing,
+A/B testing, downstream consumers that need posterior moments).
+Layered is the right choice when ranking quality + robustness
+matter more than uncertainty quantification.
 
 ### 4.5 Headline numbers — full-data, 500 eval entities
 

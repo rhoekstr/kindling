@@ -1,0 +1,24 @@
+{
+  "dataset": "amazon-beauty",
+  "n_eval_entities": 500,
+  "kindling_version": "0.0.1.dev0",
+  "bayesian_blend": {
+    "ndcg_at_k": 0.020067319685271562,
+    "mrr": 0.025913492063492066,
+    "recall_topk": 0.068,
+    "p95_ms": 4.739427845925092,
+    "fit_seconds": 9.492734583094716
+  },
+  "layered_adaptive": {
+    "ndcg_at_k": 0.030807879799686126,
+    "mrr": 0.04231507936507937,
+    "recall_topk": 0.09,
+    "p95_ms": 4.300420556683093,
+    "fit_seconds": 10.183393500046805,
+    "calibrated_z": 3.0,
+    "calibrated_boost": 5.0,
+    "calibration_seconds": 0.3200609169434756
+  },
+  "delta_ndcg": 0.010740560114414564,
+  "delta_rel_pct": 53.52264419397083
+}

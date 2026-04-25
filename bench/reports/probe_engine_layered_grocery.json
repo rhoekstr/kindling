@@ -1,0 +1,24 @@
+{
+  "dataset": "synthetic-grocery-deep",
+  "n_eval_entities": 500,
+  "kindling_version": "0.0.1.dev0",
+  "bayesian_blend": {
+    "ndcg_at_k": 0.31967283436745825,
+    "mrr": 0.3513585238428006,
+    "recall_topk": 0.7379454926624738,
+    "p95_ms": 25.84235974354669,
+    "fit_seconds": 8.832223624922335
+  },
+  "layered_adaptive": {
+    "ndcg_at_k": 0.31980217444049036,
+    "mrr": 0.3553217862966291,
+    "recall_topk": 0.7379454926624738,
+    "p95_ms": 26.43041271949187,
+    "fit_seconds": 12.515138249844313,
+    "calibrated_z": 2.5,
+    "calibrated_boost": 3.0,
+    "calibration_seconds": 3.0182089579757303
+  },
+  "delta_ndcg": 0.0001293400730321137,
+  "delta_rel_pct": 0.0404601389692812
+}
