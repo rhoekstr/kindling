@@ -64,6 +64,22 @@ def construct_prior(
     alpha = np.full(len(signal_names), baseline, dtype=np.float64)
     name_to_idx = {name: i for i, name in enumerate(signal_names)}
 
+    # Apply any [*_baseline] sections that directly override a single
+    # signal's alpha. Use a sentinel suffix so legitimate rules
+    # (graph_density, session_stiffness, etc.) are not picked up here.
+    # Pattern: ``[<signal>_baseline]`` with ``target = "<signal>"``
+    # and ``alpha = <float>``. Applied BEFORE data-characteristic
+    # rules so those can multiply the override if they apply.
+    for section_name, section in coefs.items():
+        if not section_name.endswith("_baseline") or not isinstance(section, dict):
+            continue
+        target = section.get("target")
+        alpha_value = section.get("alpha")
+        if isinstance(target, str) and isinstance(alpha_value, (int, float)):
+            idx = name_to_idx.get(target)
+            if idx is not None:
+                alpha[idx] = float(alpha_value)
+
     _apply_single(
         alpha,
         name_to_idx,

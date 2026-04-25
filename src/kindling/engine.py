@@ -38,6 +38,10 @@ from kindling.blend.outcome_builder import OutcomeBuildConfig, build_outcomes
 from kindling.blend.priors import DataFeatures, construct_prior
 from kindling.explain import Explanation
 from kindling.graph.als_factors import ALSFactors, build_als_factors
+from kindling.graph.temporal_interaction import (
+    TemporalInteractionGraph,
+    build_temporal_interaction_graph,
+)
 from kindling.gate import GatingConfig, GatingNetwork, fit_gating_network
 from kindling.gate.features import compute_context_features as _compute_gate_context
 from kindling.graph.lightgcn import LightGCNConfig, LightGCNModel, build_lightgcn
@@ -114,7 +118,18 @@ SIGNAL_ORDER: tuple[str, ...] = (
     "als_factor",
     "persona",
     "lightgcn",
+    "temporal_cooccurrence",
 )
+# Deactivated signals: the column remains in SIGNAL_ORDER for back-compat
+# but _compute_signal_features leaves it at zero and the Bayesian posterior
+# learns weight -> 0. Avoids a cascading rename through priors.toml,
+# persistence, benchmarks, and tests.
+#
+#   path_full: consistently the weakest signal across datasets
+#   (grocery 0.047, ml1m 0.025, yelp 0.000, amazon-beauty 0.001).
+#   The matrix harness still computes it on demand when a user
+#   explicitly requests per-signal NDCG; the live blend skips it.
+DEACTIVATED_SIGNALS: frozenset[str] = frozenset({"path_full"})
 NEGATIVE_SIGNAL_MODES = frozenset({"positive_only", "explicit", "implicit_from_impressions"})
 # Cap the query basket at recommend time. Full-history users (ML-1M power
 # raters with 500+ ratings) otherwise trigger posting-list unions over
@@ -297,6 +312,11 @@ class Engine:
         self.lightgcn_config = lightgcn_config
         self._lightgcn: LightGCNModel | None = None
 
+        # Temporal interaction graph (substrate for temporal_cooccurrence
+        # 12th signal; auto-falls-back to pure-count when session-presence
+        # guard detects rating-burst timestamps).
+        self._temporal_graph: TemporalInteractionGraph | None = None
+
         # Per-query signal-column normalization mode.
         self.signal_normalization: NormalizeMode = signal_normalization
 
@@ -455,6 +475,17 @@ class Engine:
                 config=self.lightgcn_config,
             )
             self._fit_timings["lightgcn"] = _time.perf_counter() - _t0
+
+        # Temporal interaction graph: substrate for the temporal_cooccurrence
+        # signal. Auto-calibrates the logistic-decay kernel via GMM on
+        # inter-event log-deltas; falls back to pure-count when timestamps
+        # are missing or session-presence guard detects rating-burst data.
+        _t0 = _time.perf_counter()
+        self._temporal_graph = build_temporal_interaction_graph(
+            interactions=self._interactions,
+            item_index=self._item_graph.item_index,
+        )
+        self._fit_timings["temporal_graph"] = _time.perf_counter() - _t0
 
         # Phase 4 re-rank state.
         self._population_baselines = compute_population_baselines(self._interactions)
@@ -792,6 +823,7 @@ class Engine:
                 als_factors=self._als_factors,
                 persona_index=self._persona_index,
                 lightgcn=self._lightgcn,
+                temporal_graph=self._temporal_graph,
             )
             # Stack the Bayesian blend's posterior-mean score as a 10th
             # feature. Worst case, LambdaRank learns "just use the blend"
@@ -935,6 +967,7 @@ class Engine:
             als_factors=self._als_factors,
             persona_index=self._persona_index,
             lightgcn=self._lightgcn,
+            temporal_graph=self._temporal_graph,
         )
 
     # ---- introspection (PRD §10.2 power-user surface) ---------------------
@@ -1098,6 +1131,7 @@ class Engine:
             als_factors=self._als_factors,
             persona_index=self._persona_index,
             lightgcn=self._lightgcn,
+            temporal_graph=self._temporal_graph,
             posterior_mean=posterior_for_skip,
             skip_weight_threshold=self.skip_signal_weight_threshold,
         )
@@ -1841,6 +1875,7 @@ def _compute_signal_features(
     als_factors: ALSFactors | None = None,
     persona_index: "PersonaIndex | None" = None,
     lightgcn: "LightGCNModel | None" = None,
+    temporal_graph: "TemporalInteractionGraph | None" = None,
     posterior_mean: np.ndarray | None = None,
     skip_weight_threshold: float = 0.0,
 ) -> SignalFeatures:
@@ -1867,8 +1902,12 @@ def _compute_signal_features(
 
     last_item = history[-1] if history else None
     # path_full, path_tail, path_basket
-    if _hot(0):
-        matrix[:, 0] = path_tree.score_many(cand_ids, history)
+    # NOTE: path_full is in DEACTIVATED_SIGNALS; column left at zero so
+    # the Bayesian posterior drives its weight to zero naturally.
+    # Uncomment to re-enable: path_full was consistently the weakest
+    # signal across all evaluated datasets (NDCG < 0.05).
+    # if _hot(0):
+    #     matrix[:, 0] = path_tree.score_many(cand_ids, history)
     if _hot(1):
         matrix[:, 1] = tail_index.score_many(cand_ids, last_item)
     if _hot(2):
@@ -1967,6 +2006,34 @@ def _compute_signal_features(
             full_gcn = np.zeros(len(cand_ids), dtype=np.float64)
             full_gcn[valid_gcn] = gcn_scores
             matrix[:, 10] = full_gcn
+
+    # temporal_cooccurrence (12th signal). Direct kernel-weighted pair
+    # lookup on the temporal interaction graph - same scoring mechanism
+    # as the count-based cooccurrence (matrix[:, 3]) but with
+    # time-decay-weighted edges. When the substrate's session-presence
+    # guard detects rating-burst timestamps (ml1m-like), the kernel
+    # auto-falls-back to pure-count and this signal becomes a near-
+    # duplicate of cooccurrence (Bayesian posterior decorrelates it).
+    # On real-session data the kernel earns meaningful lift
+    # (grocery: +37% NDCG standalone vs pure-count).
+    if temporal_graph is not None and temporal_graph.n_edges > 0 and _hot(11):
+        owned_idx = np.fromiter(
+            (temporal_graph.item_index.get(o, -1) for o in owned_items.tolist()),
+            dtype=np.int64, count=owned_items.size,
+        ) if owned_items.size else np.empty(0, dtype=np.int64)
+        owned_idx = owned_idx[owned_idx >= 0]
+        if owned_idx.size > 0:
+            excl_set = {int(i) for i in owned_idx.tolist()}
+            tc_full = temporal_graph.score_against_owned(owned_idx, exclude_indices=excl_set)
+            cand_indices_tc = np.fromiter(
+                (temporal_graph.item_index.get(c, -1) for c in cand_ids),
+                dtype=np.int64, count=len(cand_ids),
+            )
+            valid_tc = cand_indices_tc >= 0
+            if valid_tc.any():
+                out_tc = np.zeros(len(cand_ids), dtype=np.float64)
+                out_tc[valid_tc] = tc_full[cand_indices_tc[valid_tc]]
+                matrix[:, 11] = out_tc
 
     return SignalFeatures(matrix=matrix, signal_names=SIGNAL_ORDER)
 

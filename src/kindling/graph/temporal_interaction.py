@@ -167,11 +167,46 @@ class TemporalInteractionGraph:
             self.adjacency.data[row_start:row_end],
         )
 
+    def score_against_owned(
+        self,
+        owned_indices: np.ndarray,
+        exclude_indices: set[int] | None = None,
+    ) -> np.ndarray:
+        """Direct kernel-weighted cooccurrence score per item.
+
+        ``score[c] = sum over j in owned of adjacency[c, j]`` —
+        the temporal-kernel analog of the existing ``cooccurrence``
+        signal's per-candidate score (which uses count-weighted edges
+        from the ItemGraph).
+
+        Returns a length-n_items array, max-normalized to [0, 1].
+        Excluded items are zeroed before normalization.
+        """
+        n = self.n_items
+        if owned_indices.size == 0 or n == 0:
+            return np.zeros(n, dtype=np.float64)
+        # Sparse-matrix-vector product: indicator of owned items @ adjacency.
+        owned_indices = owned_indices[(owned_indices >= 0) & (owned_indices < n)]
+        if owned_indices.size == 0:
+            return np.zeros(n, dtype=np.float64)
+        # Sum the relevant rows. CSR row slice is cheap.
+        rows = self.adjacency[owned_indices]
+        scores = np.asarray(rows.sum(axis=0)).ravel().astype(np.float64)
+        if exclude_indices:
+            for idx in exclude_indices:
+                if 0 <= idx < n:
+                    scores[idx] = 0.0
+        max_s = float(scores.max())
+        if max_s > 0:
+            scores = scores / max_s
+        return scores
+
 
 def calibrate_kernel(
     interactions: pd.DataFrame,
     manual_fallback_seconds: float = 1800.0,
     min_samples: int = 50,
+    min_midpoint_seconds: float = 300.0,
 ) -> KernelParams:
     """Auto-calibrate the logistic-decay kernel from inter-event deltas.
 
@@ -179,6 +214,17 @@ def calibrate_kernel(
     inference module uses. The GMM's bimodal threshold is the kernel
     midpoint; the within-component sigma (in original seconds, after
     inverse log) is the steepness scale.
+
+    Session-presence auto-detection: when GMM detects bimodality but
+    the midpoint is below ``min_midpoint_seconds`` (default 60s), the
+    "session" structure is almost certainly rating-burst UI ordering
+    (users clicking rate buttons in seconds-long bursts) rather than
+    real consumption adjacency. In that regime the kernel actively
+    hurts ranking quality on downstream signals (grocery: +37% NDCG
+    with kernel on; ml1m: -10% NDCG with kernel on at direct-lookup
+    layer, -7% at walk layer). We detect this and fall back to
+    pure-count silently, surfacing the decision via
+    ``strategy="rating_burst_detected"``.
 
     Falls back to (manual_fallback_seconds, manual_fallback_seconds/4)
     when timestamps are absent, sample size is too small, or the GMM
@@ -210,7 +256,7 @@ def calibrate_kernel(
         )
 
     log_deltas = np.log(deltas)
-    threshold_log, llr, within_sigma_log = _fit_gmm_kernel_params(log_deltas)
+    threshold_log, llr, within_sigma_log, within_mean_log = _fit_gmm_kernel_params(log_deltas)
     if threshold_log is None or llr is None or llr < 10.0:
         # Bimodality not detected - same threshold as the session module's
         # _GOF_MIN_LLR_GAIN. Pure-count fallback because using a manual
@@ -228,6 +274,26 @@ def calibrate_kernel(
     # within_sigma_log is in log-seconds; the steepness in seconds at
     # the midpoint is approximately midpoint * within_sigma_log.
     steepness = float(midpoint * max(within_sigma_log, 0.1))
+
+    # Session-presence guard: when the GMM midpoint (natural session
+    # boundary) lands below real user-interaction cadence (~minutes),
+    # we're seeing rating-burst UI ordering (users clicking through
+    # tens of ratings in a minute-long UI session) rather than real
+    # consumption adjacency. Measured behavior on ml1m (midpoint 87s):
+    # temporal_cooccurrence -9.7% NDCG vs cooc, interaction_network
+    # -7% NDCG vs pure-count - consistent direction at both scoring
+    # layers. On grocery (midpoint 1600s, i.e. ~27min sessions with
+    # day-scale between-sessions) the kernel HELPS +37%. The 300s
+    # threshold cleanly separates the two. Fall back to pure-count
+    # with a distinctive strategy so callers can see the decision.
+    if midpoint < min_midpoint_seconds:
+        return KernelParams(
+            midpoint_seconds=midpoint,
+            steepness_seconds=steepness,
+            pure_count=True,
+            strategy="rating_burst_detected",
+        )
+
     return KernelParams(
         midpoint_seconds=midpoint,
         steepness_seconds=steepness,
@@ -238,18 +304,21 @@ def calibrate_kernel(
 
 def _fit_gmm_kernel_params(
     log_deltas: np.ndarray,
-) -> tuple[float | None, float | None, float | None]:
-    """Fit a 2-component GMM on log-deltas; return (threshold,
-    log_likelihood_ratio_2_vs_1, within_component_sigma).
+) -> tuple[float | None, float | None, float | None, float | None]:
+    """Fit a 2-component GMM on log-deltas; return
+    ``(threshold, log_likelihood_ratio_2_vs_1,
+       within_component_sigma, within_component_mean)``.
 
     Mirrors ``ingest.sessions._fit_gmm_threshold`` but additionally
-    returns the within-component (smaller-mean) sigma, which the
-    sessions module discards.
+    returns the within-component (smaller-mean) parameters, which the
+    sessions module discards. The within-component mean is what
+    distinguishes rating bursts (mean under ~30s) from real sessions
+    (mean in minutes).
     """
     rng = np.random.default_rng(seed=0)
     n = len(log_deltas)
     if n < 50:
-        return None, None, None
+        return None, None, None, None
 
     mu_1 = float(log_deltas.mean())
     sigma_1 = float(log_deltas.std(ddof=0)) or 1e-6
@@ -274,7 +343,7 @@ def _fit_gmm_kernel_params(
         resp = np.exp(log_resp - log_norm[:, None])
         nk = resp.sum(axis=0)
         if (nk < 1.0).any():
-            return None, None, None
+            return None, None, None, None
         pi = nk / n
         mu = (resp * log_deltas[:, None]).sum(axis=0) / nk
         var = (resp * (log_deltas[:, None] - mu) ** 2).sum(axis=0) / nk
@@ -291,7 +360,7 @@ def _fit_gmm_kernel_params(
     mu_lo, mu_hi = mu[order[0]], mu[order[1]]
     sigma_lo = sigma[order[0]]
     threshold = (mu_lo + mu_hi) / 2.0
-    return float(threshold), float(llr), float(sigma_lo)
+    return float(threshold), float(llr), float(sigma_lo), float(mu_lo)
 
 
 def build_temporal_interaction_graph(

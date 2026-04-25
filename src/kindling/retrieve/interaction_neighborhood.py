@@ -68,6 +68,11 @@ class InteractionNeighborhoodConfig:
     # Louvain knobs.
     louvain_resolution: float = 1.0
     louvain_seed: int = 0
+    # Betweenness is O(V*E); above this subgraph size we use k-sample
+    # approximation (``betweenness_centrality(G, k=...)``) with
+    # ``betweenness_sample_k`` source nodes.
+    betweenness_exact_threshold: int = 300
+    betweenness_sample_k: int = 100
 
 
 @dataclass(frozen=True)
@@ -176,7 +181,12 @@ class InteractionNeighborhoodModel:
             return scores
 
         sub_adj = self.adjacency[nodes][:, nodes]
-        sub_scores = _compute_centrality(sub_adj, centrality)
+        sub_scores = _compute_centrality(
+            sub_adj,
+            centrality,
+            betweenness_exact_threshold=self.config.betweenness_exact_threshold,
+            betweenness_sample_k=self.config.betweenness_sample_k,
+        )
         # Map back to full item index.
         full = np.zeros(self.n_items, dtype=np.float64)
         full[nodes] = sub_scores
@@ -255,12 +265,19 @@ class InteractionNeighborhoodModel:
 def _compute_centrality(
     sub_adj: sp.csr_matrix,
     kind: CentralityKind,
+    betweenness_exact_threshold: int = 300,
+    betweenness_sample_k: int = 100,
 ) -> np.ndarray:
     """Compute centrality on a subgraph adjacency.
 
     Returns length-n_nodes scores in [0, 1] (max-normalized per call).
     Uses networkx for betweenness/eigenvector/closeness; rolls own for
     degree (cheap) and pagerank (scipy power method, cheap).
+
+    Betweenness is O(V*E) — prohibitive on > few hundred nodes. Above
+    ``betweenness_exact_threshold`` we use the k-sample approximation
+    (source-node sampling), which is unbiased and reduces cost by a
+    factor of k/V.
     """
     n = sub_adj.shape[0]
     if n == 0:
@@ -279,7 +296,13 @@ def _compute_centrality(
 
         G = nx.from_scipy_sparse_array(sub_adj, edge_attribute="weight")
         if kind == "betweenness":
-            d = nx.betweenness_centrality(G, weight="weight", normalized=True)
+            if n > betweenness_exact_threshold:
+                k = min(betweenness_sample_k, n)
+                d = nx.betweenness_centrality(
+                    G, k=k, weight="weight", normalized=True, seed=0,
+                )
+            else:
+                d = nx.betweenness_centrality(G, weight="weight", normalized=True)
         elif kind == "eigenvector":
             try:
                 d = nx.eigenvector_centrality_numpy(G, weight="weight")

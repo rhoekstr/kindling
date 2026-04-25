@@ -1,0 +1,113 @@
+{
+  "dataset": "yelp2018",
+  "fractions": [
+    1.0
+  ],
+  "k": 10,
+  "retrieval_budget": 500,
+  "kindling_version": "0.0.1.dev0",
+  "cells": [
+    {
+      "dataset": "yelp2018",
+      "fraction": 1.0,
+      "retriever": "cooccurrence",
+      "ranker": "cooccurrence",
+      "ndcg_at_k": 0.03655727898311255,
+      "recall_topk": 0.22,
+      "recall_budget": 0.882,
+      "mrr": 0.09159761904761905,
+      "p95_ms": 2.5572600075975047
+    },
+    {
+      "dataset": "yelp2018",
+      "fraction": 1.0,
+      "retriever": "path_tail",
+      "ranker": "path_tail",
+      "ndcg_at_k": 0.0,
+      "recall_topk": 0.0,
+      "recall_budget": 0.0,
+      "mrr": 0.0,
+      "p95_ms": 1.86782261589542
+    },
+    {
+      "dataset": "yelp2018",
+      "fraction": 1.0,
+      "retriever": "path_full",
+      "ranker": "path_full",
+      "ndcg_at_k": 0.0,
+      "recall_topk": 0.0,
+      "recall_budget": 0.0,
+      "mrr": 0.0,
+      "p95_ms": 0.3084202762693167
+    },
+    {
+      "dataset": "yelp2018",
+      "fraction": 1.0,
+      "retriever": "path_basket",
+      "ranker": "path_basket",
+      "ndcg_at_k": 0.0,
+      "recall_topk": 0.0,
+      "recall_budget": 0.0,
+      "mrr": 0.0,
+      "p95_ms": 1.7531108926050363
+    },
+    {
+      "dataset": "yelp2018",
+      "fraction": 1.0,
+      "retriever": "item_item_cosine",
+      "ranker": "item_item_cosine",
+      "ndcg_at_k": 0.0402371933536047,
+      "recall_topk": 0.254,
+      "recall_budget": 0.918,
+      "mrr": 0.08766587301587302,
+      "p95_ms": 5.585685779806226
+    },
+    {
+      "dataset": "yelp2018",
+      "fraction": 1.0,
+      "retriever": "persona",
+      "ranker": "persona",
+      "ndcg_at_k": 0.027092791747872484,
+      "recall_topk": 0.176,
+      "recall_budget": 0.822,
+      "mrr": 0.06427222222222223,
+      "p95_ms": 1.6538085299544036
+    },
+    {
+      "dataset": "yelp2018",
+      "fraction": 1.0,
+      "retriever": "lightgcn",
+      "ranker": "lightgcn",
+      "ndcg_at_k": 0.02081881689919593,
+      "recall_topk": 0.126,
+      "recall_budget": 0.768,
+      "mrr": 0.0540484126984127,
+      "p95_ms": 5.365054588764903
+    },
+    {
+      "dataset": "yelp2018",
+      "fraction": 1.0,
+      "retriever": "temporal_cooccurrence",
+      "ranker": "temporal_cooccurrence",
+      "ndcg_at_k": 0.03752298668064084,
+      "recall_topk": 0.214,
+      "recall_budget": 0.89,
+      "mrr": 0.09412301587301587,
+      "p95_ms": 2.0727747585624443
+    }
+  ],
+  "fit_timings_per_fraction": {
+    "1.0": {
+      "item_graph": 1.4601284998934716,
+      "tail_index": 0.018038500100374222,
+      "path_tree": 0.018058083951473236,
+      "basket_index": 0.018718957901000977,
+      "item_cosine": 3.3297898329328746,
+      "als": 0.00014229188673198223,
+      "lightgcn": 678.8723531248979,
+      "temporal_graph": 17.755560416029766,
+      "persona": 870.2938080001622,
+      "bayesian_blend": 4.086789041059092
+    }
+  }
+}

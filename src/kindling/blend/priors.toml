@@ -81,3 +81,19 @@ targets = ["path_full", "path_tail", "path_basket"]
 # have measured per-dataset behavior.
 target = "persona"
 alpha = 1.0
+
+[temporal_cooccurrence_baseline]
+# Temporal cooccurrence is the direct-lookup version of cooccurrence
+# with time-decay-weighted edges. When the substrate's session-presence
+# guard detects real session structure (grocery-style: midpoint > 300s),
+# the kernel actively helps. When it detects rating-burst data (ml1m-
+# style), the kernel falls back to pure-count and the signal becomes a
+# near-duplicate of cooccurrence that the VI decorrelator handles.
+# Start with the same prior as cooccurrence; empirical tuning pending.
+target = "temporal_cooccurrence"
+alpha = 2.0
+
+# path_full is zeroed in _compute_signal_features (DEACTIVATED_SIGNALS).
+# No prior override needed: a column of zeros + any prior drives the
+# posterior mean to ~0 after VI convergence. Keeping the default
+# path_full prior avoids breaking existing tests that assert on it.

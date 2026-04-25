@@ -207,6 +207,56 @@ def run_probe(
         flush=True,
     )
 
+    # --- temporal_cooccurrence: direct kernel-weighted lookup, no walk.
+    # The cleanest test of "does the kernel add ranking value vs count
+    # edges?" because it uses the same scoring mechanism as cooc (direct
+    # sum over owned-item edges) but with kernel-weighted edges. ---
+    def retrieve_temporal_cooc(entity, owned, history, exclude, budget):
+        if owned.size == 0:
+            return []
+        owned_idx = np.fromiter(
+            (item_index.get(it, -1) for it in owned.tolist()),
+            dtype=np.int64, count=owned.size,
+        )
+        owned_idx = owned_idx[owned_idx >= 0]
+        excl_set = {int(item_index[it]) for it in (exclude or set()) if it in item_index}
+        excl_set.update(int(i) for i in owned_idx.tolist())
+        scores = tgraph.score_against_owned(owned_idx, exclude_indices=excl_set)
+        if scores.max() <= 0:
+            return []
+        if budget < scores.size:
+            top_idx = np.argpartition(-scores, budget)[:budget]
+            top_idx = top_idx[scores[top_idx] > 0]
+            order = np.argsort(-scores[top_idx])
+            top_idx = top_idx[order]
+        else:
+            top_idx = np.argsort(-scores)
+            top_idx = top_idx[scores[top_idx] > 0]
+        return [
+            Candidate(
+                item_id=tgraph.item_ids[i],
+                score=float(scores[i]),
+                source="temporal_cooccurrence",
+            )
+            for i in top_idx
+        ]
+
+    cell = _evaluate_retriever(
+        "temporal_cooccurrence",
+        f"kernel={tgraph.kernel_params.strategy}",
+        retrieve_temporal_cooc,
+        eval_entities, train_items, test_items,
+        engine._owned_by_entity, engine._history_by_entity,
+        catalog_size, retrieval_budget, k, dataset,
+    )
+    cells.append(cell)
+    print(
+        f"  temporal_cooccurrence   NDCG={cell.ndcg_at_k:.4f}  "
+        f"R@K={cell.recall_topk:.3f}  R@B={cell.recall_budget:.3f}  "
+        f"p95={cell.p95_ms:.1f}ms",
+        flush=True,
+    )
+
     # --- interaction_network (PPR on temporal graph) ---
     print(f"  building interaction_network model ...", flush=True)
     t0 = time.perf_counter()
