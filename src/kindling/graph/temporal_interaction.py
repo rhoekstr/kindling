@@ -62,57 +62,78 @@ _DEFAULT_MAX_HISTORY = 200
 
 @dataclass(frozen=True)
 class KernelParams:
-    """Logistic-decay kernel parameters.
+    """Hybrid logistic-decay kernel parameters.
+
+    The kernel computes per-pair weight as
+
+        weight(dt) = 1 + alpha * logistic(dt; midpoint, steepness)
+
+    The ``+1`` baseline ensures every co-occurrence pair contributes at
+    least its raw count, preserving the candidate-pool coverage that
+    standard cooc gives. The ``alpha * logistic(dt)`` term adds an
+    additional boost for temporally-close pairs (up to ``alpha``
+    additional weight at dt=0). On long-time-horizon datasets like
+    gowalla, this keeps far-apart-but-real cooccurrences visible while
+    still emphasizing close-in-time pairs.
+
+    Pure-count mode collapses to ``weight(dt) = 1`` (the +alpha term is
+    suppressed), which is identical to the standard cooc graph
+    semantics.
 
     Attributes
     ----------
     midpoint_seconds:
-        Time gap (seconds) where the kernel transitions through 0.5.
-        For timestamped data this is the GMM's bimodal threshold (the
-        natural session-vs-cross-session boundary).
+        Time gap (seconds) where the logistic transitions through 0.5.
+        For timestamped data this is the GMM's bimodal threshold.
     steepness_seconds:
-        Width of the transition region (seconds). Larger = smoother
-        transition. Defaults to the within-component sigma from the GMM.
+        Width of the transition region. Defaults to the within-component
+        sigma from the GMM.
     pure_count:
-        When True, kernel(dt) = 1 for every pair (fallback when no
-        usable timestamps or no bimodal session structure).
+        When True, kernel(dt) = 1 for every pair. The boost term is
+        suppressed.
     strategy:
-        How the kernel was calibrated. ``"gmm"`` | ``"manual_fallback"``
-        | ``"pure_count"``.
+        ``"gmm"`` | ``"manual_fallback"`` | ``"pure_count"`` |
+        ``"rating_burst_detected"``.
+    alpha:
+        Multiplier on the logistic-boost term. Default 1.0 doubles the
+        weight of dt=0 pairs versus dt=infinity pairs. Set to 0 to
+        disable the boost (equivalent to pure_count).
     """
 
     midpoint_seconds: float
     steepness_seconds: float
     pure_count: bool
     strategy: str
+    alpha: float = 1.0
 
     def kernel(self, dt: np.ndarray | float) -> np.ndarray | float:
-        if self.pure_count:
+        """Hybrid weight: 1 (cooc baseline) + alpha * logistic(dt).
+
+        On dt=0 returns 1 + alpha; on large dt returns ~1.
+        """
+        if self.pure_count or self.alpha == 0.0:
             if isinstance(dt, np.ndarray):
                 return np.ones_like(dt, dtype=np.float64)
             return 1.0
-        # Numerically stable logistic, branched on sign to avoid overflow
-        # for large positive z.
+        # Numerically stable logistic, branched on sign to avoid overflow.
         z = (np.asarray(dt, dtype=np.float64) - self.midpoint_seconds) / max(
             self.steepness_seconds, 1e-6
         )
         with np.errstate(over="ignore"):
             pos = z >= 0
-            out = np.empty_like(z, dtype=np.float64)
-            # For z >= 0: 1/(1 + e^z) — exp doesn't overflow because we
-            # mask the negative branch out, but the e^z for very large z
-            # rounds to inf and 1/inf = 0, which is the correct limit.
-            out[pos] = 1.0 / (1.0 + np.exp(z[pos]))
-            out[~pos] = 1.0 - 1.0 / (1.0 + np.exp(-z[~pos]))
+            logistic = np.empty_like(z, dtype=np.float64)
+            logistic[pos] = 1.0 / (1.0 + np.exp(z[pos]))
+            logistic[~pos] = 1.0 - 1.0 / (1.0 + np.exp(-z[~pos]))
+        out = 1.0 + self.alpha * logistic
         return float(out) if np.isscalar(dt) or np.ndim(dt) == 0 else out
 
     def cutoff_seconds(self) -> float:
-        """Time gap above which kernel(dt) < ``_KERNEL_CUTOFF``."""
-        if self.pure_count:
-            return float("inf")
-        # Solve 1/(1+exp(z)) = cutoff → z = log(1/cutoff - 1)
-        z = float(np.log(1.0 / _KERNEL_CUTOFF - 1.0))
-        return self.midpoint_seconds + z * self.steepness_seconds
+        """Cutoff is now infinity for the hybrid kernel - we always
+        emit pairs because the +1 baseline keeps far-apart pairs
+        contributing real weight. Only used by the legacy two-pointer
+        walk perf path; in the all-pairs builder it's ignored.
+        """
+        return float("inf")
 
 
 @dataclass(frozen=True)
@@ -508,40 +529,46 @@ def _user_pairs(
     kernel: KernelParams,
     cutoff: float,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Generate within-window pair contributions for one sorted user history.
+    """Generate all-pairs contributions for one sorted user history.
 
-    For each event i, walk forward through events j > i while
-    ts[j] - ts[i] <= cutoff and emit (i, j, kernel(dt)) tuples. This
-    avoids the O(N^2) all-pairs enumeration when most pairs would
-    contribute kernel weight below the cutoff anyway.
+    With the hybrid kernel (weight = 1 + alpha * logistic(dt)), far-
+    apart pairs still get baseline weight 1, so we always emit every
+    pair within the user's history window. The earlier two-pointer
+    cutoff was a perf optimization for the old replace-with-zero
+    kernel; it dropped legitimate cross-time pairs on long-time-horizon
+    datasets (gowalla, amazon-beauty) and exposed a candidate-pool
+    coverage defect.
 
-    For pure-count kernels (cutoff=inf), every pair contributes 1.0;
-    we still walk forward to avoid duplicating pairs.
+    Cost is O(N^2) per user where N is capped at ``max_history_per_user``
+    (default 200) by the caller, so this is bounded.
+
+    The ``cutoff`` argument is retained for signature stability but
+    ignored when the hybrid kernel's baseline keeps all pairs valid.
     """
     n = items.size
     if n < 2:
         return np.empty(0, np.int64), np.empty(0, np.int64), np.empty(0, np.float64)
 
-    # Two-pointer walk: for each i, find largest j_max with ts[j_max] - ts[i] <= cutoff.
-    rows: list[int] = []
-    cols: list[int] = []
-    weights: list[float] = []
-    j = 1
-    for i in range(n - 1):
-        while j < n and ts[j] - ts[i] <= cutoff:
-            j += 1
-        # j is now first index past the cutoff. Pairs (i, i+1)..(i, j-1) are valid.
-        for k in range(i + 1, j):
-            a, b = int(items[i]), int(items[k])
-            if a == b:
-                continue
-            w = float(kernel.kernel(np.float64(ts[k] - ts[i])))
-            if w >= _KERNEL_CUTOFF:
-                rows.append(a)
-                cols.append(b)
-                weights.append(w)
+    # Vectorized all-pairs enumeration. Build the upper-triangle indices
+    # and compute their weights in one shot. Cheap for n <= 200.
+    i_idx, k_idx = np.triu_indices(n, k=1)
+    a = items[i_idx]
+    b = items[k_idx]
+    same = a == b
+    if same.all():
+        return np.empty(0, np.int64), np.empty(0, np.int64), np.empty(0, np.float64)
+    keep = ~same
+    a = a[keep]
+    b = b[keep]
+    dt = np.abs(ts[k_idx[keep]] - ts[i_idx[keep]])
+    weights = kernel.kernel(dt)
+    # Convert scalar return to array if needed.
+    if np.isscalar(weights):
+        weights = np.full(a.shape[0], float(weights), dtype=np.float64)
+    else:
+        weights = np.asarray(weights, dtype=np.float64)
     return (
-        np.asarray(rows, dtype=np.int64),
-        np.asarray(cols, dtype=np.int64),
-        np.asarray(weights, dtype=np.float64),
+        a.astype(np.int64),
+        b.astype(np.int64),
+        weights,
     )

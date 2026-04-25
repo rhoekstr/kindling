@@ -63,9 +63,14 @@ def test_gmm_calibration_with_bimodal_sessions() -> None:
     assert kp.strategy == "gmm"
     assert not kp.pure_count
     assert 60 < kp.midpoint_seconds < 86400
-    # kernel should be ~1 within sessions and ~0 across sessions.
-    assert float(kp.kernel(np.float64(60))) > 0.9
-    assert float(kp.kernel(np.float64(86400 * 7))) < 0.01
+    # Hybrid kernel: weight = 1 + alpha * logistic(dt). Within-session
+    # pairs land near 1 + alpha (close to 2.0 with default alpha=1);
+    # across-session pairs decay back toward the +1 cooc baseline.
+    within = float(kp.kernel(np.float64(60)))
+    across = float(kp.kernel(np.float64(86400 * 7)))
+    assert within > 1.5  # within-session boost is most of alpha
+    assert across < 1.1  # across-session boost is small (asymptote at 1)
+    assert within > across  # close pairs strictly prefer to far pairs
 
 
 def test_symmetric_adjacency_zero_diagonal() -> None:
@@ -113,22 +118,34 @@ def test_drops_items_outside_index() -> None:
     assert A[1, 2] == 0
 
 
-def test_kernel_cutoff_truncates_distant_pairs() -> None:
-    # Two events 1 hour apart, then a third 10 days later. Cutoff should
-    # exclude the (event1, event3) and (event2, event3) pairs.
+def test_hybrid_kernel_preserves_far_pairs() -> None:
+    """Hybrid kernel: weight = 1 + alpha * logistic(dt). Far-apart
+    pairs get baseline weight ~1 (preserved cooc semantics) and
+    close-in-time pairs get an additional boost up to alpha.
+
+    This was the design fix for the gowalla regression: the prior
+    kernel returned 0 for far pairs and dropped legitimate cross-time
+    co-occurrences, costing -23% NDCG and -28% recall@budget on
+    long-time-horizon datasets.
+    """
     base = pd.Timestamp("2024-01-01").value // 10**9
     df = _df([
         {"entity_id": 1, "item_id": 0, "timestamp": pd.to_datetime(base, unit="s")},
         {"entity_id": 1, "item_id": 1, "timestamp": pd.to_datetime(base + 3600, unit="s")},
         {"entity_id": 1, "item_id": 2, "timestamp": pd.to_datetime(base + 86400 * 10, unit="s")},
     ])
-    # Manual narrow kernel: 1-hour midpoint, very steep.
     kp = KernelParams(midpoint_seconds=3600, steepness_seconds=600, pure_count=False, strategy="manual_fallback")
     g = build_temporal_interaction_graph(df, item_index={0: 0, 1: 1, 2: 2}, kernel_params=kp)
     A = g.adjacency.toarray()
-    assert A[0, 1] > 0  # 1 hour - inside the kernel midpoint
-    assert A[0, 2] == 0  # 10 days - past the cutoff
-    assert A[1, 2] == 0
+    # Close pair (1 hour) gets logistic boost.
+    assert A[0, 1] > 1.0
+    # Far pairs (10 days) preserved at ~1 (kernel boost vanishes but
+    # baseline keeps them).
+    assert A[0, 2] >= 1.0 - 1e-6
+    assert A[1, 2] >= 1.0 - 1e-6
+    # Close pair strictly outscores far pairs.
+    assert A[0, 1] > A[0, 2]
+    assert A[0, 1] > A[1, 2]
 
 
 def test_empty_input_produces_empty_graph() -> None:
