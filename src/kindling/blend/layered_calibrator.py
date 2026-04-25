@@ -94,6 +94,9 @@ def calibrate(
     k: int = 10,
     rng_seed: int = 0,
     tie_tolerance: float = 0.003,
+    sparse_data_threshold: float = 20.0,
+    sparse_data_boost_ceiling: float = 3.0,
+    min_lift_over_cooc_only: float = 0.0,
 ) -> CalibrationResult:
     """Sweep (z, boost) grid on leave-one-out training data.
 
@@ -123,6 +126,24 @@ def calibrate(
         Cells whose NDCG falls within this delta of the best are
         treated as tied. When the top is fully tied, fall back to
         the default config to avoid arbitrary picks.
+    sparse_data_threshold:
+        When the average events-per-user is below this number, the
+        calibrator caps boost_multiplier at ``sparse_data_boost_ceiling``
+        to avoid amplifying noise. The growth-curve probe showed that
+        on sparse data (5% grocery: 10 events/user) the calibrator
+        otherwise picks aggressive boosts and loses to cooc-alone by
+        5-6% NDCG. Default 20.0 events/user.
+    sparse_data_boost_ceiling:
+        Maximum boost_multiplier allowed when sparse-data threshold
+        triggers. Default 3.0.
+    min_lift_over_cooc_only:
+        Minimum NDCG lift the best cell must have over cooc-only
+        ranking on the held-out slice. When no cell beats cooc-only
+        by this margin, the calibrator falls back to a degenerate
+        config (boost_multiplier=0) that effectively disables
+        boosting and returns plain cooc ranking. This protects
+        against scenarios where the layered approach can't beat
+        cooc but the calibrator's grid sweep still picks SOMETHING.
     """
     from kindling.benchmarks.metrics import aggregate
     from kindling.benchmarks.probe_layered import (
@@ -212,6 +233,35 @@ def calibrate(
             elapsed_seconds=time.perf_counter() - t0,
         )
 
+    # Sparse-data guard: average events-per-user across the eligible
+    # population. When low, cap boost_multiplier to avoid amplifying
+    # noise. (Growth-curve probe on grocery showed 5% data
+    # avg=10/user gave -5.6% NDCG with default boost=5.0.)
+    avg_events = float(np.mean([
+        engine._owned_by_entity.get(c["entity"], np.array([])).size
+        for c in cached
+    ]))
+    if avg_events < sparse_data_threshold:
+        boost_grid = tuple(b for b in boost_grid if b <= sparse_data_boost_ceiling)
+        if not boost_grid:
+            boost_grid = (sparse_data_boost_ceiling,)
+
+    # Cooc-only baseline on the same held-out slice. Used to ensure
+    # the chosen cell actually beats cooc-alone by a meaningful
+    # margin. If not, fall back to boost_multiplier=0.
+    cooc_per_entity: list[tuple[list[object], set[object]]] = []
+    for c in cached:
+        primary = c["cooc"]
+        order = np.argsort(-primary)
+        top = [c["cand_ids"][int(i)] for i in order[:k] if primary[int(i)] > 0.0]
+        cooc_per_entity.append((top, c["held_out_items"]))
+    cooc_baseline = aggregate(
+        cooc_per_entity,
+        catalog_size=engine._item_graph.n_items,
+        k=k,
+    )
+    cooc_only_ndcg = float(cooc_baseline.ndcg_at_k)
+
     # Sweep grid.
     grid_results: list[dict[str, float]] = []
     for z in z_grid:
@@ -244,6 +294,25 @@ def calibrate(
     # against overfitting on noisy calibration samples.
     sorted_grid = sorted(grid_results, key=lambda r: -r["ndcg"])
     best_ndcg = sorted_grid[0]["ndcg"]
+
+    # Lift-over-cooc-only check: if NO cell on the grid beats the
+    # cooc-only baseline by min_lift_over_cooc_only, layered isn't
+    # adding anything on this dataset. Return a degenerate config
+    # with boost_multiplier=0 so the engine effectively does cooc-
+    # only ranking. This protects sparse / no-information regimes
+    # like yelp where the calibrator otherwise "wins" by random.
+    if best_ndcg - cooc_only_ndcg < min_lift_over_cooc_only:
+        return CalibrationResult(
+            best_config=LayeredConfig(
+                z_threshold=LayeredConfig().z_threshold,
+                boost_multiplier=0.0,  # disable boosting
+            ),
+            grid_results=grid_results,
+            n_users_evaluated=len(cached),
+            elapsed_seconds=time.perf_counter() - t0,
+            fallback_to_default=True,
+        )
+
     tied = [r for r in sorted_grid if best_ndcg - r["ndcg"] <= tie_tolerance]
     if len(tied) == len(grid_results):
         # Fully degenerate - fall back to default.

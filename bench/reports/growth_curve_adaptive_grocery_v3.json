@@ -1,0 +1,317 @@
+{
+  "dataset": "synthetic-grocery-deep",
+  "fractions": [
+    0.05,
+    0.1,
+    0.25,
+    0.5,
+    1.0
+  ],
+  "kindling_version": "0.0.1.dev0",
+  "growth": [
+    {
+      "fraction": 0.05,
+      "n_interactions": 8100,
+      "n_eval_entities": 500,
+      "profile": {
+        "n_users": 812,
+        "n_items": 200,
+        "user_density": "moderate",
+        "item_density": "dense",
+        "avg_events_per_user": 9.975369458128078,
+        "time_use": "weak_bimodality",
+        "session_depth": "deep",
+        "deep_session_fraction": 1.0,
+        "repeat_dataset": false,
+        "repeat_user_fraction": 0.0,
+        "notes": []
+      },
+      "plan": {
+        "subsystems": [
+          "item_graph",
+          "path_tail",
+          "temporal_graph",
+          "session_cooc_graph",
+          "path_basket"
+        ],
+        "boost_layers": [
+          "path_basket",
+          "session_cooccurrence",
+          "temporal_cooccurrence"
+        ],
+        "temporal_kernel_active": false,
+        "repeat_module_active": false,
+        "rationale": {
+          "temporal_graph": "timestamps present",
+          "temporal_kernel": "time_use=weak_bimodality -> kernel off (pure-count)",
+          "session_cooc_graph": "session_depth=deep, time_use=weak_bimodality -> session structure usable",
+          "path_basket": "session_depth=deep - basket signals viable",
+          "repeat_module": "repeat_user_fraction=0% < 10% threshold - off"
+        }
+      },
+      "bayesian": {
+        "ndcg_at_k": 0.15731679634703705,
+        "mrr": 0.2973857142857143,
+        "recall_topk": 0.624,
+        "p95_ms": 1.364385348279029,
+        "fit_seconds": 0.6817092909477651
+      },
+      "layered": {
+        "ndcg_at_k": 0.14784280523675217,
+        "mrr": 0.2748619047619048,
+        "recall_topk": 0.616,
+        "p95_ms": 1.4308100217022,
+        "fit_seconds": 0.8265880839899182,
+        "calibrated_z": 2.5,
+        "calibrated_boost": 3.0
+      },
+      "delta_ndcg": -0.00947399111028488,
+      "delta_rel_pct": -6.022237504370153
+    },
+    {
+      "fraction": 0.1,
+      "n_interactions": 16200,
+      "n_eval_entities": 500,
+      "profile": {
+        "n_users": 1500,
+        "n_items": 200,
+        "user_density": "moderate",
+        "item_density": "dense",
+        "avg_events_per_user": 10.8,
+        "time_use": "session_consumption",
+        "session_depth": "deep",
+        "deep_session_fraction": 1.0,
+        "repeat_dataset": false,
+        "repeat_user_fraction": 0.046,
+        "notes": []
+      },
+      "plan": {
+        "subsystems": [
+          "item_graph",
+          "path_tail",
+          "temporal_graph",
+          "session_cooc_graph",
+          "path_basket"
+        ],
+        "boost_layers": [
+          "path_basket",
+          "session_cooccurrence",
+          "temporal_cooccurrence"
+        ],
+        "temporal_kernel_active": true,
+        "repeat_module_active": false,
+        "rationale": {
+          "temporal_graph": "timestamps present",
+          "temporal_kernel": "time_use=session_consumption -> kernel on",
+          "session_cooc_graph": "session_depth=deep, time_use=session_consumption -> session structure usable",
+          "path_basket": "session_depth=deep - basket signals viable",
+          "repeat_module": "repeat_user_fraction=5% < 10% threshold - off"
+        }
+      },
+      "bayesian": {
+        "ndcg_at_k": 0.14065702791346615,
+        "mrr": 0.2470111111111111,
+        "recall_topk": 0.592,
+        "p95_ms": 3.0591708375141025,
+        "fit_seconds": 1.9774771670345217
+      },
+      "layered": {
+        "ndcg_at_k": 0.1436290440311633,
+        "mrr": 0.2515547619047619,
+        "recall_topk": 0.584,
+        "p95_ms": 1.9697106210514903,
+        "fit_seconds": 2.1824910829309374,
+        "calibrated_z": 3.0,
+        "calibrated_boost": 3.0
+      },
+      "delta_ndcg": 0.0029720161176971516,
+      "delta_rel_pct": 2.11295245021498
+    },
+    {
+      "fraction": 0.25,
+      "n_interactions": 40500,
+      "n_eval_entities": 500,
+      "profile": {
+        "n_users": 1500,
+        "n_items": 200,
+        "user_density": "moderate",
+        "item_density": "very_dense",
+        "avg_events_per_user": 27.0,
+        "time_use": "session_consumption",
+        "session_depth": "deep",
+        "deep_session_fraction": 1.0,
+        "repeat_dataset": true,
+        "repeat_user_fraction": 0.854,
+        "notes": [
+          "repeat-friendly: repeat module expected to add value"
+        ]
+      },
+      "plan": {
+        "subsystems": [
+          "item_graph",
+          "path_tail",
+          "temporal_graph",
+          "session_cooc_graph",
+          "path_basket",
+          "repeat_module"
+        ],
+        "boost_layers": [
+          "path_basket",
+          "session_cooccurrence",
+          "temporal_cooccurrence"
+        ],
+        "temporal_kernel_active": true,
+        "repeat_module_active": true,
+        "rationale": {
+          "temporal_graph": "timestamps present",
+          "temporal_kernel": "time_use=session_consumption -> kernel on",
+          "session_cooc_graph": "session_depth=deep, time_use=session_consumption -> session structure usable",
+          "path_basket": "session_depth=deep - basket signals viable",
+          "repeat_module": "repeat_user_fraction=85% >= threshold - on"
+        }
+      },
+      "bayesian": {
+        "ndcg_at_k": 0.1756042389704657,
+        "mrr": 0.30259444444444444,
+        "recall_topk": 0.654,
+        "p95_ms": 6.426393496803937,
+        "fit_seconds": 1.875809459015727
+      },
+      "layered": {
+        "ndcg_at_k": 0.17632362589006628,
+        "mrr": 0.3004174603174603,
+        "recall_topk": 0.654,
+        "p95_ms": 6.290092982817441,
+        "fit_seconds": 2.57248116703704,
+        "calibrated_z": 2.0,
+        "calibrated_boost": 3.0
+      },
+      "delta_ndcg": 0.0007193869196005787,
+      "delta_rel_pct": 0.40966375516798886
+    },
+    {
+      "fraction": 0.5,
+      "n_interactions": 81000,
+      "n_eval_entities": 500,
+      "profile": {
+        "n_users": 1500,
+        "n_items": 200,
+        "user_density": "dense",
+        "item_density": "very_dense",
+        "avg_events_per_user": 54.0,
+        "time_use": "session_consumption",
+        "session_depth": "deep",
+        "deep_session_fraction": 1.0,
+        "repeat_dataset": true,
+        "repeat_user_fraction": 1.0,
+        "notes": [
+          "repeat-friendly: repeat module expected to add value"
+        ]
+      },
+      "plan": {
+        "subsystems": [
+          "item_graph",
+          "path_tail",
+          "temporal_graph",
+          "session_cooc_graph",
+          "path_basket",
+          "repeat_module"
+        ],
+        "boost_layers": [
+          "path_basket",
+          "session_cooccurrence",
+          "temporal_cooccurrence"
+        ],
+        "temporal_kernel_active": true,
+        "repeat_module_active": true,
+        "rationale": {
+          "temporal_graph": "timestamps present",
+          "temporal_kernel": "time_use=session_consumption -> kernel on",
+          "session_cooc_graph": "session_depth=deep, time_use=session_consumption -> session structure usable",
+          "path_basket": "session_depth=deep - basket signals viable",
+          "repeat_module": "repeat_user_fraction=100% >= threshold - on"
+        }
+      },
+      "bayesian": {
+        "ndcg_at_k": 0.22883289634087442,
+        "mrr": 0.3319627717218079,
+        "recall_topk": 0.7449799196787149,
+        "p95_ms": 15.67668174393475,
+        "fit_seconds": 4.943434208864346
+      },
+      "layered": {
+        "ndcg_at_k": 0.22712817960263215,
+        "mrr": 0.3323643781475107,
+        "recall_topk": 0.7429718875502008,
+        "p95_ms": 15.701891237404197,
+        "fit_seconds": 6.787208582973108,
+        "calibrated_z": 2.5,
+        "calibrated_boost": 3.0
+      },
+      "delta_ndcg": -0.0017047167382422679,
+      "delta_rel_pct": -0.7449613956303227
+    },
+    {
+      "fraction": 1.0,
+      "n_interactions": 162000,
+      "n_eval_entities": 500,
+      "profile": {
+        "n_users": 1500,
+        "n_items": 200,
+        "user_density": "dense",
+        "item_density": "very_dense",
+        "avg_events_per_user": 108.0,
+        "time_use": "session_consumption",
+        "session_depth": "deep",
+        "deep_session_fraction": 1.0,
+        "repeat_dataset": true,
+        "repeat_user_fraction": 1.0,
+        "notes": [
+          "repeat-friendly: repeat module expected to add value"
+        ]
+      },
+      "plan": {
+        "subsystems": [
+          "item_graph",
+          "path_tail",
+          "temporal_graph",
+          "session_cooc_graph",
+          "path_basket",
+          "repeat_module"
+        ],
+        "boost_layers": [
+          "path_basket",
+          "session_cooccurrence",
+          "temporal_cooccurrence"
+        ],
+        "temporal_kernel_active": true,
+        "repeat_module_active": true,
+        "rationale": {
+          "temporal_graph": "timestamps present",
+          "temporal_kernel": "time_use=session_consumption -> kernel on",
+          "session_cooc_graph": "session_depth=deep, time_use=session_consumption -> session structure usable",
+          "path_basket": "session_depth=deep - basket signals viable",
+          "repeat_module": "repeat_user_fraction=100% >= threshold - on"
+        }
+      },
+      "bayesian": {
+        "ndcg_at_k": 0.31967283436745825,
+        "mrr": 0.3513585238428006,
+        "recall_topk": 0.7379454926624738,
+        "p95_ms": 26.2260350282304,
+        "fit_seconds": 9.569645874900743
+      },
+      "layered": {
+        "ndcg_at_k": 0.31980217444049036,
+        "mrr": 0.3553217862966291,
+        "recall_topk": 0.7379454926624738,
+        "p95_ms": 26.189889584202316,
+        "fit_seconds": 12.51960612507537,
+        "calibrated_z": 2.5,
+        "calibrated_boost": 3.0
+      },
+      "delta_ndcg": 0.0001293400730321137,
+      "delta_rel_pct": 0.0404601389692812
+    }
+  ]
+}
