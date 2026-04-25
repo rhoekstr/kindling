@@ -1,0 +1,24 @@
+{
+  "dataset": "movielens-1m",
+  "n_eval_entities": 500,
+  "kindling_version": "0.0.1.dev0",
+  "bayesian_blend": {
+    "ndcg_at_k": 0.2877993153155786,
+    "mrr": 0.45543809523809525,
+    "recall_topk": 0.712,
+    "p95_ms": 44.017910445108996,
+    "fit_seconds": 140.28745008306578
+  },
+  "layered_adaptive": {
+    "ndcg_at_k": 0.28793567956881727,
+    "mrr": 0.4546087301587301,
+    "recall_topk": 0.71,
+    "p95_ms": 45.34129131352529,
+    "fit_seconds": 185.81952591706067,
+    "calibrated_z": 2.5,
+    "calibrated_boost": 3.0,
+    "calibration_seconds": 25.07401437498629
+  },
+  "delta_ndcg": 0.0001363642532386522,
+  "delta_rel_pct": 0.047381715654578827
+}

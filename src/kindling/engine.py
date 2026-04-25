@@ -351,6 +351,11 @@ class Engine:
         # auto-calibration.
         self._layered_calibration: object | None = None
 
+        # Dataset profile + layer plan, computed during fit() once the
+        # substrates that inform the decisions are available.
+        self._dataset_profile: object | None = None
+        self._layer_plan: object | None = None
+
         # Per-subsystem fit timings (seconds). Populated during fit()
         # for benchmarks + diagnostics. Keys: item_graph, item_cosine,
         # als, path_tree, tail_index, basket_index, persona, lightgcn,
@@ -527,6 +532,22 @@ class Engine:
             item_index=self._item_graph.item_index,
         )
         self._fit_timings["temporal_graph"] = _time.perf_counter() - _t0
+
+        # Dataset profile + layer plan. Computed once after the substrates
+        # that drive its decisions are available (item_graph, session
+        # inference, temporal kernel calibration). Exposes the engine's
+        # data-shape conclusion via posterior_summary() so users see why
+        # each layer was enabled or skipped.
+        _t0 = _time.perf_counter()
+        from kindling.profile import plan_layers, profile_dataset
+
+        self._dataset_profile = profile_dataset(
+            interactions=self._interactions,
+            session_inference=self._session_inference,
+            kernel_params=self._temporal_graph.kernel_params,
+        )
+        self._layer_plan = plan_layers(self._dataset_profile)
+        self._fit_timings["profile_and_plan"] = _time.perf_counter() - _t0
 
         # Phase 4 re-rank state.
         self._population_baselines = compute_population_baselines(self._interactions)
