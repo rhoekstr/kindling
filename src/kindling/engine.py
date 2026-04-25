@@ -427,6 +427,31 @@ class Engine:
         self._item_graph = build_item_graph(self._interactions)
         self._fit_timings["item_graph"] = _time.perf_counter() - _t0
 
+        # Build the temporal interaction graph EARLY (before basket_index
+        # and the planning step). Its kernel calibration is what tells
+        # us if the dataset's timestamps are real-session vs rating-
+        # burst, and the plan needs that info to correctly gate
+        # path_basket / session_cooc on rating-burst data (ml1m's
+        # 87s midpoint would otherwise look like deep sessions).
+        # Cost: 1-50s depending on dataset size, vs basket_index's
+        # 90s+ on ml1m - net savings on rating-burst datasets.
+        _t0 = _time.perf_counter()
+        self._temporal_graph = build_temporal_interaction_graph(
+            interactions=self._interactions,
+            item_index=self._item_graph.item_index,
+        )
+        self._fit_timings["temporal_graph"] = _time.perf_counter() - _t0
+
+        # Profile + plan with full kernel info available.
+        from kindling.profile import plan_layers, profile_dataset
+
+        prelim_profile = profile_dataset(
+            interactions=self._interactions,
+            session_inference=self._session_inference,
+            kernel_params=self._temporal_graph.kernel_params,
+        )
+        prelim_plan = plan_layers(prelim_profile)
+
         # Session-cooccurrence: items co-occurring in the same session,
         # row dimension = session_id (vs item_graph's entity_id rows).
         # Auto-skips datasets without deep enough sessions; the
@@ -457,10 +482,21 @@ class Engine:
         )
         self._fit_timings["path_tree"] = _time.perf_counter() - _t0
 
+        # Plan-gated basket_index: skip the expensive inverted-index
+        # build when the plan says path_basket isn't in the enabled
+        # subsystems. On rating-burst datasets (ml1m) this saves
+        # 50-90s; on no-session datasets (yelp / amazon-beauty) it's
+        # already cheap so the savings are smaller. Pass [] when
+        # skipping so downstream code sees an empty but valid index.
         _t0 = _time.perf_counter()
-        self._basket_index = build_basket_index(
-            sessions, decay=self.decay, reference_timestamp=self._reference_timestamp
-        )
+        if "path_basket" in prelim_plan.enabled_subsystems:
+            self._basket_index = build_basket_index(
+                sessions, decay=self.decay, reference_timestamp=self._reference_timestamp
+            )
+        else:
+            self._basket_index = build_basket_index(
+                [], decay=self.decay, reference_timestamp=self._reference_timestamp
+            )
         self._fit_timings["basket_index"] = _time.perf_counter() - _t0
 
         # Kept for backward compatibility with the ranker-training
@@ -522,32 +558,12 @@ class Engine:
             )
             self._fit_timings["lightgcn"] = _time.perf_counter() - _t0
 
-        # Temporal interaction graph: substrate for the temporal_cooccurrence
-        # signal. Auto-calibrates the logistic-decay kernel via GMM on
-        # inter-event log-deltas; falls back to pure-count when timestamps
-        # are missing or session-presence guard detects rating-burst data.
-        _t0 = _time.perf_counter()
-        self._temporal_graph = build_temporal_interaction_graph(
-            interactions=self._interactions,
-            item_index=self._item_graph.item_index,
-        )
-        self._fit_timings["temporal_graph"] = _time.perf_counter() - _t0
-
-        # Dataset profile + layer plan. Computed once after the substrates
-        # that drive its decisions are available (item_graph, session
-        # inference, temporal kernel calibration). Exposes the engine's
-        # data-shape conclusion via posterior_summary() so users see why
-        # each layer was enabled or skipped.
-        _t0 = _time.perf_counter()
-        from kindling.profile import plan_layers, profile_dataset
-
-        self._dataset_profile = profile_dataset(
-            interactions=self._interactions,
-            session_inference=self._session_inference,
-            kernel_params=self._temporal_graph.kernel_params,
-        )
-        self._layer_plan = plan_layers(self._dataset_profile)
-        self._fit_timings["profile_and_plan"] = _time.perf_counter() - _t0
+        # Final dataset profile + plan stored on the engine for
+        # diagnostics. The temporal_graph + plan were already computed
+        # earlier (before basket_index) so the gate could fire correctly.
+        # Persist the plan that drove the actual subsystem builds.
+        self._dataset_profile = prelim_profile
+        self._layer_plan = prelim_plan
 
         # Phase 4 re-rank state.
         self._population_baselines = compute_population_baselines(self._interactions)
