@@ -1,0 +1,107 @@
+{
+  "dataset": "synthetic-grocery-deep",
+  "k": 10,
+  "n_eval_entities": 500,
+  "kindling_version": "0.0.1.dev0",
+  "temporal_graph": {
+    "n_edges": 39800,
+    "kernel_strategy": "gmm",
+    "kernel_midpoint_seconds": 1600.3253454336607,
+    "kernel_steepness_seconds": 160.03253454336607,
+    "kernel_pure_count": false
+  },
+  "neighborhood": {
+    "n_communities": 8,
+    "louvain_build_seconds": 0.1294352498371154
+  },
+  "cells": [
+    {
+      "dataset": "synthetic-grocery-deep",
+      "signal": "cooccurrence",
+      "variant": "default",
+      "ndcg_at_k": 0.31908233268459735,
+      "recall_topk": 0.7379454926624738,
+      "recall_budget": 1.0,
+      "mrr": 0.3509858240990317,
+      "p95_ms": 0.15647559193894264,
+      "n_eval_entities": 500
+    },
+    {
+      "dataset": "synthetic-grocery-deep",
+      "signal": "interaction_network",
+      "variant": "alpha=0.15;kernel=gmm",
+      "ndcg_at_k": 0.2897504383041396,
+      "recall_topk": 0.7190775681341719,
+      "recall_budget": 1.0,
+      "mrr": 0.3362159329140461,
+      "p95_ms": 0.6270611193031069,
+      "n_eval_entities": 500
+    },
+    {
+      "dataset": "synthetic-grocery-deep",
+      "signal": "interaction_network",
+      "variant": "alpha=0.15;kernel=pure_count_forced",
+      "ndcg_at_k": 0.2120263919094937,
+      "recall_topk": 0.6310272536687631,
+      "recall_budget": 1.0,
+      "mrr": 0.27356327576453365,
+      "p95_ms": 0.4071060218848286,
+      "n_eval_entities": 500
+    },
+    {
+      "dataset": "synthetic-grocery-deep",
+      "signal": "interaction_neighborhood",
+      "variant": "betweenness",
+      "ndcg_at_k": 0.2520043897164756,
+      "recall_topk": 0.6561844863731656,
+      "recall_budget": 0.6729559748427673,
+      "mrr": 0.29019416991115105,
+      "p95_ms": 17.89392076898366,
+      "n_eval_entities": 500
+    },
+    {
+      "dataset": "synthetic-grocery-deep",
+      "signal": "interaction_neighborhood",
+      "variant": "pagerank",
+      "ndcg_at_k": 0.2774002301692406,
+      "recall_topk": 0.6813417190775681,
+      "recall_budget": 0.7295597484276729,
+      "mrr": 0.3100570696482646,
+      "p95_ms": 0.4918375401757651,
+      "n_eval_entities": 500
+    },
+    {
+      "dataset": "synthetic-grocery-deep",
+      "signal": "interaction_neighborhood",
+      "variant": "eigenvector",
+      "ndcg_at_k": 0.28280012153760614,
+      "recall_topk": 0.6624737945492662,
+      "recall_budget": 0.7295597484276729,
+      "mrr": 0.3217971115769858,
+      "p95_ms": 1.486727304290979,
+      "n_eval_entities": 500
+    },
+    {
+      "dataset": "synthetic-grocery-deep",
+      "signal": "interaction_neighborhood",
+      "variant": "degree",
+      "ndcg_at_k": 0.27830235880689214,
+      "recall_topk": 0.6771488469601677,
+      "recall_budget": 0.7295597484276729,
+      "mrr": 0.31014941266513596,
+      "p95_ms": 0.1118961488828062,
+      "n_eval_entities": 500
+    },
+    {
+      "dataset": "synthetic-grocery-deep",
+      "signal": "interaction_neighborhood",
+      "variant": "closeness",
+      "ndcg_at_k": 0.27382996888259137,
+      "recall_topk": 0.6876310272536688,
+      "recall_budget": 0.7295597484276729,
+      "mrr": 0.29316828058966427,
+      "p95_ms": 14.31804338935762,
+      "n_eval_entities": 500
+    }
+  ]
+}

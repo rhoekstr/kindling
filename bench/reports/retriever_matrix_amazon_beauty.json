@@ -1,0 +1,101 @@
+{
+  "dataset": "amazon-beauty",
+  "fractions": [
+    1.0
+  ],
+  "k": 10,
+  "retrieval_budget": 500,
+  "kindling_version": "0.0.1.dev0",
+  "cells": [
+    {
+      "dataset": "amazon-beauty",
+      "fraction": 1.0,
+      "retriever": "cooccurrence",
+      "ranker": "cooccurrence",
+      "ndcg_at_k": 0.030292731510669284,
+      "recall_topk": 0.09,
+      "recall_budget": 0.356,
+      "mrr": 0.04192619047619047,
+      "p95_ms": 0.5040628253482282
+    },
+    {
+      "dataset": "amazon-beauty",
+      "fraction": 1.0,
+      "retriever": "path_tail",
+      "ranker": "path_tail",
+      "ndcg_at_k": 0.012876566401847254,
+      "recall_topk": 0.048,
+      "recall_budget": 0.066,
+      "mrr": 0.02176904761904762,
+      "p95_ms": 0.7712908671237528
+    },
+    {
+      "dataset": "amazon-beauty",
+      "fraction": 1.0,
+      "retriever": "path_full",
+      "ranker": "path_full",
+      "ndcg_at_k": 0.0014161600369604454,
+      "recall_topk": 0.006,
+      "recall_budget": 0.006,
+      "mrr": 0.006,
+      "p95_ms": 0.6073130061849952
+    },
+    {
+      "dataset": "amazon-beauty",
+      "fraction": 1.0,
+      "retriever": "path_basket",
+      "ranker": "path_basket",
+      "ndcg_at_k": 0.017981088619206467,
+      "recall_topk": 0.05,
+      "recall_budget": 0.244,
+      "mrr": 0.02555238095238095,
+      "p95_ms": 2.2865819977596376
+    },
+    {
+      "dataset": "amazon-beauty",
+      "fraction": 1.0,
+      "retriever": "item_item_cosine",
+      "ranker": "item_item_cosine",
+      "ndcg_at_k": 0.0240735697869768,
+      "recall_topk": 0.07,
+      "recall_budget": 0.284,
+      "mrr": 0.03628015873015873,
+      "p95_ms": 0.9781377157196401
+    },
+    {
+      "dataset": "amazon-beauty",
+      "fraction": 1.0,
+      "retriever": "persona",
+      "ranker": "persona",
+      "ndcg_at_k": 0.01997374886571401,
+      "recall_topk": 0.062,
+      "recall_budget": 0.34,
+      "mrr": 0.03320555555555556,
+      "p95_ms": 0.5644189310260117
+    },
+    {
+      "dataset": "amazon-beauty",
+      "fraction": 1.0,
+      "retriever": "lightgcn",
+      "ranker": "lightgcn",
+      "ndcg_at_k": 0.006385012980458174,
+      "recall_topk": 0.024,
+      "recall_budget": 0.146,
+      "mrr": 0.014466666666666668,
+      "p95_ms": 1.5944650629535313
+    }
+  ],
+  "fit_timings_per_fraction": {
+    "1.0": {
+      "item_graph": 0.09030237514525652,
+      "tail_index": 0.049448249861598015,
+      "path_tree": 0.12843145919032395,
+      "basket_index": 0.27446008287370205,
+      "item_cosine": 0.23302166699431837,
+      "als": 0.00013933400623500347,
+      "lightgcn": 23.05424829106778,
+      "persona": 157.55469650006853,
+      "bayesian_blend": 2.58429545792751
+    }
+  }
+}
