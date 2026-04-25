@@ -80,6 +80,12 @@ class LayeredConfig:
     boost_multiplier: float = 3.0
     top_k_for_boost_calibration: int = 20
     min_nonzero_for_zscore: int = 3
+    # Primary signal name. The base score every candidate gets, on top
+    # of which boost layers stack. Default "cooccurrence" (global cooc
+    # via U.T @ U). Alternative: "persona_cooccurrence" (soft-weighted
+    # per-persona cooc) for cold-start regimes where global cooc has
+    # thin signal but persona-cooc pools cluster-level evidence.
+    primary_signal: str = "cooccurrence"
 
 
 def layered_score(

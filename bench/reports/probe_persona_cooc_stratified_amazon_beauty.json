@@ -1,0 +1,108 @@
+{
+  "dataset": "amazon-beauty",
+  "kindling_version": "0.0.1.dev0",
+  "n_personas": 30,
+  "fit_seconds": {
+    "blend": 153.47271704208106,
+    "cooc_primary": 153.23753316700459,
+    "persona_cooc_primary": 152.17636949988082
+  },
+  "strata": [
+    {
+      "stratum": "very_cold",
+      "n_users": 500,
+      "bayesian_blend": {
+        "ndcg_at_k": 0.046574114885418724,
+        "mrr": 0.07422301587301587,
+        "recall_topk": 0.174,
+        "p95_ms": 3.790501761250198
+      },
+      "layered_cooc_primary": {
+        "ndcg_at_k": 0.06166177747284691,
+        "mrr": 0.10519761904761904,
+        "recall_topk": 0.204,
+        "p95_ms": 3.7702577188611026
+      },
+      "layered_persona_cooc_primary": {
+        "ndcg_at_k": 0.0597487546612735,
+        "mrr": 0.10161269841269842,
+        "recall_topk": 0.192,
+        "p95_ms": 3.7314621033146977
+      },
+      "delta_pc_vs_blend_ndcg": 0.013174639775854778,
+      "delta_pc_vs_cooc_ndcg": -0.001913022811573406
+    },
+    {
+      "stratum": "cold",
+      "n_users": 500,
+      "bayesian_blend": {
+        "ndcg_at_k": 0.02491749098294442,
+        "mrr": 0.027993650793650793,
+        "recall_topk": 0.066,
+        "p95_ms": 3.9181756787002087
+      },
+      "layered_cooc_primary": {
+        "ndcg_at_k": 0.023923219695506738,
+        "mrr": 0.028650000000000002,
+        "recall_topk": 0.064,
+        "p95_ms": 3.9569498389028013
+      },
+      "layered_persona_cooc_primary": {
+        "ndcg_at_k": 0.024103646273051497,
+        "mrr": 0.030507142857142858,
+        "recall_topk": 0.062,
+        "p95_ms": 4.014816868584603
+      },
+      "delta_pc_vs_blend_ndcg": -0.0008138447098929233,
+      "delta_pc_vs_cooc_ndcg": 0.00018042657754475944
+    },
+    {
+      "stratum": "warm",
+      "n_users": 500,
+      "bayesian_blend": {
+        "ndcg_at_k": 0.016563913648538795,
+        "mrr": 0.022346825396825396,
+        "recall_topk": 0.054,
+        "p95_ms": 4.102847469039261
+      },
+      "layered_cooc_primary": {
+        "ndcg_at_k": 0.012133895856998601,
+        "mrr": 0.019960317460317456,
+        "recall_topk": 0.044,
+        "p95_ms": 4.217918496578932
+      },
+      "layered_persona_cooc_primary": {
+        "ndcg_at_k": 0.012159456687530925,
+        "mrr": 0.019045238095238094,
+        "recall_topk": 0.044,
+        "p95_ms": 4.220204439479858
+      },
+      "delta_pc_vs_blend_ndcg": -0.00440445696100787,
+      "delta_pc_vs_cooc_ndcg": 2.556083053232433e-05
+    },
+    {
+      "stratum": "hot",
+      "n_users": 233,
+      "bayesian_blend": {
+        "ndcg_at_k": 0.004163397684318211,
+        "mrr": 0.011802575107296138,
+        "recall_topk": 0.017167381974248927,
+        "p95_ms": 4.553308291360736
+      },
+      "layered_cooc_primary": {
+        "ndcg_at_k": 0.0016377291728748222,
+        "mrr": 0.0025035765379113014,
+        "recall_topk": 0.008583690987124463,
+        "p95_ms": 4.788583517074585
+      },
+      "layered_persona_cooc_primary": {
+        "ndcg_at_k": 0.0031680426708085648,
+        "mrr": 0.006437768240343348,
+        "recall_topk": 0.017167381974248927,
+        "p95_ms": 4.71205017529428
+      },
+      "delta_pc_vs_blend_ndcg": -0.000995355013509646,
+      "delta_pc_vs_cooc_ndcg": 0.0015303134979337426
+    }
+  ]
+}

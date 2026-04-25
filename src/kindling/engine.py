@@ -48,6 +48,10 @@ from kindling.graph.lightgcn import LightGCNConfig, LightGCNModel, build_lightgc
 from kindling.graph.cost_graph import CostGraph, build_cost_graph
 from kindling.graph.item_cosine import ItemCosineMatrix, build_item_cosine_matrix
 from kindling.graph.item_graph import ItemGraph, build_item_graph
+from kindling.graph.persona_cooccurrence import (
+    PersonaCooccurrenceGraph,
+    build_persona_cooccurrence_graph,
+)
 from kindling.graph.session_cooccurrence import (
     SessionCooccurrenceGraph,
     build_session_cooccurrence_graph,
@@ -125,6 +129,7 @@ SIGNAL_ORDER: tuple[str, ...] = (
     "lightgcn",
     "temporal_cooccurrence",
     "session_cooccurrence",
+    "persona_cooccurrence",
 )
 # Deactivated signals: the column remains in SIGNAL_ORDER for back-compat
 # but _compute_signal_features leaves it at zero and the Bayesian posterior
@@ -280,6 +285,7 @@ class Engine:
 
         self._item_graph: ItemGraph | None = None
         self._session_cooc_graph: SessionCooccurrenceGraph | None = None
+        self._persona_cooc_graph: PersonaCooccurrenceGraph | None = None
         self._tail_index: TailIndex | None = None
         self._path_tree: PathTree | None = None
         self._basket_index: BasketIndex | None = None
@@ -628,6 +634,26 @@ class Engine:
             self._fit_persona_index()
             self._fit_timings["persona"] = _time.perf_counter() - _t0
 
+            # Persona-cooccurrence: per-persona item-item cooc graphs.
+            # Built when persona_index has personas. Used at recommend
+            # time with soft persona match weights to score the
+            # "users like this one in the same taste cluster touch
+            # these items" signal. Especially valuable on cold-start
+            # where global cooc has thin signal (1-3 owned items
+            # against the whole catalog) but persona-cooc has
+            # cluster-level evidence.
+            if (
+                self._persona_index is not None
+                and self._persona_index.n_personas > 0
+            ):
+                _t0 = _time.perf_counter()
+                self._persona_cooc_graph = build_persona_cooccurrence_graph(
+                    interactions=self._interactions,
+                    item_index=self._item_graph.item_index,
+                    persona_index=self._persona_index,
+                )
+                self._fit_timings["persona_cooc_graph"] = _time.perf_counter() - _t0
+
         # Repeat-consumption module. Independent of blend/ranker fits;
         # lives as a post-scoring multiplier, so ordering doesn't matter.
         if self.repeat_config is not None and self.repeat_config.enabled:
@@ -918,6 +944,7 @@ class Engine:
                 lightgcn=self._lightgcn,
                 temporal_graph=self._temporal_graph,
                 session_cooc_graph=self._session_cooc_graph,
+                persona_cooc_graph=self._persona_cooc_graph,
             )
             # Stack the Bayesian blend's posterior-mean score as a 10th
             # feature. Worst case, LambdaRank learns "just use the blend"
@@ -1063,6 +1090,7 @@ class Engine:
             lightgcn=self._lightgcn,
             temporal_graph=self._temporal_graph,
             session_cooc_graph=self._session_cooc_graph,
+            persona_cooc_graph=self._persona_cooc_graph,
         )
 
     # ---- introspection (PRD §10.2 power-user surface) ---------------------
@@ -1228,6 +1256,7 @@ class Engine:
             lightgcn=self._lightgcn,
             temporal_graph=self._temporal_graph,
             session_cooc_graph=self._session_cooc_graph,
+            persona_cooc_graph=self._persona_cooc_graph,
             posterior_mean=posterior_for_skip,
             skip_weight_threshold=self.skip_signal_weight_threshold,
         )
@@ -1287,16 +1316,28 @@ class Engine:
         # individual layer columns directly from the SignalFeatures
         # matrix.
         if self.layered_scoring and self.layered_config is not None:
-            primary_idx = SIGNAL_ORDER.index("cooccurrence")
+            primary_name = self.layered_config.primary_signal
+            if primary_name not in SIGNAL_ORDER:
+                primary_name = "cooccurrence"
+            primary_idx = SIGNAL_ORDER.index(primary_name)
             primary = features.matrix[:, primary_idx]
+            # Boost layers exclude the chosen primary so we don't add a
+            # signal to itself.
             layer_indices = []
-            for layer_name in ("path_basket", "session_cooccurrence", "temporal_cooccurrence"):
+            for layer_name in (
+                "path_basket",
+                "session_cooccurrence",
+                "temporal_cooccurrence",
+                "persona_cooccurrence",
+            ):
+                if layer_name == primary_name:
+                    continue
                 if layer_name in SIGNAL_ORDER:
                     layer_indices.append(SIGNAL_ORDER.index(layer_name))
             layers = [features.matrix[:, idx] for idx in layer_indices]
             scores = layered_score(primary, layers, config=self.layered_config)
             weights_for_explanation = {
-                "cooccurrence": 1.0,
+                primary_name: 1.0,
                 "layered_z": float(self.layered_config.z_threshold),
                 "layered_boost_multiplier": float(self.layered_config.boost_multiplier),
             }
@@ -1993,6 +2034,7 @@ def _compute_signal_features(
     lightgcn: "LightGCNModel | None" = None,
     temporal_graph: "TemporalInteractionGraph | None" = None,
     session_cooc_graph: "SessionCooccurrenceGraph | None" = None,
+    persona_cooc_graph: "PersonaCooccurrenceGraph | None" = None,
     posterior_mean: np.ndarray | None = None,
     skip_weight_threshold: float = 0.0,
 ) -> SignalFeatures:
@@ -2178,6 +2220,48 @@ def _compute_signal_features(
                 out_sc = np.zeros(len(cand_ids), dtype=np.float64)
                 out_sc[valid_sc] = sc_full[cand_indices_sc[valid_sc]]
                 matrix[:, 12] = out_sc
+
+    # persona_cooccurrence (14th signal). Soft-weighted per-persona
+    # cooc lookup. The user's match across all personas (computed via
+    # persona.matching.match_user) weights how each persona's cooc
+    # graph contributes to the per-candidate score. Cold-start fix
+    # for the global-cooc-zero-baseline problem - even fuzzy persona
+    # match gives substantial signal because persona-cooc pools
+    # cluster-level co-touch evidence.
+    if (
+        persona_cooc_graph is not None
+        and persona_cooc_graph.n_edges > 0
+        and persona_index is not None
+        and _hot(13)
+    ):
+        from kindling.personas.matching import build_user_query_vector, match_user
+
+        user_vec = build_user_query_vector(
+            owned_items=owned_items, history_items=history, index=persona_index
+        )
+        match_weights = match_user(user_vec, persona_index)
+        if match_weights.any():
+            owned_idx_pc = np.fromiter(
+                (persona_cooc_graph.item_index.get(o, -1) for o in owned_items.tolist()),
+                dtype=np.int64, count=owned_items.size,
+            ) if owned_items.size else np.empty(0, dtype=np.int64)
+            owned_idx_pc = owned_idx_pc[owned_idx_pc >= 0]
+            if owned_idx_pc.size > 0:
+                excl_set_pc = {int(i) for i in owned_idx_pc.tolist()}
+                pc_full = persona_cooc_graph.score_against_owned_soft(
+                    owned_indices=owned_idx_pc,
+                    match_weights=np.asarray(match_weights, dtype=np.float64),
+                    exclude_indices=excl_set_pc,
+                )
+                cand_indices_pc = np.fromiter(
+                    (persona_cooc_graph.item_index.get(c, -1) for c in cand_ids),
+                    dtype=np.int64, count=len(cand_ids),
+                )
+                valid_pc = cand_indices_pc >= 0
+                if valid_pc.any():
+                    out_pc = np.zeros(len(cand_ids), dtype=np.float64)
+                    out_pc[valid_pc] = pc_full[cand_indices_pc[valid_pc]]
+                    matrix[:, 13] = out_pc
 
     return SignalFeatures(matrix=matrix, signal_names=SIGNAL_ORDER)
 
