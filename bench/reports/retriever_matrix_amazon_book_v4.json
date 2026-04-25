@@ -1,0 +1,89 @@
+{
+  "dataset": "amazon-book",
+  "fractions": [
+    1.0
+  ],
+  "k": 10,
+  "retrieval_budget": 500,
+  "kindling_version": "0.0.1.dev0",
+  "cells": [
+    {
+      "dataset": "amazon-book",
+      "fraction": 1.0,
+      "retriever": "cooccurrence",
+      "ranker": "cooccurrence",
+      "ndcg_at_k": 0.025519373163189828,
+      "recall_topk": 0.142,
+      "recall_budget": 0.718,
+      "mrr": 0.05647380952380952,
+      "p95_ms": 5.4066333570517555
+    },
+    {
+      "dataset": "amazon-book",
+      "fraction": 1.0,
+      "retriever": "path_tail",
+      "ranker": "path_tail",
+      "ndcg_at_k": 0.0,
+      "recall_topk": 0.0,
+      "recall_budget": 0.0,
+      "mrr": 0.0,
+      "p95_ms": 5.451615375932296
+    },
+    {
+      "dataset": "amazon-book",
+      "fraction": 1.0,
+      "retriever": "path_full",
+      "ranker": "path_full",
+      "ndcg_at_k": 0.0,
+      "recall_topk": 0.0,
+      "recall_budget": 0.0,
+      "mrr": 0.0,
+      "p95_ms": 0.7185235735960304
+    },
+    {
+      "dataset": "amazon-book",
+      "fraction": 1.0,
+      "retriever": "path_basket",
+      "ranker": "path_basket",
+      "ndcg_at_k": 0.0,
+      "recall_topk": 0.0,
+      "recall_budget": 0.0,
+      "mrr": 0.0,
+      "p95_ms": 6.017899455036968
+    },
+    {
+      "dataset": "amazon-book",
+      "fraction": 1.0,
+      "retriever": "item_item_cosine",
+      "ranker": "item_item_cosine",
+      "ndcg_at_k": 0.047793109770812664,
+      "recall_topk": 0.236,
+      "recall_budget": 0.846,
+      "mrr": 0.10332698412698411,
+      "p95_ms": 12.897497392259538
+    },
+    {
+      "dataset": "amazon-book",
+      "fraction": 1.0,
+      "retriever": "temporal_cooccurrence",
+      "ranker": "temporal_cooccurrence",
+      "ndcg_at_k": 0.026177754910953636,
+      "recall_topk": 0.148,
+      "recall_budget": 0.776,
+      "mrr": 0.05632539682539682,
+      "p95_ms": 1.424970407970249
+    }
+  ],
+  "fit_timings_per_fraction": {
+    "1.0": {
+      "item_graph": 4.868395665893331,
+      "tail_index": 0.03340020799078047,
+      "path_tree": 0.03217566688545048,
+      "basket_index": 0.03374045807868242,
+      "item_cosine": 14.823081417009234,
+      "als": 0.0003932500258088112,
+      "temporal_graph": 37.999093083199114,
+      "bayesian_blend": 20.335917208110914
+    }
+  }
+}

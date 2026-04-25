@@ -429,6 +429,7 @@ def run_matrix(
     k: int = 10,
     retrieval_budget: int = 500,
     max_eval_entities: int = 500,
+    skip_heavy_signals: bool = False,
 ) -> dict[str, object]:
     split = _load_dataset(dataset, test_fraction=0.1)
     test_items = cast(
@@ -444,22 +445,32 @@ def run_matrix(
         n_take = int(round(len(split.train) * fraction))
         sub = split.train.iloc[:n_take].reset_index(drop=True)
         print(f"\n=== {dataset} @ frac={fraction:.2f} ({len(sub):,} interactions) ===", flush=True)
-        cfg = PersonaConfig(
-            enabled=True,
-            clustering=KMeansClustering(n_clusters=30, random_state=0),
-            min_activation_users=100,
-        )
-        from kindling.graph.lightgcn import LightGCNConfig
 
-        # Use the LightGCNConfig defaults (n_epochs=30, batch_size=8192) which
-        # are tuned for the end-to-end-gradient training architecture. The
-        # earlier 10-epoch config was calibrated for the abandoned two-stage
-        # shortcut and undertrains the real model.
-        lgcn_cfg = LightGCNConfig(
-            dim=64, min_users=50, min_items=50, seed=0
-        )
+        if skip_heavy_signals:
+            # Persona (HDBSCAN+UMAP) and LightGCN scale poorly on multi-million-
+            # interaction datasets. Skip them when we already have their results
+            # on smaller datasets and only need cooc / cosine / path / ALS /
+            # temporal_cooccurrence cells.
+            engine_kwargs: dict[str, object] = {}
+        else:
+            cfg = PersonaConfig(
+                enabled=True,
+                clustering=KMeansClustering(n_clusters=30, random_state=0),
+                min_activation_users=100,
+            )
+            from kindling.graph.lightgcn import LightGCNConfig
+
+            # Use the LightGCNConfig defaults (n_epochs=30, batch_size=8192) which
+            # are tuned for the end-to-end-gradient training architecture. The
+            # earlier 10-epoch config was calibrated for the abandoned two-stage
+            # shortcut and undertrains the real model.
+            lgcn_cfg = LightGCNConfig(
+                dim=64, min_users=50, min_items=50, seed=0
+            )
+            engine_kwargs = {"persona_config": cfg, "lightgcn_config": lgcn_cfg}
+
         t0 = time.perf_counter()
-        engine = Engine(persona_config=cfg, lightgcn_config=lgcn_cfg).fit(sub)
+        engine = Engine(**engine_kwargs).fit(sub)
         print(f"  fit {time.perf_counter() - t0:.1f}s  per-subsystem={engine._fit_timings}", flush=True)
         per_fraction_fit_timings.setdefault(fraction, dict(engine._fit_timings))
 
@@ -569,6 +580,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--k", type=int, default=10)
     parser.add_argument("--max-eval-entities", type=int, default=500)
     parser.add_argument("--retrieval-budget", type=int, default=500)
+    parser.add_argument(
+        "--skip-heavy-signals", action="store_true",
+        help="Skip persona + LightGCN configs at fit time (cuts hours off "
+             "very large datasets when those signals are already validated "
+             "on smaller datasets).",
+    )
     parser.add_argument("--output", type=Path, default=None)
     args = parser.parse_args(argv)
 
@@ -580,6 +597,7 @@ def main(argv: list[str] | None = None) -> int:
         k=args.k,
         retrieval_budget=args.retrieval_budget,
         max_eval_entities=args.max_eval_entities,
+        skip_heavy_signals=args.skip_heavy_signals,
     )
     pretty = json.dumps(report, indent=2, default=str)
     if args.output is not None:

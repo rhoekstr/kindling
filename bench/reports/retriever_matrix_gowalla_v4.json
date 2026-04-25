@@ -1,0 +1,89 @@
+{
+  "dataset": "gowalla",
+  "fractions": [
+    1.0
+  ],
+  "k": 10,
+  "retrieval_budget": 500,
+  "kindling_version": "0.0.1.dev0",
+  "cells": [
+    {
+      "dataset": "gowalla",
+      "fraction": 1.0,
+      "retriever": "cooccurrence",
+      "ranker": "cooccurrence",
+      "ndcg_at_k": 0.03466590357767528,
+      "recall_topk": 0.13211845102505695,
+      "recall_budget": 0.46697038724373574,
+      "mrr": 0.04752051921755794,
+      "p95_ms": 14.186186052393158
+    },
+    {
+      "dataset": "gowalla",
+      "fraction": 1.0,
+      "retriever": "path_tail",
+      "ranker": "path_tail",
+      "ndcg_at_k": 0.015783720495424283,
+      "recall_topk": 0.04100227790432802,
+      "recall_budget": 0.04783599088838269,
+      "mrr": 0.029410275879524172,
+      "p95_ms": 65.44301111716777
+    },
+    {
+      "dataset": "gowalla",
+      "fraction": 1.0,
+      "retriever": "path_full",
+      "ranker": "path_full",
+      "ndcg_at_k": 0.0,
+      "recall_topk": 0.0,
+      "recall_budget": 0.0,
+      "mrr": 0.0,
+      "p95_ms": 12.95770828146487
+    },
+    {
+      "dataset": "gowalla",
+      "fraction": 1.0,
+      "retriever": "path_basket",
+      "ranker": "path_basket",
+      "ndcg_at_k": 0.010693960742181343,
+      "recall_topk": 0.02050113895216401,
+      "recall_budget": 0.09339407744874716,
+      "mrr": 0.012148823082763856,
+      "p95_ms": 49.873385753016905
+    },
+    {
+      "dataset": "gowalla",
+      "fraction": 1.0,
+      "retriever": "item_item_cosine",
+      "ranker": "item_item_cosine",
+      "ndcg_at_k": 0.015429587565760315,
+      "recall_topk": 0.06150341685649203,
+      "recall_budget": 0.35079726651480636,
+      "mrr": 0.021212532089525254,
+      "p95_ms": 120.30892871553078
+    },
+    {
+      "dataset": "gowalla",
+      "fraction": 1.0,
+      "retriever": "temporal_cooccurrence",
+      "ranker": "temporal_cooccurrence",
+      "ndcg_at_k": 0.026959449165208583,
+      "recall_topk": 0.07289293849658314,
+      "recall_budget": 0.3348519362186788,
+      "mrr": 0.03377625917489243,
+      "p95_ms": 5.861389613710344
+    }
+  ],
+  "fit_timings_per_fraction": {
+    "1.0": {
+      "item_graph": 18.30807283311151,
+      "tail_index": 1.4002313751261681,
+      "path_tree": 1.5383639999199659,
+      "basket_index": 17.04000183311291,
+      "item_cosine": 131.80240699998103,
+      "als": 0.012397125130519271,
+      "temporal_graph": 63.25761545798741,
+      "bayesian_blend": 57.517173665808514
+    }
+  }
+}
