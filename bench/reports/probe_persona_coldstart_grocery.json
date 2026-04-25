@@ -1,0 +1,39 @@
+{
+  "dataset": "synthetic-grocery-deep",
+  "kindling_version": "0.0.1.dev0",
+  "fit_seconds": 10.08056112495251,
+  "persona_n_personas": 30,
+  "retrieval_budget": 200,
+  "persona_share": 100,
+  "k": 10,
+  "strata": [
+    {
+      "stratum": "hot",
+      "n_users": 1000,
+      "cooc_only": {
+        "label": "cooc_only",
+        "ndcg_at_k": 0.3310839187203711,
+        "mrr": 0.3593008833241146,
+        "recall_topk": 0.781414994720169,
+        "recall_budget": 1.0
+      },
+      "cooc_union_persona": {
+        "label": "cooc_union_persona",
+        "ndcg_at_k": 0.3310839187203711,
+        "mrr": 0.3593008833241146,
+        "recall_topk": 0.781414994720169,
+        "recall_budget": 1.0
+      },
+      "persona_only": {
+        "label": "persona_only",
+        "ndcg_at_k": 0.3163184999269357,
+        "mrr": 0.3345669700474347,
+        "recall_topk": 0.7750791974656811,
+        "recall_budget": 1.0
+      },
+      "delta_ndcg_abs": 0.0,
+      "delta_ndcg_rel_pct": 0.0,
+      "delta_recall_budget": 0.0
+    }
+  ]
+}
