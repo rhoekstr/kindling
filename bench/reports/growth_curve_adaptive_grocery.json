@@ -1,0 +1,317 @@
+{
+  "dataset": "synthetic-grocery-deep",
+  "fractions": [
+    0.05,
+    0.1,
+    0.25,
+    0.5,
+    1.0
+  ],
+  "kindling_version": "0.0.1.dev0",
+  "growth": [
+    {
+      "fraction": 0.05,
+      "n_interactions": 8100,
+      "n_eval_entities": 500,
+      "profile": {
+        "n_users": 812,
+        "n_items": 200,
+        "user_density": "moderate",
+        "item_density": "dense",
+        "avg_events_per_user": 9.975369458128078,
+        "time_use": "weak_bimodality",
+        "session_depth": "deep",
+        "deep_session_fraction": 1.0,
+        "repeat_dataset": false,
+        "repeat_user_fraction": 0.0,
+        "notes": []
+      },
+      "plan": {
+        "subsystems": [
+          "item_graph",
+          "path_tail",
+          "temporal_graph",
+          "session_cooc_graph",
+          "path_basket"
+        ],
+        "boost_layers": [
+          "path_basket",
+          "session_cooccurrence",
+          "temporal_cooccurrence"
+        ],
+        "temporal_kernel_active": false,
+        "repeat_module_active": false,
+        "rationale": {
+          "temporal_graph": "timestamps present",
+          "temporal_kernel": "time_use=weak_bimodality -> kernel off (pure-count)",
+          "session_cooc_graph": "session_depth=deep, time_use=weak_bimodality -> session structure usable",
+          "path_basket": "session_depth=deep - basket signals viable",
+          "repeat_module": "repeat_user_fraction=0% < 10% threshold - off"
+        }
+      },
+      "bayesian": {
+        "ndcg_at_k": 0.15731679634703705,
+        "mrr": 0.2973857142857143,
+        "recall_topk": 0.624,
+        "p95_ms": 1.2206394691020248,
+        "fit_seconds": 0.6884202910587192
+      },
+      "layered": {
+        "ndcg_at_k": 0.14853929771871305,
+        "mrr": 0.2776444444444444,
+        "recall_topk": 0.616,
+        "p95_ms": 1.2916972511447966,
+        "fit_seconds": 0.8357549167703837,
+        "calibrated_z": 2.5,
+        "calibrated_boost": 5.0
+      },
+      "delta_ndcg": -0.008777498628323999,
+      "delta_rel_pct": -5.579505070114096
+    },
+    {
+      "fraction": 0.1,
+      "n_interactions": 16200,
+      "n_eval_entities": 500,
+      "profile": {
+        "n_users": 1500,
+        "n_items": 200,
+        "user_density": "moderate",
+        "item_density": "dense",
+        "avg_events_per_user": 10.8,
+        "time_use": "session_consumption",
+        "session_depth": "deep",
+        "deep_session_fraction": 1.0,
+        "repeat_dataset": false,
+        "repeat_user_fraction": 0.046,
+        "notes": []
+      },
+      "plan": {
+        "subsystems": [
+          "item_graph",
+          "path_tail",
+          "temporal_graph",
+          "session_cooc_graph",
+          "path_basket"
+        ],
+        "boost_layers": [
+          "path_basket",
+          "session_cooccurrence",
+          "temporal_cooccurrence"
+        ],
+        "temporal_kernel_active": true,
+        "repeat_module_active": false,
+        "rationale": {
+          "temporal_graph": "timestamps present",
+          "temporal_kernel": "time_use=session_consumption -> kernel on",
+          "session_cooc_graph": "session_depth=deep, time_use=session_consumption -> session structure usable",
+          "path_basket": "session_depth=deep - basket signals viable",
+          "repeat_module": "repeat_user_fraction=5% < 10% threshold - off"
+        }
+      },
+      "bayesian": {
+        "ndcg_at_k": 0.14065702791346615,
+        "mrr": 0.2470111111111111,
+        "recall_topk": 0.592,
+        "p95_ms": 2.9820957686752076,
+        "fit_seconds": 1.8908791658468544
+      },
+      "layered": {
+        "ndcg_at_k": 0.14380844134045007,
+        "mrr": 0.2504595238095238,
+        "recall_topk": 0.586,
+        "p95_ms": 1.927885168697685,
+        "fit_seconds": 2.1936332921031862,
+        "calibrated_z": 3.0,
+        "calibrated_boost": 5.0
+      },
+      "delta_ndcg": 0.0031514134269839122,
+      "delta_rel_pct": 2.2404948218603753
+    },
+    {
+      "fraction": 0.25,
+      "n_interactions": 40500,
+      "n_eval_entities": 500,
+      "profile": {
+        "n_users": 1500,
+        "n_items": 200,
+        "user_density": "moderate",
+        "item_density": "very_dense",
+        "avg_events_per_user": 27.0,
+        "time_use": "session_consumption",
+        "session_depth": "deep",
+        "deep_session_fraction": 1.0,
+        "repeat_dataset": true,
+        "repeat_user_fraction": 0.854,
+        "notes": [
+          "repeat-friendly: repeat module expected to add value"
+        ]
+      },
+      "plan": {
+        "subsystems": [
+          "item_graph",
+          "path_tail",
+          "temporal_graph",
+          "session_cooc_graph",
+          "path_basket",
+          "repeat_module"
+        ],
+        "boost_layers": [
+          "path_basket",
+          "session_cooccurrence",
+          "temporal_cooccurrence"
+        ],
+        "temporal_kernel_active": true,
+        "repeat_module_active": true,
+        "rationale": {
+          "temporal_graph": "timestamps present",
+          "temporal_kernel": "time_use=session_consumption -> kernel on",
+          "session_cooc_graph": "session_depth=deep, time_use=session_consumption -> session structure usable",
+          "path_basket": "session_depth=deep - basket signals viable",
+          "repeat_module": "repeat_user_fraction=85% >= threshold - on"
+        }
+      },
+      "bayesian": {
+        "ndcg_at_k": 0.1756042389704657,
+        "mrr": 0.30259444444444444,
+        "recall_topk": 0.654,
+        "p95_ms": 6.300232606008648,
+        "fit_seconds": 1.819234084105119
+      },
+      "layered": {
+        "ndcg_at_k": 0.17632362589006628,
+        "mrr": 0.3004174603174603,
+        "recall_topk": 0.654,
+        "p95_ms": 6.17683285381645,
+        "fit_seconds": 2.5183193751145154,
+        "calibrated_z": 2.0,
+        "calibrated_boost": 3.0
+      },
+      "delta_ndcg": 0.0007193869196005787,
+      "delta_rel_pct": 0.40966375516798886
+    },
+    {
+      "fraction": 0.5,
+      "n_interactions": 81000,
+      "n_eval_entities": 500,
+      "profile": {
+        "n_users": 1500,
+        "n_items": 200,
+        "user_density": "dense",
+        "item_density": "very_dense",
+        "avg_events_per_user": 54.0,
+        "time_use": "session_consumption",
+        "session_depth": "deep",
+        "deep_session_fraction": 1.0,
+        "repeat_dataset": true,
+        "repeat_user_fraction": 1.0,
+        "notes": [
+          "repeat-friendly: repeat module expected to add value"
+        ]
+      },
+      "plan": {
+        "subsystems": [
+          "item_graph",
+          "path_tail",
+          "temporal_graph",
+          "session_cooc_graph",
+          "path_basket",
+          "repeat_module"
+        ],
+        "boost_layers": [
+          "path_basket",
+          "session_cooccurrence",
+          "temporal_cooccurrence"
+        ],
+        "temporal_kernel_active": true,
+        "repeat_module_active": true,
+        "rationale": {
+          "temporal_graph": "timestamps present",
+          "temporal_kernel": "time_use=session_consumption -> kernel on",
+          "session_cooc_graph": "session_depth=deep, time_use=session_consumption -> session structure usable",
+          "path_basket": "session_depth=deep - basket signals viable",
+          "repeat_module": "repeat_user_fraction=100% >= threshold - on"
+        }
+      },
+      "bayesian": {
+        "ndcg_at_k": 0.22883289634087442,
+        "mrr": 0.3319627717218079,
+        "recall_topk": 0.7449799196787149,
+        "p95_ms": 15.183810272719711,
+        "fit_seconds": 4.850624417187646
+      },
+      "layered": {
+        "ndcg_at_k": 0.22712817960263215,
+        "mrr": 0.3323643781475107,
+        "recall_topk": 0.7429718875502008,
+        "p95_ms": 15.324958122801036,
+        "fit_seconds": 6.686408665962517,
+        "calibrated_z": 2.5,
+        "calibrated_boost": 3.0
+      },
+      "delta_ndcg": -0.0017047167382422679,
+      "delta_rel_pct": -0.7449613956303227
+    },
+    {
+      "fraction": 1.0,
+      "n_interactions": 162000,
+      "n_eval_entities": 500,
+      "profile": {
+        "n_users": 1500,
+        "n_items": 200,
+        "user_density": "dense",
+        "item_density": "very_dense",
+        "avg_events_per_user": 108.0,
+        "time_use": "session_consumption",
+        "session_depth": "deep",
+        "deep_session_fraction": 1.0,
+        "repeat_dataset": true,
+        "repeat_user_fraction": 1.0,
+        "notes": [
+          "repeat-friendly: repeat module expected to add value"
+        ]
+      },
+      "plan": {
+        "subsystems": [
+          "item_graph",
+          "path_tail",
+          "temporal_graph",
+          "session_cooc_graph",
+          "path_basket",
+          "repeat_module"
+        ],
+        "boost_layers": [
+          "path_basket",
+          "session_cooccurrence",
+          "temporal_cooccurrence"
+        ],
+        "temporal_kernel_active": true,
+        "repeat_module_active": true,
+        "rationale": {
+          "temporal_graph": "timestamps present",
+          "temporal_kernel": "time_use=session_consumption -> kernel on",
+          "session_cooc_graph": "session_depth=deep, time_use=session_consumption -> session structure usable",
+          "path_basket": "session_depth=deep - basket signals viable",
+          "repeat_module": "repeat_user_fraction=100% >= threshold - on"
+        }
+      },
+      "bayesian": {
+        "ndcg_at_k": 0.31967283436745825,
+        "mrr": 0.3513585238428006,
+        "recall_topk": 0.7379454926624738,
+        "p95_ms": 26.4534228364937,
+        "fit_seconds": 9.531707040965557
+      },
+      "layered": {
+        "ndcg_at_k": 0.31980217444049036,
+        "mrr": 0.3553217862966291,
+        "recall_topk": 0.7379454926624738,
+        "p95_ms": 26.704095886088908,
+        "fit_seconds": 12.610175458015874,
+        "calibrated_z": 2.5,
+        "calibrated_boost": 3.0
+      },
+      "delta_ndcg": 0.0001293400730321137,
+      "delta_rel_pct": 0.0404601389692812
+    }
+  ]
+}
