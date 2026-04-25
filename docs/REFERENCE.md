@@ -386,9 +386,51 @@ The `--cross` flag on `kindling.benchmarks.retriever_matrix` produces
 the full 8×8 grid; the v4 reports (`*_cross.json`) sit alongside the
 v3 standalone reports.
 
-**ml1m cross-matrix is in flight as of this writing**
-(`bench/reports/retriever_matrix_ml1m_cross.json`); will be summarized
-here once the run completes.
+**ml1m NDCG@10** (`bench/reports/retriever_matrix_ml1m_cross.json`):
+
+| R \ K | cooc | path_tail | path_full | path_basket | cosine | persona | lightgcn |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| cooccurrence | 0.288 | 0.161 | 0.024 | 0.116 | **0.293** | 0.226 | 0.277 |
+| path_tail | 0.244 | 0.140 | 0.025 | 0.099 | 0.257 | 0.185 | 0.234 |
+| path_full | 0.027 | 0.027 | 0.025 | 0.025 | 0.028 | 0.027 | 0.028 |
+| path_basket | 0.233 | 0.117 | 0.015 | 0.076 | 0.232 | 0.163 | 0.227 |
+| item_item_cosine | 0.288 | 0.160 | 0.024 | 0.092 | 0.292 | 0.226 | 0.278 |
+| persona | 0.240 | 0.144 | 0.022 | 0.102 | 0.248 | 0.216 | 0.232 |
+| lightgcn | 0.288 | 0.162 | 0.024 | 0.116 | **0.293** | 0.225 | 0.277 |
+
+ml1m differs from grocery in two informative ways:
+
+1. **The retriever choice matters on ml1m**, unlike grocery. On
+   grocery every retriever paired with cooc-rank lands within 1% of
+   cooc-standalone. On ml1m, persona-retrieve + cooc-rank is
+   0.240 vs cooc-retrieve + cooc-rank's 0.288 — a 17% drop.
+   Translation: ml1m's retrievers pull genuinely different
+   candidate pools; grocery's largely overlap.
+
+2. **The best ml1m cell beats every standalone**. The top cells:
+
+   | retriever | ranker | NDCG | R@K | MRR |
+   |---|---|---:|---:|---:|
+   | **lightgcn** | **item_item_cosine** | **0.2932** | 0.710 | 0.455 |
+   | cooccurrence | item_item_cosine | 0.2927 | 0.708 | 0.454 |
+   | item_item_cosine | item_item_cosine | 0.2919 | 0.706 | 0.453 |
+   | cooccurrence | cooccurrence | 0.2877 | 0.712 | 0.456 |
+
+   The top NDCG is a **lightgcn-retrieve / cosine-rank pair** that
+   edges out cosine-standalone by 0.4%. Small but the right shape:
+   diversification at the retrieval stage + precision at the
+   ranking stage, beating any single-signal pipeline. cooc-retrieve
+   + cosine-rank is statistically tied (0.2927).
+
+   This is the cleanest in-pipeline evidence yet that **separating
+   retriever and ranker yields a real lift on signal-diverse data**
+   — confirming the gating result in §4.4 and providing a concrete
+   alternative to the gate (just pick the best `(R, K)` pair from
+   the matrix).
+
+3. **path_full retrieval is still the bottleneck** — every
+   (path_full, *) cell stuck at recall@K ≈ 0.10 on ml1m, just like
+   grocery. The path_full sparsity is dataset-independent.
 
 ---
 
@@ -501,6 +543,10 @@ In rough priority order:
    replay-determinism path is wired; the loop closure isn't.
 5. **Per-stage signal override** — let users say "use cosine as
    retriever, blend as ranker" or "skip path_full for this query".
+   The signal-pair matrix (§6.5) demonstrates this is not just an
+   API ergonomics request: lightgcn-retrieve + cosine-rank wins on
+   ml1m, so the default policy could route to that pair on
+   ml1m-shaped data.
 
 ---
 
