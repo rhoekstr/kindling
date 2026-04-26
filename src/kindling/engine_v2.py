@@ -48,6 +48,10 @@ import scipy.sparse as sp
 from kindling._native import CORE_AVAILABLE, kindling_core
 from kindling.explain import Explanation
 from kindling.ingest.contract import canonicalize, validate_interactions
+from kindling.ingest.sessions import infer_sessions
+from kindling.path._sessions import sessions_from_interactions
+from kindling.path.basket_index import BasketIndex, build_basket_index
+from kindling.path.tail_index import TailIndex, build_tail_index
 from kindling.preprocess import preprocess_interactions, weights_of
 
 
@@ -96,6 +100,10 @@ class V2FitState:
     boost_layer_adjacencies: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]] = field(
         default_factory=dict
     )
+    # Path-family signals (not cooc-shaped — separate Python objects).
+    tail_index: TailIndex | None = None
+    basket_index: BasketIndex | None = None
+    history_by_entity: dict[object, tuple[object, ...]] = field(default_factory=dict)
     # Calibrated scoring config
     z_threshold: float = 2.5
     boost_multiplier: float = 3.0
@@ -157,12 +165,17 @@ class EngineV2:
             else None
         )
 
-        # owned_by_entity (recommend reads this).
+        # owned_by_entity + history (timestamp-ordered) per entity.
         owned_by_entity: dict[object, np.ndarray] = {}
+        history_by_entity: dict[object, tuple[object, ...]] = {}
+        sort_col = "timestamp" if "timestamp" in interactions.columns else None
         for entity, group in interactions.groupby("entity_id", sort=False):
+            if sort_col is not None:
+                group = group.sort_values(sort_col, kind="mergesort")
             owned_by_entity[entity] = (
                 group["item_id"].map(item_to_idx).dropna().astype(np.int64).to_numpy()
             )
+            history_by_entity[entity] = tuple(group["item_id"].tolist())
 
         # ── Profile + Plan decisions.
         profile = self._profile(interactions, weights, n_users, n_items)
@@ -295,8 +308,32 @@ class EngineV2:
             np.asarray(ic_indptr, dtype=np.int32),
         )
 
-        # path_tail / path_basket signals not yet wired here — they require
-        # path_tree fit-time machinery from the Python side. Stubs reserved.
+        # ── path_tail + path_basket: infer sessions, build indices.
+        # Build is plan-aware: skip basket on rating-burst datasets, etc.
+        # The Rust score_many kernels run at recommend time; here we just
+        # feed the Python orchestrators that own session walking.
+        tail_index: TailIndex | None = None
+        basket_index: BasketIndex | None = None
+        try:
+            sess_inf = infer_sessions(interactions)
+            sessions = list(
+                sessions_from_interactions(interactions, sess_inf.session_ids)
+            )
+            if sessions:
+                tail_index = build_tail_index(sessions)
+                # Skip basket_index when sessions are too shallow — it's
+                # the heavyweight build and produces noise on rating-
+                # burst datasets.
+                deep_session_fraction = profile.get("deep_session_fraction", 0.0)
+                if deep_session_fraction >= 0.30:
+                    basket_index = build_basket_index(sessions)
+        except Exception as exc:  # pragma: no cover — defensive; sessions are optional
+            import warnings
+            warnings.warn(
+                f"path-family fit skipped ({exc!r}); v2 falls back to cooc-only retrieval.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
 
         self._state = V2FitState(
             item_ids=np.asarray(item_ids, dtype=object),
@@ -305,6 +342,9 @@ class EngineV2:
             owned_by_entity=owned_by_entity,
             entity_to_user_idx=entity_to_user_idx,
             n_users=n_users,
+            tail_index=tail_index,
+            basket_index=basket_index,
+            history_by_entity=history_by_entity,
             kernel=plan["kernel"],
             half_life_days=plan["half_life_days"],
             enabled_boost_layers=list(boost_adj.keys()),
@@ -339,7 +379,15 @@ class EngineV2:
         if owned is None or owned.size == 0:
             return []
 
-        # ── 1. Retrieve candidate pool via cooc retriever.
+        # ── 1. Retrieve candidate pool via cooc.
+        # NOTE: in the v2 boost-layer architecture, layers contribute
+        # only when items are *already in the cooc-retrieved pool*. Boost
+        # magnitudes are calibrated to ~3 rank positions within the
+        # base top-K, so they can't elevate out-of-pool items into top-K.
+        # path_tail / interaction_network etc. are useful only for
+        # candidates that BOTH cooc retrieves AND the layer ranks high.
+        # On no-session datasets where the two distributions don't
+        # intersect (e.g., amazon-beauty), those layers don't fire.
         cand_ids, _scores = kindling_core.cooccurrence_retrieve(
             st.cooc_data, st.cooc_indices, st.cooc_indptr,
             owned_indices=owned.tolist(),
@@ -354,7 +402,7 @@ class EngineV2:
         base_kind, base = self._compute_base(entity_id, owned, cand_ids)
 
         # ── 3. Layered scoring.
-        layer_specs = self._build_layer_specs(owned, cand_ids)
+        layer_specs = self._build_layer_specs(entity_id, owned, cand_ids)
         composite = kindling_core.layered_score_py(
             base, layer_specs,
             z_threshold=st.z_threshold,
@@ -416,13 +464,22 @@ class EngineV2:
         return "cooc", np.asarray(base)
 
     def _build_layer_specs(
-        self, owned: np.ndarray, cand_ids: list[int]
+        self,
+        entity_id: object,
+        owned: np.ndarray,
+        cand_ids: list[int],
     ) -> list[tuple[np.ndarray, str]]:
         """Build (layer_scores, z_mode) tuples for the layered scorer."""
         st = self._state
         assert st is not None
         out: list[tuple[np.ndarray, str]] = []
-        for layer_name in st.enabled_boost_layers:
+        # Cooc-shaped layers (cosine, temporal_cooc, session_cooc) all use
+        # the same signal kernel against an item-item adjacency CSR.
+        for layer_name in [
+            *st.enabled_boost_layers,
+            *(["item_cosine"] if "item_cosine" in st.boost_layer_adjacencies
+              and "item_cosine" not in st.enabled_boost_layers else []),
+        ]:
             adj = st.boost_layer_adjacencies.get(layer_name)
             if adj is None:
                 continue
@@ -432,8 +489,37 @@ class EngineV2:
                 owned_indices=owned.tolist(),
                 candidate_indices=cand_ids,
             )
-            # Sparse z-mode (cooc-shaped layers all have natural zero tails).
             out.append((np.asarray(scores), "nonzero"))
+
+        # path_tail: sparse, queries the user's most-recent item.
+        if st.tail_index is not None and st.tail_index.counts:
+            history = st.history_by_entity.get(entity_id, ())
+            last_item_internal = None
+            if history:
+                last_internal = st.item_to_idx.get(history[-1], -1)
+                last_item_external = history[-1]
+                if last_internal >= 0:
+                    last_item_internal = last_item_external
+            if last_item_internal is not None:
+                # tail_index.score_many takes external item_ids.
+                cand_external = [st.item_ids[ci] for ci in cand_ids]
+                tail_scores = st.tail_index.score_many(
+                    cand_external, last_item=last_item_internal
+                )
+                out.append((np.asarray(tail_scores, dtype=np.float64), "nonzero"))
+
+        # path_basket: sparse, queries against the user's recent history.
+        if st.basket_index is not None and st.basket_index.observations:
+            history = st.history_by_entity.get(entity_id, ())
+            if history:
+                # Use the most recent ~50 items as the query basket.
+                query_basket = frozenset(history[-50:])
+                cand_external = [st.item_ids[ci] for ci in cand_ids]
+                basket_scores = st.basket_index.score_many(
+                    cand_external, query_basket=query_basket
+                )
+                out.append((np.asarray(basket_scores, dtype=np.float64), "nonzero"))
+
         return out
 
     def _fit_user_factors(
