@@ -17,6 +17,7 @@ from kindling.personas.clustering import (
     ClusterResult,
     HDBSCANClustering,
     KMeansClustering,
+    KMeansWithNoiseClustering,
 )
 from kindling.personas.config import PersonaConfig
 from kindling.personas.index import PersonaIndex
@@ -26,6 +27,7 @@ __all__ = [
     "ClusteringProtocol",
     "HDBSCANClustering",
     "KMeansClustering",
+    "KMeansWithNoiseClustering",
     "PersonaConfig",
     "PersonaIndex",
 ]

@@ -155,3 +155,69 @@ class KMeansClustering:
             probabilities=probabilities,
             n_personas=int(assignments.max()) + 1,
         )
+
+
+@dataclass
+class KMeansWithNoiseClustering:
+    """K-means with post-hoc noise labeling.
+
+    Mimics HDBSCAN's noise/cluster gate without requiring UMAP.
+    After KMeans clustering, users whose distance to their assigned
+    centroid exceeds the (1 - noise_fraction) percentile are
+    relabeled -1 (noise). Default noise_fraction=0.15 matches
+    HDBSCAN's typical ~15% noise rate.
+
+    The noise label is the natural gate for adaptive primary routing:
+    in-cluster users (>= 0) use persona_cooccurrence breadth; noise
+    users (-1) fall back to global cooc.
+
+    Built as a workaround when the umap-learn package can't import
+    (a known issue in some Python environments) and HDBSCAN's UMAP
+    reduction step crashes.
+    """
+
+    name: str = "kmeans_with_noise"
+    n_clusters: int = 30
+    noise_fraction: float = 0.15
+    random_state: int = 0
+    n_init: int = 10
+
+    def fit(self, user_vectors: np.ndarray) -> ClusterResult:
+        from sklearn.cluster import KMeans
+
+        n_users = user_vectors.shape[0]
+        k = min(self.n_clusters, max(2, n_users // 5))
+        km = KMeans(
+            n_clusters=k,
+            random_state=self.random_state,
+            n_init=self.n_init,
+        )
+        assignments = km.fit_predict(user_vectors).astype(np.int64)
+        # Per-user distance to assigned centroid.
+        centroids = km.cluster_centers_
+        distances = np.linalg.norm(
+            user_vectors - centroids[assignments], axis=1
+        )
+        # Threshold at the (1 - noise_fraction) percentile.
+        if 0.0 < self.noise_fraction < 1.0:
+            threshold = float(
+                np.percentile(distances, 100.0 * (1.0 - self.noise_fraction))
+            )
+            noise_mask = distances > threshold
+            assignments = assignments.copy()
+            assignments[noise_mask] = -1
+
+        probabilities = np.ones(n_users, dtype=np.float64)
+        # Probability proxy: 0 for noise, 1 for in-cluster.
+        probabilities[assignments < 0] = 0.0
+
+        n_personas = (
+            int(assignments[assignments >= 0].max()) + 1
+            if (assignments >= 0).any()
+            else 0
+        )
+        return ClusterResult(
+            assignments=assignments,
+            probabilities=probabilities,
+            n_personas=n_personas,
+        )

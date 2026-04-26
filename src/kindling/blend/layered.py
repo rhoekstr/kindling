@@ -86,6 +86,28 @@ class LayeredConfig:
     # per-persona cooc) for cold-start regimes where global cooc has
     # thin signal but persona-cooc pools cluster-level evidence.
     primary_signal: str = "cooccurrence"
+    # When primary_signal is "persona_cooccurrence", how to weight
+    # personas at scoring time:
+    #   "soft":  cosine match across all personas (richer but noisier
+    #             on cold-start)
+    #   "hard":  one-hot at the user's primary persona (sharper, may
+    #             miss when match is fuzzy)
+    persona_match_mode: str = "soft"
+    # Adaptive routing: when "adaptive", per recommend the engine
+    # decides between cooccurrence and persona_cooccurrence as
+    # primary based on a per-user persona-concentration metric.
+    # Otherwise the primary_signal field is used verbatim.
+    #   "fixed":     use primary_signal as-is
+    #   "adaptive":  per-user choice based on persona alignment
+    primary_routing: str = "fixed"
+    # Adaptive routing uses HDBSCAN's noise/cluster distinction as the
+    # gate: users with a fitted cluster assignment (user_to_persona >= 0)
+    # use persona_cooccurrence; noise points (-1) fall back to global
+    # cooccurrence. With KMeans (hard-partition, no noise label) all
+    # users are in-cluster and adaptive collapses to persona_cooc.
+    # Field retained as a compatibility shim; not consulted in v2 of
+    # adaptive routing.
+    adaptive_overlap_threshold: float = 0.3
 
 
 def layered_score(

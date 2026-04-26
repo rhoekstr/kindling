@@ -1,0 +1,1307 @@
+{
+  "dataset": "amazon-beauty",
+  "kindling_version": "0.0.1.dev0",
+  "n_personas_list": [
+    5,
+    10,
+    30
+  ],
+  "rows": [
+    {
+      "n_personas": 5,
+      "stratum": "very_cold",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "fixed",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.06378339682241083,
+      "recall_topk": 0.2175,
+      "mrr": 0.10910119047619048,
+      "concentration_stats": {
+        "mean": 0.030981397447300746,
+        "median": 0.015173950249390836,
+        "p25": 0.006743924387130978,
+        "p75": 0.031784563956842246,
+        "p95": 0.09200348698704612
+      }
+    },
+    {
+      "n_personas": 5,
+      "stratum": "very_cold",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "fixed",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.06350586131234755,
+      "recall_topk": 0.2175,
+      "mrr": 0.10950793650793651,
+      "concentration_stats": {
+        "mean": 0.030981397447300746,
+        "median": 0.015173950249390836,
+        "p25": 0.006743924387130978,
+        "p75": 0.031784563956842246,
+        "p95": 0.09200348698704612
+      }
+    },
+    {
+      "n_personas": 5,
+      "stratum": "very_cold",
+      "n_users": 400,
+      "primary_signal": "persona_cooccurrence",
+      "routing": "fixed",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.06240375667887069,
+      "recall_topk": 0.2075,
+      "mrr": 0.10854960317460317,
+      "concentration_stats": {
+        "mean": 0.030981397447300746,
+        "median": 0.015173950249390836,
+        "p25": 0.006743924387130978,
+        "p75": 0.031784563956842246,
+        "p95": 0.09200348698704612
+      }
+    },
+    {
+      "n_personas": 5,
+      "stratum": "very_cold",
+      "n_users": 400,
+      "primary_signal": "persona_cooccurrence",
+      "routing": "fixed",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.06112209576280051,
+      "recall_topk": 0.2,
+      "mrr": 0.10704563492063493,
+      "concentration_stats": {
+        "mean": 0.030981397447300746,
+        "median": 0.015173950249390836,
+        "p25": 0.006743924387130978,
+        "p75": 0.031784563956842246,
+        "p95": 0.09200348698704612
+      }
+    },
+    {
+      "n_personas": 5,
+      "stratum": "very_cold",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "adaptive",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.06378339682241083,
+      "recall_topk": 0.2175,
+      "mrr": 0.10910119047619048,
+      "concentration_stats": {
+        "mean": 0.030981397447300746,
+        "median": 0.015173950249390836,
+        "p25": 0.006743924387130978,
+        "p75": 0.031784563956842246,
+        "p95": 0.09200348698704612
+      }
+    },
+    {
+      "n_personas": 5,
+      "stratum": "very_cold",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "adaptive",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.06350586131234755,
+      "recall_topk": 0.2175,
+      "mrr": 0.10950793650793651,
+      "concentration_stats": {
+        "mean": 0.030981397447300746,
+        "median": 0.015173950249390836,
+        "p25": 0.006743924387130978,
+        "p75": 0.031784563956842246,
+        "p95": 0.09200348698704612
+      }
+    },
+    {
+      "n_personas": 5,
+      "stratum": "cold",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "fixed",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.022014410423632814,
+      "recall_topk": 0.065,
+      "mrr": 0.029131944444444446,
+      "concentration_stats": {
+        "mean": 0.046968876621975734,
+        "median": 0.030620177543459564,
+        "p25": 0.01709018643799859,
+        "p75": 0.05633335481599826,
+        "p95": 0.13342488675372882
+      }
+    },
+    {
+      "n_personas": 5,
+      "stratum": "cold",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "fixed",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.022014410423632814,
+      "recall_topk": 0.065,
+      "mrr": 0.029131944444444446,
+      "concentration_stats": {
+        "mean": 0.046968876621975734,
+        "median": 0.030620177543459564,
+        "p25": 0.01709018643799859,
+        "p75": 0.05633335481599826,
+        "p95": 0.13342488675372882
+      }
+    },
+    {
+      "n_personas": 5,
+      "stratum": "cold",
+      "n_users": 400,
+      "primary_signal": "persona_cooccurrence",
+      "routing": "fixed",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.021162531593469397,
+      "recall_topk": 0.0625,
+      "mrr": 0.02753769841269841,
+      "concentration_stats": {
+        "mean": 0.046968876621975734,
+        "median": 0.030620177543459564,
+        "p25": 0.01709018643799859,
+        "p75": 0.05633335481599826,
+        "p95": 0.13342488675372882
+      }
+    },
+    {
+      "n_personas": 5,
+      "stratum": "cold",
+      "n_users": 400,
+      "primary_signal": "persona_cooccurrence",
+      "routing": "fixed",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.02270259129224377,
+      "recall_topk": 0.07,
+      "mrr": 0.027530753968253965,
+      "concentration_stats": {
+        "mean": 0.046968876621975734,
+        "median": 0.030620177543459564,
+        "p25": 0.01709018643799859,
+        "p75": 0.05633335481599826,
+        "p95": 0.13342488675372882
+      }
+    },
+    {
+      "n_personas": 5,
+      "stratum": "cold",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "adaptive",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.022014410423632814,
+      "recall_topk": 0.065,
+      "mrr": 0.029131944444444446,
+      "concentration_stats": {
+        "mean": 0.046968876621975734,
+        "median": 0.030620177543459564,
+        "p25": 0.01709018643799859,
+        "p75": 0.05633335481599826,
+        "p95": 0.13342488675372882
+      }
+    },
+    {
+      "n_personas": 5,
+      "stratum": "cold",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "adaptive",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.022014410423632814,
+      "recall_topk": 0.065,
+      "mrr": 0.029131944444444446,
+      "concentration_stats": {
+        "mean": 0.046968876621975734,
+        "median": 0.030620177543459564,
+        "p25": 0.01709018643799859,
+        "p75": 0.05633335481599826,
+        "p95": 0.13342488675372882
+      }
+    },
+    {
+      "n_personas": 5,
+      "stratum": "warm",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "fixed",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.010231227292914391,
+      "recall_topk": 0.04,
+      "mrr": 0.01419642857142857,
+      "concentration_stats": {
+        "mean": 0.10311108847495078,
+        "median": 0.08104333019867152,
+        "p25": 0.047314123291029055,
+        "p75": 0.13995383301131764,
+        "p95": 0.2551265018815065
+      }
+    },
+    {
+      "n_personas": 5,
+      "stratum": "warm",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "fixed",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.010228756772347837,
+      "recall_topk": 0.04,
+      "mrr": 0.014221230158730159,
+      "concentration_stats": {
+        "mean": 0.10311108847495078,
+        "median": 0.08104333019867152,
+        "p25": 0.047314123291029055,
+        "p75": 0.13995383301131764,
+        "p95": 0.2551265018815065
+      }
+    },
+    {
+      "n_personas": 5,
+      "stratum": "warm",
+      "n_users": 400,
+      "primary_signal": "persona_cooccurrence",
+      "routing": "fixed",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.010153010158618992,
+      "recall_topk": 0.04,
+      "mrr": 0.013953373015873016,
+      "concentration_stats": {
+        "mean": 0.10311108847495078,
+        "median": 0.08104333019867152,
+        "p25": 0.047314123291029055,
+        "p75": 0.13995383301131764,
+        "p95": 0.2551265018815065
+      }
+    },
+    {
+      "n_personas": 5,
+      "stratum": "warm",
+      "n_users": 400,
+      "primary_signal": "persona_cooccurrence",
+      "routing": "fixed",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.00904784802504361,
+      "recall_topk": 0.035,
+      "mrr": 0.012390873015873015,
+      "concentration_stats": {
+        "mean": 0.10311108847495078,
+        "median": 0.08104333019867152,
+        "p25": 0.047314123291029055,
+        "p75": 0.13995383301131764,
+        "p95": 0.2551265018815065
+      }
+    },
+    {
+      "n_personas": 5,
+      "stratum": "warm",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "adaptive",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.010231227292914391,
+      "recall_topk": 0.04,
+      "mrr": 0.01419642857142857,
+      "concentration_stats": {
+        "mean": 0.10311108847495078,
+        "median": 0.08104333019867152,
+        "p25": 0.047314123291029055,
+        "p75": 0.13995383301131764,
+        "p95": 0.2551265018815065
+      }
+    },
+    {
+      "n_personas": 5,
+      "stratum": "warm",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "adaptive",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.010228756772347837,
+      "recall_topk": 0.04,
+      "mrr": 0.014221230158730159,
+      "concentration_stats": {
+        "mean": 0.10311108847495078,
+        "median": 0.08104333019867152,
+        "p25": 0.047314123291029055,
+        "p75": 0.13995383301131764,
+        "p95": 0.2551265018815065
+      }
+    },
+    {
+      "n_personas": 5,
+      "stratum": "hot",
+      "n_users": 233,
+      "primary_signal": "cooccurrence",
+      "routing": "fixed",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.0016377291728748222,
+      "recall_topk": 0.008583690987124463,
+      "mrr": 0.0025035765379113014,
+      "concentration_stats": {
+        "mean": 0.2555714838479213,
+        "median": 0.20884213950018116,
+        "p25": 0.11700582894170475,
+        "p75": 0.3803840888579175,
+        "p95": 0.5600737753010206
+      }
+    },
+    {
+      "n_personas": 5,
+      "stratum": "hot",
+      "n_users": 233,
+      "primary_signal": "cooccurrence",
+      "routing": "fixed",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.0016377291728748222,
+      "recall_topk": 0.008583690987124463,
+      "mrr": 0.0025035765379113014,
+      "concentration_stats": {
+        "mean": 0.2555714838479213,
+        "median": 0.20884213950018116,
+        "p25": 0.11700582894170475,
+        "p75": 0.3803840888579175,
+        "p95": 0.5600737753010206
+      }
+    },
+    {
+      "n_personas": 5,
+      "stratum": "hot",
+      "n_users": 233,
+      "primary_signal": "persona_cooccurrence",
+      "routing": "fixed",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.0020614109616353253,
+      "recall_topk": 0.008583690987124463,
+      "mrr": 0.003218884120171674,
+      "concentration_stats": {
+        "mean": 0.2555714838479213,
+        "median": 0.20884213950018116,
+        "p25": 0.11700582894170475,
+        "p75": 0.3803840888579175,
+        "p95": 0.5600737753010206
+      }
+    },
+    {
+      "n_personas": 5,
+      "stratum": "hot",
+      "n_users": 233,
+      "primary_signal": "persona_cooccurrence",
+      "routing": "fixed",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.002073481175381204,
+      "recall_topk": 0.008583690987124463,
+      "mrr": 0.003218884120171674,
+      "concentration_stats": {
+        "mean": 0.2555714838479213,
+        "median": 0.20884213950018116,
+        "p25": 0.11700582894170475,
+        "p75": 0.3803840888579175,
+        "p95": 0.5600737753010206
+      }
+    },
+    {
+      "n_personas": 5,
+      "stratum": "hot",
+      "n_users": 233,
+      "primary_signal": "cooccurrence",
+      "routing": "adaptive",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.0016377291728748222,
+      "recall_topk": 0.008583690987124463,
+      "mrr": 0.0025035765379113014,
+      "concentration_stats": {
+        "mean": 0.2555714838479213,
+        "median": 0.20884213950018116,
+        "p25": 0.11700582894170475,
+        "p75": 0.3803840888579175,
+        "p95": 0.5600737753010206
+      }
+    },
+    {
+      "n_personas": 5,
+      "stratum": "hot",
+      "n_users": 233,
+      "primary_signal": "cooccurrence",
+      "routing": "adaptive",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.0016377291728748222,
+      "recall_topk": 0.008583690987124463,
+      "mrr": 0.0025035765379113014,
+      "concentration_stats": {
+        "mean": 0.2555714838479213,
+        "median": 0.20884213950018116,
+        "p25": 0.11700582894170475,
+        "p75": 0.3803840888579175,
+        "p95": 0.5600737753010206
+      }
+    },
+    {
+      "n_personas": 10,
+      "stratum": "very_cold",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "fixed",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.06376935932384237,
+      "recall_topk": 0.2175,
+      "mrr": 0.1090734126984127,
+      "concentration_stats": {
+        "mean": 0.03392802610351663,
+        "median": 0.018512223699947376,
+        "p25": 0.007857316544140954,
+        "p75": 0.03937089630549672,
+        "p95": 0.09538328295400816
+      }
+    },
+    {
+      "n_personas": 10,
+      "stratum": "very_cold",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "fixed",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.06368233063453911,
+      "recall_topk": 0.2175,
+      "mrr": 0.10959126984126985,
+      "concentration_stats": {
+        "mean": 0.03392802610351663,
+        "median": 0.018512223699947376,
+        "p25": 0.007857316544140954,
+        "p75": 0.03937089630549672,
+        "p95": 0.09538328295400816
+      }
+    },
+    {
+      "n_personas": 10,
+      "stratum": "very_cold",
+      "n_users": 400,
+      "primary_signal": "persona_cooccurrence",
+      "routing": "fixed",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.06351060068646691,
+      "recall_topk": 0.215,
+      "mrr": 0.10940674603174604,
+      "concentration_stats": {
+        "mean": 0.03392802610351663,
+        "median": 0.018512223699947376,
+        "p25": 0.007857316544140954,
+        "p75": 0.03937089630549672,
+        "p95": 0.09538328295400816
+      }
+    },
+    {
+      "n_personas": 10,
+      "stratum": "very_cold",
+      "n_users": 400,
+      "primary_signal": "persona_cooccurrence",
+      "routing": "fixed",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.056878104499089435,
+      "recall_topk": 0.195,
+      "mrr": 0.10071230158730157,
+      "concentration_stats": {
+        "mean": 0.03392802610351663,
+        "median": 0.018512223699947376,
+        "p25": 0.007857316544140954,
+        "p75": 0.03937089630549672,
+        "p95": 0.09538328295400816
+      }
+    },
+    {
+      "n_personas": 10,
+      "stratum": "very_cold",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "adaptive",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.0635865672277326,
+      "recall_topk": 0.215,
+      "mrr": 0.1088234126984127,
+      "concentration_stats": {
+        "mean": 0.03392802610351663,
+        "median": 0.018512223699947376,
+        "p25": 0.007857316544140954,
+        "p75": 0.03937089630549672,
+        "p95": 0.09538328295400816
+      }
+    },
+    {
+      "n_personas": 10,
+      "stratum": "very_cold",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "adaptive",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.06349953853842934,
+      "recall_topk": 0.215,
+      "mrr": 0.10934126984126984,
+      "concentration_stats": {
+        "mean": 0.03392802610351663,
+        "median": 0.018512223699947376,
+        "p25": 0.007857316544140954,
+        "p75": 0.03937089630549672,
+        "p95": 0.09538328295400816
+      }
+    },
+    {
+      "n_personas": 10,
+      "stratum": "cold",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "fixed",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.02223261928456064,
+      "recall_topk": 0.065,
+      "mrr": 0.029131944444444446,
+      "concentration_stats": {
+        "mean": 0.057089218555376665,
+        "median": 0.03745082060419823,
+        "p25": 0.021098586676751345,
+        "p75": 0.0639032272832578,
+        "p95": 0.17635640974144395
+      }
+    },
+    {
+      "n_personas": 10,
+      "stratum": "cold",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "fixed",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.022200075039296642,
+      "recall_topk": 0.065,
+      "mrr": 0.029259920634920635,
+      "concentration_stats": {
+        "mean": 0.057089218555376665,
+        "median": 0.03745082060419823,
+        "p25": 0.021098586676751345,
+        "p75": 0.0639032272832578,
+        "p95": 0.17635640974144395
+      }
+    },
+    {
+      "n_personas": 10,
+      "stratum": "cold",
+      "n_users": 400,
+      "primary_signal": "persona_cooccurrence",
+      "routing": "fixed",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.021542396595400456,
+      "recall_topk": 0.0625,
+      "mrr": 0.02760714285714286,
+      "concentration_stats": {
+        "mean": 0.057089218555376665,
+        "median": 0.03745082060419823,
+        "p25": 0.021098586676751345,
+        "p75": 0.0639032272832578,
+        "p95": 0.17635640974144395
+      }
+    },
+    {
+      "n_personas": 10,
+      "stratum": "cold",
+      "n_users": 400,
+      "primary_signal": "persona_cooccurrence",
+      "routing": "fixed",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.02386140326822621,
+      "recall_topk": 0.07,
+      "mrr": 0.02882936507936508,
+      "concentration_stats": {
+        "mean": 0.057089218555376665,
+        "median": 0.03745082060419823,
+        "p25": 0.021098586676751345,
+        "p75": 0.0639032272832578,
+        "p95": 0.17635640974144395
+      }
+    },
+    {
+      "n_personas": 10,
+      "stratum": "cold",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "adaptive",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.02223261928456064,
+      "recall_topk": 0.065,
+      "mrr": 0.029131944444444446,
+      "concentration_stats": {
+        "mean": 0.057089218555376665,
+        "median": 0.03745082060419823,
+        "p25": 0.021098586676751345,
+        "p75": 0.0639032272832578,
+        "p95": 0.17635640974144395
+      }
+    },
+    {
+      "n_personas": 10,
+      "stratum": "cold",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "adaptive",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.022200075039296642,
+      "recall_topk": 0.065,
+      "mrr": 0.029259920634920635,
+      "concentration_stats": {
+        "mean": 0.057089218555376665,
+        "median": 0.03745082060419823,
+        "p25": 0.021098586676751345,
+        "p75": 0.0639032272832578,
+        "p95": 0.17635640974144395
+      }
+    },
+    {
+      "n_personas": 10,
+      "stratum": "warm",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "fixed",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.010282509416263417,
+      "recall_topk": 0.04,
+      "mrr": 0.01438392857142857,
+      "concentration_stats": {
+        "mean": 0.12350329727250782,
+        "median": 0.09306707081033551,
+        "p25": 0.05104370794700823,
+        "p75": 0.18617333224374405,
+        "p95": 0.2927744945652533
+      }
+    },
+    {
+      "n_personas": 10,
+      "stratum": "warm",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "fixed",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.010248666015315228,
+      "recall_topk": 0.04,
+      "mrr": 0.014241071428571428,
+      "concentration_stats": {
+        "mean": 0.12350329727250782,
+        "median": 0.09306707081033551,
+        "p25": 0.05104370794700823,
+        "p75": 0.18617333224374405,
+        "p95": 0.2927744945652533
+      }
+    },
+    {
+      "n_personas": 10,
+      "stratum": "warm",
+      "n_users": 400,
+      "primary_signal": "persona_cooccurrence",
+      "routing": "fixed",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.010046034652388687,
+      "recall_topk": 0.04,
+      "mrr": 0.013571428571428573,
+      "concentration_stats": {
+        "mean": 0.12350329727250782,
+        "median": 0.09306707081033551,
+        "p25": 0.05104370794700823,
+        "p75": 0.18617333224374405,
+        "p95": 0.2927744945652533
+      }
+    },
+    {
+      "n_personas": 10,
+      "stratum": "warm",
+      "n_users": 400,
+      "primary_signal": "persona_cooccurrence",
+      "routing": "fixed",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.010028721526545792,
+      "recall_topk": 0.04,
+      "mrr": 0.013581349206349206,
+      "concentration_stats": {
+        "mean": 0.12350329727250782,
+        "median": 0.09306707081033551,
+        "p25": 0.05104370794700823,
+        "p75": 0.18617333224374405,
+        "p95": 0.2927744945652533
+      }
+    },
+    {
+      "n_personas": 10,
+      "stratum": "warm",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "adaptive",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.010282509416263417,
+      "recall_topk": 0.04,
+      "mrr": 0.01438392857142857,
+      "concentration_stats": {
+        "mean": 0.12350329727250782,
+        "median": 0.09306707081033551,
+        "p25": 0.05104370794700823,
+        "p75": 0.18617333224374405,
+        "p95": 0.2927744945652533
+      }
+    },
+    {
+      "n_personas": 10,
+      "stratum": "warm",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "adaptive",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.010248666015315228,
+      "recall_topk": 0.04,
+      "mrr": 0.014241071428571428,
+      "concentration_stats": {
+        "mean": 0.12350329727250782,
+        "median": 0.09306707081033551,
+        "p25": 0.05104370794700823,
+        "p75": 0.18617333224374405,
+        "p95": 0.2927744945652533
+      }
+    },
+    {
+      "n_personas": 10,
+      "stratum": "hot",
+      "n_users": 233,
+      "primary_signal": "cooccurrence",
+      "routing": "fixed",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.0016377291728748222,
+      "recall_topk": 0.008583690987124463,
+      "mrr": 0.0025035765379113014,
+      "concentration_stats": {
+        "mean": 0.27800049706777646,
+        "median": 0.2584763989388839,
+        "p25": 0.13276858654739596,
+        "p75": 0.3822459673234021,
+        "p95": 0.5872740920631943
+      }
+    },
+    {
+      "n_personas": 10,
+      "stratum": "hot",
+      "n_users": 233,
+      "primary_signal": "cooccurrence",
+      "routing": "fixed",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.0016377291728748222,
+      "recall_topk": 0.008583690987124463,
+      "mrr": 0.0025035765379113014,
+      "concentration_stats": {
+        "mean": 0.27800049706777646,
+        "median": 0.2584763989388839,
+        "p25": 0.13276858654739596,
+        "p75": 0.3822459673234021,
+        "p95": 0.5872740920631943
+      }
+    },
+    {
+      "n_personas": 10,
+      "stratum": "hot",
+      "n_users": 233,
+      "primary_signal": "persona_cooccurrence",
+      "routing": "fixed",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.0019414019656691598,
+      "recall_topk": 0.008583690987124463,
+      "mrr": 0.0025035765379113014,
+      "concentration_stats": {
+        "mean": 0.27800049706777646,
+        "median": 0.2584763989388839,
+        "p25": 0.13276858654739596,
+        "p75": 0.3822459673234021,
+        "p95": 0.5872740920631943
+      }
+    },
+    {
+      "n_personas": 10,
+      "stratum": "hot",
+      "n_users": 233,
+      "primary_signal": "persona_cooccurrence",
+      "routing": "fixed",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.002073481175381204,
+      "recall_topk": 0.008583690987124463,
+      "mrr": 0.003218884120171674,
+      "concentration_stats": {
+        "mean": 0.27800049706777646,
+        "median": 0.2584763989388839,
+        "p25": 0.13276858654739596,
+        "p75": 0.3822459673234021,
+        "p95": 0.5872740920631943
+      }
+    },
+    {
+      "n_personas": 10,
+      "stratum": "hot",
+      "n_users": 233,
+      "primary_signal": "cooccurrence",
+      "routing": "adaptive",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.0016377291728748222,
+      "recall_topk": 0.008583690987124463,
+      "mrr": 0.0025035765379113014,
+      "concentration_stats": {
+        "mean": 0.27800049706777646,
+        "median": 0.2584763989388839,
+        "p25": 0.13276858654739596,
+        "p75": 0.3822459673234021,
+        "p95": 0.5872740920631943
+      }
+    },
+    {
+      "n_personas": 10,
+      "stratum": "hot",
+      "n_users": 233,
+      "primary_signal": "cooccurrence",
+      "routing": "adaptive",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.0016377291728748222,
+      "recall_topk": 0.008583690987124463,
+      "mrr": 0.0025035765379113014,
+      "concentration_stats": {
+        "mean": 0.27800049706777646,
+        "median": 0.2584763989388839,
+        "p25": 0.13276858654739596,
+        "p75": 0.3822459673234021,
+        "p95": 0.5872740920631943
+      }
+    },
+    {
+      "n_personas": 30,
+      "stratum": "very_cold",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "fixed",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.0638954229413413,
+      "recall_topk": 0.2175,
+      "mrr": 0.10972619047619048,
+      "concentration_stats": {
+        "mean": 0.07958720623131169,
+        "median": 0.027700375345686687,
+        "p25": 0.010180046756162763,
+        "p75": 0.0759157622713532,
+        "p95": 0.3766029401689138
+      }
+    },
+    {
+      "n_personas": 30,
+      "stratum": "very_cold",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "fixed",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.06307013118554802,
+      "recall_topk": 0.215,
+      "mrr": 0.10855952380952381,
+      "concentration_stats": {
+        "mean": 0.07958720623131169,
+        "median": 0.027700375345686687,
+        "p25": 0.010180046756162763,
+        "p75": 0.0759157622713532,
+        "p95": 0.3766029401689138
+      }
+    },
+    {
+      "n_personas": 30,
+      "stratum": "very_cold",
+      "n_users": 400,
+      "primary_signal": "persona_cooccurrence",
+      "routing": "fixed",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.06123061925882649,
+      "recall_topk": 0.2025,
+      "mrr": 0.10494345238095239,
+      "concentration_stats": {
+        "mean": 0.07958720623131169,
+        "median": 0.027700375345686687,
+        "p25": 0.010180046756162763,
+        "p75": 0.0759157622713532,
+        "p95": 0.3766029401689138
+      }
+    },
+    {
+      "n_personas": 30,
+      "stratum": "very_cold",
+      "n_users": 400,
+      "primary_signal": "persona_cooccurrence",
+      "routing": "fixed",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.053648986526867996,
+      "recall_topk": 0.175,
+      "mrr": 0.0940188492063492,
+      "concentration_stats": {
+        "mean": 0.07958720623131169,
+        "median": 0.027700375345686687,
+        "p25": 0.010180046756162763,
+        "p75": 0.0759157622713532,
+        "p95": 0.3766029401689138
+      }
+    },
+    {
+      "n_personas": 30,
+      "stratum": "very_cold",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "adaptive",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.06366497063826027,
+      "recall_topk": 0.215,
+      "mrr": 0.10939285714285713,
+      "concentration_stats": {
+        "mean": 0.07958720623131169,
+        "median": 0.027700375345686687,
+        "p25": 0.010180046756162763,
+        "p75": 0.0759157622713532,
+        "p95": 0.3766029401689138
+      }
+    },
+    {
+      "n_personas": 30,
+      "stratum": "very_cold",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "adaptive",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.0628270930152687,
+      "recall_topk": 0.2125,
+      "mrr": 0.10822619047619046,
+      "concentration_stats": {
+        "mean": 0.07958720623131169,
+        "median": 0.027700375345686687,
+        "p25": 0.010180046756162763,
+        "p75": 0.0759157622713532,
+        "p95": 0.3766029401689138
+      }
+    },
+    {
+      "n_personas": 30,
+      "stratum": "cold",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "fixed",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.02228124340354211,
+      "recall_topk": 0.065,
+      "mrr": 0.029173611111111112,
+      "concentration_stats": {
+        "mean": 0.08127881837496925,
+        "median": 0.04482879272431539,
+        "p25": 0.024740272380869052,
+        "p75": 0.08006880277155545,
+        "p95": 0.3032966989506733
+      }
+    },
+    {
+      "n_personas": 30,
+      "stratum": "cold",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "fixed",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.022267251063804876,
+      "recall_topk": 0.065,
+      "mrr": 0.029384920634920632,
+      "concentration_stats": {
+        "mean": 0.08127881837496925,
+        "median": 0.04482879272431539,
+        "p25": 0.024740272380869052,
+        "p75": 0.08006880277155545,
+        "p95": 0.3032966989506733
+      }
+    },
+    {
+      "n_personas": 30,
+      "stratum": "cold",
+      "n_users": 400,
+      "primary_signal": "persona_cooccurrence",
+      "routing": "fixed",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.02228207302521355,
+      "recall_topk": 0.065,
+      "mrr": 0.02808531746031746,
+      "concentration_stats": {
+        "mean": 0.08127881837496925,
+        "median": 0.04482879272431539,
+        "p25": 0.024740272380869052,
+        "p75": 0.08006880277155545,
+        "p95": 0.3032966989506733
+      }
+    },
+    {
+      "n_personas": 30,
+      "stratum": "cold",
+      "n_users": 400,
+      "primary_signal": "persona_cooccurrence",
+      "routing": "fixed",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.02467366139482676,
+      "recall_topk": 0.07,
+      "mrr": 0.03195138888888889,
+      "concentration_stats": {
+        "mean": 0.08127881837496925,
+        "median": 0.04482879272431539,
+        "p25": 0.024740272380869052,
+        "p75": 0.08006880277155545,
+        "p95": 0.3032966989506733
+      }
+    },
+    {
+      "n_personas": 30,
+      "stratum": "cold",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "adaptive",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.02236160777331013,
+      "recall_topk": 0.065,
+      "mrr": 0.027715277777777776,
+      "concentration_stats": {
+        "mean": 0.08127881837496925,
+        "median": 0.04482879272431539,
+        "p25": 0.024740272380869052,
+        "p75": 0.08006880277155545,
+        "p95": 0.3032966989506733
+      }
+    },
+    {
+      "n_personas": 30,
+      "stratum": "cold",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "adaptive",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.022357447183979348,
+      "recall_topk": 0.065,
+      "mrr": 0.027926587301587303,
+      "concentration_stats": {
+        "mean": 0.08127881837496925,
+        "median": 0.04482879272431539,
+        "p25": 0.024740272380869052,
+        "p75": 0.08006880277155545,
+        "p95": 0.3032966989506733
+      }
+    },
+    {
+      "n_personas": 30,
+      "stratum": "warm",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "fixed",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.010288254290396209,
+      "recall_topk": 0.04,
+      "mrr": 0.014422619047619045,
+      "concentration_stats": {
+        "mean": 0.1358048908360572,
+        "median": 0.10607528553961808,
+        "p25": 0.05445083621031502,
+        "p75": 0.1911090250974926,
+        "p95": 0.29987636874108653
+      }
+    },
+    {
+      "n_personas": 30,
+      "stratum": "warm",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "fixed",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.010265070693862576,
+      "recall_topk": 0.04,
+      "mrr": 0.014339285714285712,
+      "concentration_stats": {
+        "mean": 0.1358048908360572,
+        "median": 0.10607528553961808,
+        "p25": 0.05445083621031502,
+        "p75": 0.1911090250974926,
+        "p95": 0.29987636874108653
+      }
+    },
+    {
+      "n_personas": 30,
+      "stratum": "warm",
+      "n_users": 400,
+      "primary_signal": "persona_cooccurrence",
+      "routing": "fixed",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.010153524384680694,
+      "recall_topk": 0.04,
+      "mrr": 0.013306547619047619,
+      "concentration_stats": {
+        "mean": 0.1358048908360572,
+        "median": 0.10607528553961808,
+        "p25": 0.05445083621031502,
+        "p75": 0.1911090250974926,
+        "p95": 0.29987636874108653
+      }
+    },
+    {
+      "n_personas": 30,
+      "stratum": "warm",
+      "n_users": 400,
+      "primary_signal": "persona_cooccurrence",
+      "routing": "fixed",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.007393203413802119,
+      "recall_topk": 0.0325,
+      "mrr": 0.01024107142857143,
+      "concentration_stats": {
+        "mean": 0.1358048908360572,
+        "median": 0.10607528553961808,
+        "p25": 0.05445083621031502,
+        "p75": 0.1911090250974926,
+        "p95": 0.29987636874108653
+      }
+    },
+    {
+      "n_personas": 30,
+      "stratum": "warm",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "adaptive",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.010447306260893588,
+      "recall_topk": 0.04,
+      "mrr": 0.014422619047619045,
+      "concentration_stats": {
+        "mean": 0.1358048908360572,
+        "median": 0.10607528553961808,
+        "p25": 0.05445083621031502,
+        "p75": 0.1911090250974926,
+        "p95": 0.29987636874108653
+      }
+    },
+    {
+      "n_personas": 30,
+      "stratum": "warm",
+      "n_users": 400,
+      "primary_signal": "cooccurrence",
+      "routing": "adaptive",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.01044098478601732,
+      "recall_topk": 0.04,
+      "mrr": 0.014339285714285712,
+      "concentration_stats": {
+        "mean": 0.1358048908360572,
+        "median": 0.10607528553961808,
+        "p25": 0.05445083621031502,
+        "p75": 0.1911090250974926,
+        "p95": 0.29987636874108653
+      }
+    },
+    {
+      "n_personas": 30,
+      "stratum": "hot",
+      "n_users": 233,
+      "primary_signal": "cooccurrence",
+      "routing": "fixed",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.0016377291728748222,
+      "recall_topk": 0.008583690987124463,
+      "mrr": 0.0025035765379113014,
+      "concentration_stats": {
+        "mean": 0.2935517221917069,
+        "median": 0.26953561221448585,
+        "p25": 0.13876159272145194,
+        "p75": 0.38251438897219253,
+        "p95": 0.6592244708102671
+      }
+    },
+    {
+      "n_personas": 30,
+      "stratum": "hot",
+      "n_users": 233,
+      "primary_signal": "cooccurrence",
+      "routing": "fixed",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.0016377291728748222,
+      "recall_topk": 0.008583690987124463,
+      "mrr": 0.0025035765379113014,
+      "concentration_stats": {
+        "mean": 0.2935517221917069,
+        "median": 0.26953561221448585,
+        "p25": 0.13876159272145194,
+        "p75": 0.38251438897219253,
+        "p95": 0.6592244708102671
+      }
+    },
+    {
+      "n_personas": 30,
+      "stratum": "hot",
+      "n_users": 233,
+      "primary_signal": "persona_cooccurrence",
+      "routing": "fixed",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.0031680426708085648,
+      "recall_topk": 0.017167381974248927,
+      "mrr": 0.006437768240343348,
+      "concentration_stats": {
+        "mean": 0.2935517221917069,
+        "median": 0.26953561221448585,
+        "p25": 0.13876159272145194,
+        "p75": 0.38251438897219253,
+        "p95": 0.6592244708102671
+      }
+    },
+    {
+      "n_personas": 30,
+      "stratum": "hot",
+      "n_users": 233,
+      "primary_signal": "persona_cooccurrence",
+      "routing": "fixed",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.00414132968981246,
+      "recall_topk": 0.02145922746781116,
+      "mrr": 0.009370529327610871,
+      "concentration_stats": {
+        "mean": 0.2935517221917069,
+        "median": 0.26953561221448585,
+        "p25": 0.13876159272145194,
+        "p75": 0.38251438897219253,
+        "p95": 0.6592244708102671
+      }
+    },
+    {
+      "n_personas": 30,
+      "stratum": "hot",
+      "n_users": 233,
+      "primary_signal": "cooccurrence",
+      "routing": "adaptive",
+      "match_mode": "soft",
+      "ndcg_at_k": 0.0016377291728748222,
+      "recall_topk": 0.008583690987124463,
+      "mrr": 0.0025035765379113014,
+      "concentration_stats": {
+        "mean": 0.2935517221917069,
+        "median": 0.26953561221448585,
+        "p25": 0.13876159272145194,
+        "p75": 0.38251438897219253,
+        "p95": 0.6592244708102671
+      }
+    },
+    {
+      "n_personas": 30,
+      "stratum": "hot",
+      "n_users": 233,
+      "primary_signal": "cooccurrence",
+      "routing": "adaptive",
+      "match_mode": "hard",
+      "ndcg_at_k": 0.002110029100553106,
+      "recall_topk": 0.012875536480686695,
+      "mrr": 0.003934191702432046,
+      "concentration_stats": {
+        "mean": 0.2935517221917069,
+        "median": 0.26953561221448585,
+        "p25": 0.13876159272145194,
+        "p75": 0.38251438897219253,
+        "p95": 0.6592244708102671
+      }
+    }
+  ]
+}

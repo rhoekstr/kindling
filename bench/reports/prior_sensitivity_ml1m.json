@@ -1,0 +1,426 @@
+{
+  "dataset": "movielens-1m",
+  "kindling_version": "0.0.1.dev0",
+  "perturbations": [
+    {
+      "section": "graph_density",
+      "direction": "+50%",
+      "fraction": 0.1,
+      "signal_shifts": {
+        "path_full": -0.0015486687697724433,
+        "path_tail": -0.0001181648243755995,
+        "path_basket": -0.000247020960533445,
+        "cooccurrence": 0.0022987421173277086,
+        "cost_population": 0.00010084346419751092,
+        "cost_entity": 7.343937877380639e-05,
+        "cost_context": -0.0005591704056177021
+      }
+    },
+    {
+      "section": "graph_density",
+      "direction": "-50%",
+      "fraction": 0.1,
+      "signal_shifts": {
+        "path_full": 0.0006933375504082351,
+        "path_tail": 0.001701956583382902,
+        "path_basket": 0.0002996415492080018,
+        "cooccurrence": -0.0019398540385573764,
+        "cost_population": -8.959779583033334e-05,
+        "cost_entity": -0.00011048047371440498,
+        "cost_context": -0.0005550033748972592
+      }
+    },
+    {
+      "section": "clustering_coefficient",
+      "direction": "+50%",
+      "fraction": 0.1,
+      "signal_shifts": {
+        "path_full": 0.0,
+        "path_tail": 0.0,
+        "path_basket": 0.0,
+        "cooccurrence": 0.0,
+        "cost_population": 0.0,
+        "cost_entity": 0.0,
+        "cost_context": 0.0
+      }
+    },
+    {
+      "section": "clustering_coefficient",
+      "direction": "-50%",
+      "fraction": 0.1,
+      "signal_shifts": {
+        "path_full": 0.0,
+        "path_tail": 0.0,
+        "path_basket": 0.0,
+        "cooccurrence": 0.0,
+        "cost_population": 0.0,
+        "cost_entity": 0.0,
+        "cost_context": 0.0
+      }
+    },
+    {
+      "section": "session_density_full",
+      "direction": "+50%",
+      "fraction": 0.1,
+      "signal_shifts": {
+        "path_full": 0.0,
+        "path_tail": 0.0,
+        "path_basket": 0.0,
+        "cooccurrence": 0.0,
+        "cost_population": 0.0,
+        "cost_entity": 0.0,
+        "cost_context": 0.0
+      }
+    },
+    {
+      "section": "session_density_full",
+      "direction": "-50%",
+      "fraction": 0.1,
+      "signal_shifts": {
+        "path_full": -0.03495490403053081,
+        "path_tail": 0.02268466279674386,
+        "path_basket": 0.011024568689299713,
+        "cooccurrence": 0.00036014613213576716,
+        "cost_population": 0.0005001292283501619,
+        "cost_entity": 0.0001363094291522357,
+        "cost_context": 0.0002490877548489848
+      }
+    },
+    {
+      "section": "session_density_tail",
+      "direction": "+50%",
+      "fraction": 0.1,
+      "signal_shifts": {
+        "path_full": -0.023906817605352626,
+        "path_tail": 0.035801151387646835,
+        "path_basket": -0.010709900430261765,
+        "cooccurrence": -0.00031820012134436883,
+        "cost_population": -0.000341734284674107,
+        "cost_entity": -0.00035817708514950235,
+        "cost_context": -0.00016632186086468301
+      }
+    },
+    {
+      "section": "session_density_tail",
+      "direction": "-50%",
+      "fraction": 0.1,
+      "signal_shifts": {
+        "path_full": 0.09366532641952019,
+        "path_tail": -0.13850580134972248,
+        "path_basket": 0.041670693100516715,
+        "cooccurrence": 0.000960065650807162,
+        "cost_population": 0.0004995049692147506,
+        "cost_entity": 0.0015270779730866902,
+        "cost_context": 0.0001831332365768018
+      }
+    },
+    {
+      "section": "session_density_basket",
+      "direction": "+50%",
+      "fraction": 0.1,
+      "signal_shifts": {
+        "path_full": -0.0354055425661694,
+        "path_tail": -0.030701622227186753,
+        "path_basket": 0.06775084225240383,
+        "cooccurrence": -0.0005025186720668462,
+        "cost_population": -0.0003878286191956286,
+        "cost_entity": -0.0003750202115153419,
+        "cost_context": -0.00037830995626998796
+      }
+    },
+    {
+      "section": "session_density_basket",
+      "direction": "-50%",
+      "fraction": 0.1,
+      "signal_shifts": {
+        "path_full": 0.042727857679514425,
+        "path_tail": 0.0369914142432633,
+        "path_basket": -0.08152438270236886,
+        "cooccurrence": 0.000608138363974965,
+        "cost_population": 0.00034297919338249164,
+        "cost_entity": 0.0003212480111106494,
+        "cost_context": 0.0005327452111230065
+      }
+    },
+    {
+      "section": "graph_density",
+      "direction": "+50%",
+      "fraction": 0.5,
+      "signal_shifts": {
+        "path_full": -0.003292563729764053,
+        "path_tail": -0.0009592991203116186,
+        "path_basket": -0.0009850265522853563,
+        "cooccurrence": 0.004638662664789288,
+        "cost_population": 0.0007502187072610227,
+        "cost_entity": -0.0003648429689870154,
+        "cost_context": 0.0002128509992977345
+      }
+    },
+    {
+      "section": "graph_density",
+      "direction": "-50%",
+      "fraction": 0.5,
+      "signal_shifts": {
+        "path_full": 0.001450988225176697,
+        "path_tail": 0.0011514855517573697,
+        "path_basket": 0.0017139807649282912,
+        "cooccurrence": -0.002904995743074664,
+        "cost_population": -0.0002872575427941139,
+        "cost_entity": -0.0008571384507860273,
+        "cost_context": -0.00026706280520766073
+      }
+    },
+    {
+      "section": "clustering_coefficient",
+      "direction": "+50%",
+      "fraction": 0.5,
+      "signal_shifts": {
+        "path_full": 0.0,
+        "path_tail": 0.0,
+        "path_basket": 0.0,
+        "cooccurrence": 0.0,
+        "cost_population": 0.0,
+        "cost_entity": 0.0,
+        "cost_context": 0.0
+      }
+    },
+    {
+      "section": "clustering_coefficient",
+      "direction": "-50%",
+      "fraction": 0.5,
+      "signal_shifts": {
+        "path_full": 0.0,
+        "path_tail": 0.0,
+        "path_basket": 0.0,
+        "cooccurrence": 0.0,
+        "cost_population": 0.0,
+        "cost_entity": 0.0,
+        "cost_context": 0.0
+      }
+    },
+    {
+      "section": "session_density_full",
+      "direction": "+50%",
+      "fraction": 0.5,
+      "signal_shifts": {
+        "path_full": 0.0,
+        "path_tail": 0.0,
+        "path_basket": 0.0,
+        "cooccurrence": 0.0,
+        "cost_population": 0.0,
+        "cost_entity": 0.0,
+        "cost_context": 0.0
+      }
+    },
+    {
+      "section": "session_density_full",
+      "direction": "-50%",
+      "fraction": 0.5,
+      "signal_shifts": {
+        "path_full": -0.02613542688873699,
+        "path_tail": 0.016209081492310873,
+        "path_basket": 0.009509893533322183,
+        "cooccurrence": 0.0006927264899425764,
+        "cost_population": 0.00033198005002746736,
+        "cost_entity": -0.0004099564398229241,
+        "cost_context": -0.000198298237043224
+      }
+    },
+    {
+      "section": "session_density_tail",
+      "direction": "+50%",
+      "fraction": 0.5,
+      "signal_shifts": {
+        "path_full": -0.016270793754512125,
+        "path_tail": 0.02519691545171876,
+        "path_basket": -0.00799749701126698,
+        "cooccurrence": -9.717689027782458e-05,
+        "cost_population": -0.0003302287233227933,
+        "cost_entity": -0.00033229190897113986,
+        "cost_context": -0.00016892716336786625
+      }
+    },
+    {
+      "section": "session_density_tail",
+      "direction": "-50%",
+      "fraction": 0.5,
+      "signal_shifts": {
+        "path_full": 0.09284181191557156,
+        "path_tail": -0.1412725147010881,
+        "path_basket": 0.04410366585748687,
+        "cooccurrence": 0.0015462014808726113,
+        "cost_population": 0.001402556099842774,
+        "cost_entity": 0.000263725482142858,
+        "cost_context": 0.001114553865171346
+      }
+    },
+    {
+      "section": "session_density_basket",
+      "direction": "+50%",
+      "fraction": 0.5,
+      "signal_shifts": {
+        "path_full": -0.03555650085028983,
+        "path_tail": -0.03191528624180762,
+        "path_basket": 0.06826738483166603,
+        "cooccurrence": -0.0005587610774992081,
+        "cost_population": 0.0005664415796155569,
+        "cost_entity": -0.0007286311809711946,
+        "cost_context": -7.464706071346567e-05
+      }
+    },
+    {
+      "section": "session_density_basket",
+      "direction": "-50%",
+      "fraction": 0.5,
+      "signal_shifts": {
+        "path_full": 0.04138582544932412,
+        "path_tail": 0.03779495235573055,
+        "path_basket": -0.08128815525201981,
+        "cooccurrence": 0.0007773812758950886,
+        "cost_population": -0.00017707214448926204,
+        "cost_entity": 0.00018419385872382038,
+        "cost_context": 0.0013228744568355112
+      }
+    },
+    {
+      "section": "graph_density",
+      "direction": "+50%",
+      "fraction": 1.0,
+      "signal_shifts": {
+        "path_full": -0.0034912539665814535,
+        "path_tail": -0.0024527647230742633,
+        "path_basket": -0.0012984104225301496,
+        "cooccurrence": 0.00611084896121797,
+        "cost_population": 0.0007317976071260007,
+        "cost_entity": 0.00014684063886945872,
+        "cost_context": 0.0002529419049723384
+      }
+    },
+    {
+      "section": "graph_density",
+      "direction": "-50%",
+      "fraction": 1.0,
+      "signal_shifts": {
+        "path_full": 0.001715490397238728,
+        "path_tail": 0.0019370454629221712,
+        "path_basket": 0.0006098658565465154,
+        "cooccurrence": -0.004261722891532837,
+        "cost_population": 0.00011550641191181241,
+        "cost_entity": -4.4132087274736595e-05,
+        "cost_context": -7.205314981150943e-05
+      }
+    },
+    {
+      "section": "clustering_coefficient",
+      "direction": "+50%",
+      "fraction": 1.0,
+      "signal_shifts": {
+        "path_full": 0.0,
+        "path_tail": 0.0,
+        "path_basket": 0.0,
+        "cooccurrence": 0.0,
+        "cost_population": 0.0,
+        "cost_entity": 0.0,
+        "cost_context": 0.0
+      }
+    },
+    {
+      "section": "clustering_coefficient",
+      "direction": "-50%",
+      "fraction": 1.0,
+      "signal_shifts": {
+        "path_full": 0.0,
+        "path_tail": 0.0,
+        "path_basket": 0.0,
+        "cooccurrence": 0.0,
+        "cost_population": 0.0,
+        "cost_entity": 0.0,
+        "cost_context": 0.0
+      }
+    },
+    {
+      "section": "session_density_full",
+      "direction": "+50%",
+      "fraction": 1.0,
+      "signal_shifts": {
+        "path_full": 0.0,
+        "path_tail": 0.0,
+        "path_basket": 0.0,
+        "cooccurrence": 0.0,
+        "cost_population": 0.0,
+        "cost_entity": 0.0,
+        "cost_context": 0.0
+      }
+    },
+    {
+      "section": "session_density_full",
+      "direction": "-50%",
+      "fraction": 1.0,
+      "signal_shifts": {
+        "path_full": -0.02942762768327173,
+        "path_tail": 0.018526533506956322,
+        "path_basket": 0.009633641285736377,
+        "cooccurrence": 0.0004020935275729654,
+        "cost_population": 0.0002444060645756868,
+        "cost_entity": 0.00035704772187970194,
+        "cost_context": 0.0002639055765505812
+      }
+    },
+    {
+      "section": "session_density_tail",
+      "direction": "+50%",
+      "fraction": 1.0,
+      "signal_shifts": {
+        "path_full": -0.019265642675724337,
+        "path_tail": 0.028620282010466735,
+        "path_basket": -0.008672269954846351,
+        "cooccurrence": -0.00043185740891913023,
+        "cost_population": -0.00011671755799431537,
+        "cost_entity": -3.992896865756806e-05,
+        "cost_context": -9.386544432515376e-05
+      }
+    },
+    {
+      "section": "session_density_tail",
+      "direction": "-50%",
+      "fraction": 1.0,
+      "signal_shifts": {
+        "path_full": 0.09229433886153099,
+        "path_tail": -0.13960606001767512,
+        "path_basket": 0.04282761239155025,
+        "cooccurrence": 0.0018877913689018273,
+        "cost_population": 0.0010027866238637839,
+        "cost_entity": 0.0007179924030608102,
+        "cost_context": 0.0008755383687676665
+      }
+    },
+    {
+      "section": "session_density_basket",
+      "direction": "+50%",
+      "fraction": 1.0,
+      "signal_shifts": {
+        "path_full": -0.03484381436406486,
+        "path_tail": -0.030730979959777083,
+        "path_basket": 0.06738131289385113,
+        "cooccurrence": -0.0009386256394612342,
+        "cost_population": -0.00022097203546512676,
+        "cost_entity": -0.0004925259083942797,
+        "cost_context": -0.00015439498668867908
+      }
+    },
+    {
+      "section": "session_density_basket",
+      "direction": "-50%",
+      "fraction": 1.0,
+      "signal_shifts": {
+        "path_full": 0.04192481364995676,
+        "path_tail": 0.037191036283152235,
+        "path_basket": -0.08153021682618702,
+        "cooccurrence": 0.0008262060906838384,
+        "cost_population": 0.0005029583868783466,
+        "cost_entity": 0.00061439477222672,
+        "cost_context": 0.0004708076432893174
+      }
+    }
+  ]
+}

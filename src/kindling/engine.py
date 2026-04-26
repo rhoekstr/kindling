@@ -1316,11 +1316,126 @@ class Engine:
         # individual layer columns directly from the SignalFeatures
         # matrix.
         if self.layered_scoring and self.layered_config is not None:
-            primary_name = self.layered_config.primary_signal
+            cfg = self.layered_config
+
+            # Compute per-user persona match + cluster membership.
+            #
+            # match_weights: cosine match of user vector to each
+            #   persona vector. Used for picking the top persona
+            #   (argmax) and for soft-blend scoring.
+            # in_cluster: True when the user has a fitted cluster
+            #   assignment (HDBSCAN's user_to_persona >= 0). Noise
+            #   users (HDBSCAN -1) have no meaningful persona membership
+            #   and naturally route to global cooc.
+            #
+            # KMeans + similar hard-partition clusterers always
+            # assign every user to a cluster, so in_cluster is True
+            # for everyone and adaptive routing collapses to "always
+            # persona_cooc primary." HDBSCAN is the principled
+            # clusterer here - its noise label IS the gate.
+            match_weights = None
+            top_persona: int | None = None
+            in_cluster = False
+            if (
+                self._persona_index is not None
+                and self._persona_index.n_personas > 0
+                and self._persona_cooc_graph is not None
+                and self._persona_cooc_graph.n_edges > 0
+            ):
+                from kindling.personas.matching import (
+                    build_user_query_vector,
+                    match_user,
+                )
+
+                user_vec = build_user_query_vector(
+                    owned_items=owned_items,
+                    history_items=history,
+                    index=self._persona_index,
+                )
+                match_weights = match_user(user_vec, self._persona_index)
+                if match_weights.any():
+                    top_persona = int(np.asarray(match_weights).argmax())
+
+                # Look up the user's cluster assignment from the
+                # persona_index. HDBSCAN sets it to -1 for noise points;
+                # KMeans always assigns to a real cluster.
+                user_assigned = self._persona_index.persona_of_entity(entity_id)
+                in_cluster = user_assigned >= 0
+
+            # Adaptive primary routing: in-cluster users get the
+            # persona-cooc breadth-expansion; noise users fall
+            # back to global cooc. With HDBSCAN this is the
+            # natural ~15% noise rate from density-based clustering.
+            if cfg.primary_routing == "adaptive":
+                if in_cluster:
+                    primary_name = "persona_cooccurrence"
+                else:
+                    primary_name = "cooccurrence"
+            else:
+                primary_name = cfg.primary_signal
+
             if primary_name not in SIGNAL_ORDER:
                 primary_name = "cooccurrence"
+
+            # Hard-assignment: override match weights to one-hot at
+            # the user's top persona, picked unconditionally via
+            # argmax (no magnitude gate). Even at tiny absolute
+            # match values the relative top is the closest persona;
+            # let downstream architecture (z-gates etc.) handle
+            # whether to trust it.
+            persona_cooc_recomputed = None
+            if (
+                cfg.persona_match_mode == "hard"
+                and match_weights is not None
+                and top_persona is not None
+                and self._persona_cooc_graph is not None
+            ):
+                hard_weights = np.zeros_like(np.asarray(match_weights))
+                hard_weights[top_persona] = 1.0
+                # Recompute the persona_cooc column for this query.
+                owned_idx_pc = np.fromiter(
+                    (
+                        self._persona_cooc_graph.item_index.get(o, -1)
+                        for o in owned_items.tolist()
+                    ),
+                    dtype=np.int64,
+                    count=owned_items.size,
+                ) if owned_items.size else np.empty(0, dtype=np.int64)
+                owned_idx_pc = owned_idx_pc[owned_idx_pc >= 0]
+                if owned_idx_pc.size > 0:
+                    excl_set_pc = {int(i) for i in owned_idx_pc.tolist()}
+                    pc_full = self._persona_cooc_graph.score_against_owned_soft(
+                        owned_indices=owned_idx_pc,
+                        match_weights=hard_weights.astype(np.float64),
+                        exclude_indices=excl_set_pc,
+                    )
+                    layered_cand_ids = [c.item_id for c in candidates]
+                    cand_indices_pc = np.fromiter(
+                        (
+                            self._persona_cooc_graph.item_index.get(c, -1)
+                            for c in layered_cand_ids
+                        ),
+                        dtype=np.int64,
+                        count=len(layered_cand_ids),
+                    )
+                    valid_pc = cand_indices_pc >= 0
+                    if valid_pc.any():
+                        persona_cooc_recomputed = np.zeros(
+                            len(layered_cand_ids), dtype=np.float64
+                        )
+                        persona_cooc_recomputed[valid_pc] = pc_full[
+                            cand_indices_pc[valid_pc]
+                        ]
+
             primary_idx = SIGNAL_ORDER.index(primary_name)
-            primary = features.matrix[:, primary_idx]
+            if (
+                primary_name == "persona_cooccurrence"
+                and persona_cooc_recomputed is not None
+            ):
+                primary = persona_cooc_recomputed
+            else:
+                primary = features.matrix[:, primary_idx]
+
             # Boost layers exclude the chosen primary so we don't add a
             # signal to itself.
             layer_indices = []
@@ -1335,11 +1450,27 @@ class Engine:
                 if layer_name in SIGNAL_ORDER:
                     layer_indices.append(SIGNAL_ORDER.index(layer_name))
             layers = [features.matrix[:, idx] for idx in layer_indices]
-            scores = layered_score(primary, layers, config=self.layered_config)
+            # When using hard mode and persona_cooc isn't the primary,
+            # also override the persona_cooc boost-layer column.
+            if (
+                persona_cooc_recomputed is not None
+                and "persona_cooccurrence" in SIGNAL_ORDER
+                and primary_name != "persona_cooccurrence"
+            ):
+                pc_layer_idx = SIGNAL_ORDER.index("persona_cooccurrence")
+                if pc_layer_idx in layer_indices:
+                    pos = layer_indices.index(pc_layer_idx)
+                    layers[pos] = persona_cooc_recomputed
+
+            scores = layered_score(primary, layers, config=cfg)
             weights_for_explanation = {
                 primary_name: 1.0,
-                "layered_z": float(self.layered_config.z_threshold),
-                "layered_boost_multiplier": float(self.layered_config.boost_multiplier),
+                "layered_z": float(cfg.z_threshold),
+                "layered_boost_multiplier": float(cfg.boost_multiplier),
+                "in_persona_cluster": bool(in_cluster),
+                "top_persona": top_persona if top_persona is not None else -1,
+                "persona_match_mode": cfg.persona_match_mode,
+                "primary_routing": cfg.primary_routing,
             }
 
         # Warm regime: LightGBM LambdaRank over the feature matrix +
