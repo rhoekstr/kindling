@@ -1,0 +1,27 @@
+{
+  "kindling_version": "0.0.1.dev0",
+  "rust_core_sha": "ad45b6d",
+  "variant": "v1",
+  "loader": "synthetic_medium",
+  "machine": {
+    "cpu": "arm",
+    "platform": "macOS-26.5-arm64-arm-64bit-Mach-O",
+    "python": "3.13.9",
+    "ram_gb": 24.0
+  },
+  "fit": {
+    "total_seconds": 0.832810209132731,
+    "by_stage": {},
+    "peak_rss_mb": 210.078125
+  },
+  "recommend": {
+    "n_users_sampled": 500,
+    "k": 10,
+    "p50_ms": 0.6933126132935286,
+    "p95_ms": 0.8343648165464396,
+    "p99_ms": 0.9766716207377613,
+    "mean_ms": 0.7070121741853654,
+    "throughput_per_sec": 1414.1614586462608
+  },
+  "timestamp": "2026-04-25T22:06:28"
+}
