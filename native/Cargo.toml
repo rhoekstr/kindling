@@ -1,18 +1,31 @@
-[package]
-name = "kindling-native"
-version = "0.0.1"
+[workspace]
+resolver = "2"
+members = [
+    "kindling_native",
+    "kindling_core",
+]
+
+[workspace.package]
 edition = "2021"
 license = "Apache-2.0"
-description = "Native performance-critical kernels for kindling"
+rust-version = "1.75"
 
-[lib]
-name = "kindling_native"
-crate-type = ["cdylib"]
-
-[dependencies]
+[workspace.dependencies]
+# Python binding stack — pinned together so both crates link against the
+# same ABI.
 pyo3 = { version = "0.22", features = ["extension-module", "abi3-py311"] }
 numpy = "0.22"
+
+# Numerics & parallelism shared across crates.
+ndarray = { version = "0.16", features = ["rayon"] }
+rayon = "1.10"
 rustc-hash = "2.0"
+
+# v2-only deps. Listed here so version pins are workspace-wide.
+petal-clustering = "0.10"
+linfa = "0.7"
+linfa-clustering = "0.7"
+polars = { version = "0.43", features = ["lazy", "ipc", "parquet", "csv", "json"] }
 
 [profile.release]
 opt-level = 3

@@ -1,0 +1,19 @@
+# Allow undefined symbols at link time on macOS so cargo test / build
+# can produce binaries linking pyo3 without a Python development
+# toolchain. The undefined symbols are Python ABI calls; they're
+# resolved at runtime when the cdylib is loaded into a Python process.
+#
+# maturin handles this automatically when building wheels; this config
+# extends the same allowance to plain cargo so tests can run.
+
+[target.x86_64-apple-darwin]
+rustflags = [
+    "-C", "link-arg=-undefined",
+    "-C", "link-arg=dynamic_lookup",
+]
+
+[target.aarch64-apple-darwin]
+rustflags = [
+    "-C", "link-arg=-undefined",
+    "-C", "link-arg=dynamic_lookup",
+]

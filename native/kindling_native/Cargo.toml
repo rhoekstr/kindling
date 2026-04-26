@@ -1,0 +1,16 @@
+[package]
+name = "kindling-native"
+version = "0.0.1"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Native performance-critical kernels for kindling (v1; legacy alongside kindling_core)"
+
+[lib]
+name = "kindling_native"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { workspace = true }
+numpy = { workspace = true }
+rustc-hash = { workspace = true }

@@ -1,0 +1,31 @@
+[package]
+name = "kindling-core"
+version = "0.0.1"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Rust core for kindling v2: signals, clustering, scoring, retrieval, repeat, loaders"
+
+[lib]
+name = "kindling_core"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+pyo3 = { workspace = true }
+numpy = { workspace = true }
+ndarray = { workspace = true }
+rayon = { workspace = true }
+rustc-hash = { workspace = true }
+petal-clustering = { workspace = true }
+
+# v2-specific: enabled per-phase as the corresponding modules are built.
+# linfa = { workspace = true }              # Phase 1f (ALS — pure Rust)
+# linfa-clustering = { workspace = true }   # Phase 1f (parity baselines)
+# polars = { workspace = true }             # Phase 4 (loaders)
+
+[dev-dependencies]
+approx = "0.5"
+
+[features]
+default = []
+loaders = []     # Phase 4 — pulls polars
