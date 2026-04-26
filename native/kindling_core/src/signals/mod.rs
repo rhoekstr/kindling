@@ -18,6 +18,7 @@ pub mod lightgcn;
 pub mod path_family;
 pub mod persona_cooccurrence;
 pub mod session_cooccurrence;
+pub mod svd;
 // temporal_cooccurrence is build_cooccurrence with kernel="hybrid_temporal".
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -29,5 +30,6 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     path_family::register(m)?;
     persona_cooccurrence::register(m)?;
     session_cooccurrence::register(m)?;
+    svd::register(m)?;
     Ok(())
 }

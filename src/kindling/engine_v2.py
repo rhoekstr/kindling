@@ -108,6 +108,10 @@ class V2FitState:
     tail_index: TailIndex | None = None
     basket_index: BasketIndex | None = None
     history_by_entity: dict[object, tuple[object, ...]] = field(default_factory=dict)
+    # ALS-as-boost (PRD dense layer): per-entity user factors + per-item
+    # item factors. None when als_as_boost is disabled.
+    als_user_factors: np.ndarray | None = None
+    als_item_factors: np.ndarray | None = None
     # Calibrated scoring config
     z_threshold: float = 2.5
     boost_multiplier: float = 3.0
@@ -126,6 +130,19 @@ class EngineV2:
         persona_fit_threshold: float = 0.70,
         retrieval_budget: int = 500,
         random_state: int = 0,
+        # Ablation knobs for the ALS-vs-SVD experiment.
+        # `hdbscan_factor_method`: which low-dim embedding feeds HDBSCAN.
+        #   "als" — full implicit-ALS (Hu/Koren/Volinsky); accurate but slow.
+        #   "svd" — randomized truncated SVD (Halko et al.); cheap, no
+        #          implicit-feedback alignment but usually good enough
+        #          for clustering.
+        # `als_as_boost`: when True, fits item factors via ALS and adds
+        # `user_u · item_c` as a dense-z boost layer (PRD spec).
+        # Always fits ALS when the ablation requests SVD-for-HDBSCAN +
+        # ALS-as-boost; otherwise we skip ALS entirely if HDBSCAN takes
+        # SVD and boost is off.
+        hdbscan_factor_method: str = "als",
+        als_as_boost: bool = False,
     ):
         if not CORE_AVAILABLE:
             raise ImportError(
@@ -137,6 +154,13 @@ class EngineV2:
         self.persona_fit_threshold = persona_fit_threshold
         self.retrieval_budget = retrieval_budget
         self.random_state = random_state
+        if hdbscan_factor_method not in ("als", "svd"):
+            raise ValueError(
+                f"hdbscan_factor_method must be 'als' or 'svd'; got "
+                f"{hdbscan_factor_method!r}"
+            )
+        self.hdbscan_factor_method = hdbscan_factor_method
+        self.als_as_boost = als_as_boost
         self._state: V2FitState | None = None
 
     # ------------------------------------------------------------------
@@ -209,16 +233,36 @@ class EngineV2:
         persona_cooc_data: list[np.ndarray] = []
         persona_cooc_indices: list[np.ndarray] = []
         persona_cooc_indptr: list[np.ndarray] = []
-        if personas_enabled:
-            # Compute user factors. For now: TruncatedSVD as a stand-in
-            # for ALS implicit (Phase 1f port). Cheap and ABI-safe.
-            user_factors = self._fit_user_factors(
+        # ALS-as-boost requires item factors even if personas aren't on.
+        # SVD-for-HDBSCAN cleanly skips ALS when boost is also off.
+        item_factors_for_boost: np.ndarray | None = None
+        user_factors: np.ndarray | None = None
+        need_factors = personas_enabled or self.als_as_boost
+        if need_factors:
+            user_factors, item_factors = self._fit_factors(
                 user_idx, item_idx, weights, n_users, n_items
             )
+            if self.als_as_boost:
+                item_factors_for_boost = item_factors
+            # L2-row-normalize the user factors before passing to HDBSCAN.
+            # Petal-clustering's eps=0.5 default expects a unit-bounded
+            # embedding (UMAP's natural output range). Raw ALS/SVD factors
+            # span 1-4 in pairwise distance, so most users look isolated
+            # to HDBSCAN unless we normalize. After normalization,
+            # Euclidean distance is angular; clustering aligns with taste
+            # similarity rather than activity-level magnitude.
+            user_norms = np.linalg.norm(user_factors, axis=1, keepdims=True)
+            user_factors_normalized = user_factors / np.maximum(user_norms, 1e-9)
+        else:
+            user_factors_normalized = None
+        if personas_enabled:
+            assert user_factors_normalized is not None
+            # On the unit sphere, eps=0.5 is sane and 30 is enough to
+            # form meaningful clusters without the 0.5% threshold dominating.
             assignments, _probs, n_personas_actual, noise_frac = kindling_core.fit_hdbscan_py(
-                user_factors,
-                min_cluster_size=max(15, int(0.005 * n_users)),
-                min_samples=15,
+                user_factors_normalized,
+                min_cluster_size=max(30, int(0.001 * n_users)),
+                min_samples=10,
             )
             assignments = np.asarray(assignments, dtype=np.int64)
             user_to_persona = assignments
@@ -349,6 +393,8 @@ class EngineV2:
             persona_cooc_data=persona_cooc_data,
             persona_cooc_indices=persona_cooc_indices,
             persona_cooc_indptr=persona_cooc_indptr,
+            als_user_factors=user_factors if self.als_as_boost else None,
+            als_item_factors=item_factors_for_boost,
             boost_layer_adjacencies=boost_adj,
             z_threshold=2.5,
             boost_multiplier=3.0,
@@ -507,9 +553,25 @@ class EngineV2:
                 )
                 out.append((np.asarray(basket_scores, dtype=np.float64), "nonzero"))
 
+        # ALS-as-boost (dense, candidate-pool z-mode per the v2 PRD).
+        # score(c) = user_factor[entity] · item_factor[c]. Fires when
+        # the user-item dot product stands out z-significantly across
+        # the retrieved pool.
+        if (
+            st.als_user_factors is not None
+            and st.als_item_factors is not None
+        ):
+            user_idx_int = st.entity_to_user_idx.get(entity_id, -1)
+            if 0 <= user_idx_int < st.als_user_factors.shape[0]:
+                u_vec = st.als_user_factors[user_idx_int]
+                cand_array = np.asarray(cand_ids, dtype=np.int64)
+                item_vecs = st.als_item_factors[cand_array]
+                als_scores = (item_vecs @ u_vec).astype(np.float64)
+                out.append((als_scores, "pool"))
+
         return out
 
-    def _fit_user_factors(
+    def _fit_factors(
         self,
         user_idx: np.ndarray,
         item_idx: np.ndarray,
@@ -517,25 +579,52 @@ class EngineV2:
         n_users: int,
         n_items: int,
         n_factors: int = 32,
-    ) -> np.ndarray:
-        """Compute user factors via Rust implicit ALS (Hu, Koren, Volinsky 2008).
+    ) -> tuple[np.ndarray, np.ndarray | None]:
+        """Compute user factors (and optionally item factors).
 
-        Returns float64 (n_users, n_factors) suitable as HDBSCAN input.
+        Returns ``(user_factors, item_factors)`` where ``item_factors`` is
+        None when the active method doesn't produce them. Routing:
+
+        - ``hdbscan_factor_method == "als"`` always produces both
+          (user, item) factors — full implicit ALS.
+        - ``hdbscan_factor_method == "svd"`` produces only user factors.
+          When ``als_as_boost`` is True, an additional ALS run is needed
+          to get item factors for the boost layer; that branch returns
+          (svd_users, als_items).
         """
-        # Cap factors to feasible value for tiny datasets.
         k = min(n_factors, max(2, min(n_users, n_items) - 1))
-        # 5 iters is sufficient for HDBSCAN inputs — factors converge
-        # to taste-coherent clusters quickly even before full convergence.
-        user_factors, _item_factors, _losses = kindling_core.fit_als_py(
+        if self.hdbscan_factor_method == "als":
+            user_factors, item_factors, _losses = kindling_core.fit_als_py(
+                user_idx, item_idx, weights,
+                n_users=n_users, n_items=n_items,
+                n_factors=k, n_iters=5,
+                alpha=40.0, regularization=0.01,
+                seed=self.random_state,
+            )
+            return (
+                np.asarray(user_factors, dtype=np.float64),
+                np.asarray(item_factors, dtype=np.float64),
+            )
+        # SVD path.
+        user_factors = kindling_core.truncated_svd_py(
             user_idx, item_idx, weights,
             n_users=n_users, n_items=n_items,
-            n_factors=k,
-            n_iters=5,
-            alpha=40.0,
-            regularization=0.01,
+            n_factors=k, n_oversample=10, n_power_iters=1,
             seed=self.random_state,
         )
-        return np.asarray(user_factors, dtype=np.float64)
+        user_factors = np.asarray(user_factors, dtype=np.float64)
+        item_factors: np.ndarray | None = None
+        if self.als_as_boost:
+            # Pay for ALS only if we actually need item factors for boost.
+            _u_als, item_factors_als, _losses = kindling_core.fit_als_py(
+                user_idx, item_idx, weights,
+                n_users=n_users, n_items=n_items,
+                n_factors=k, n_iters=5,
+                alpha=40.0, regularization=0.01,
+                seed=self.random_state,
+            )
+            item_factors = np.asarray(item_factors_als, dtype=np.float64)
+        return user_factors, item_factors
 
     def _profile(
         self,

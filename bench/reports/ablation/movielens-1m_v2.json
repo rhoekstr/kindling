@@ -1,0 +1,70 @@
+{
+  "loader": "movielens-1m",
+  "n_train": 900188,
+  "n_test": 100021,
+  "n_users_evaluated": 200,
+  "k": 10,
+  "variants": {
+    "A_als_hdbscan": {
+      "kwargs": {
+        "hdbscan_factor_method": "als",
+        "als_as_boost": false
+      },
+      "fit_seconds": 14.845773542067036,
+      "metrics": {
+        "ndcg_at_k": 0.25673419533743036,
+        "recall_at_k": 0.04385940533756211,
+        "mrr": 0.4255813492063492,
+        "hit_rate": 0.67,
+        "coverage": 0.04540511147362697
+      },
+      "latency": {
+        "p50_ms": 0.741042080335319,
+        "p95_ms": 3.0399369425140312,
+        "p99_ms": 4.580389596521852
+      },
+      "personas_actual": 9
+    },
+    "B_svd_hdbscan": {
+      "kwargs": {
+        "hdbscan_factor_method": "svd",
+        "als_as_boost": false
+      },
+      "fit_seconds": 14.86821720795706,
+      "metrics": {
+        "ndcg_at_k": 0.260180595185994,
+        "recall_at_k": 0.042995505071322215,
+        "mrr": 0.42218452380952387,
+        "hit_rate": 0.67,
+        "coverage": 0.040783034257748776
+      },
+      "latency": {
+        "p50_ms": 0.7539578946307302,
+        "p95_ms": 3.1020272057503457,
+        "p99_ms": 4.443623241968451
+      },
+      "personas_actual": 3
+    },
+    "C_svd_plus_als_boost": {
+      "kwargs": {
+        "hdbscan_factor_method": "svd",
+        "als_as_boost": true
+      },
+      "fit_seconds": 15.196165666915476,
+      "metrics": {
+        "ndcg_at_k": 0.260180595185994,
+        "recall_at_k": 0.042995505071322215,
+        "mrr": 0.42218452380952387,
+        "hit_rate": 0.67,
+        "coverage": 0.040783034257748776
+      },
+      "latency": {
+        "p50_ms": 0.7664579898118973,
+        "p95_ms": 3.1039463356137267,
+        "p99_ms": 4.499542450066656
+      },
+      "personas_actual": 3
+    }
+  },
+  "timestamp": "2026-04-26T01:16:43"
+}
