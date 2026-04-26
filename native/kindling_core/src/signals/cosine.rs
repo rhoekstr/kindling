@@ -93,8 +93,106 @@ fn build_item_cosine(
     Ok((out_data, out_indices, out_indptr))
 }
 
+/// Per-persona cosine — popularity-corrected `persona_cooccurrence`.
+///
+/// Takes per-persona cooc CSRs (already kernel/decay-weighted by
+/// `build_persona_cooccurrence`) and per-persona item counts, and
+/// produces per-persona cosine CSRs of the same shape.
+///
+/// `persona_item_counts[p][i]` = number of users in persona p who own
+/// item i (raw, undecayed — same caveat as `build_item_cosine`).
+///
+/// Returns three parallel `Vec<Vec<...>>` (one outer entry per persona):
+/// CSR data / indices / indptr.
+#[pyfunction]
+#[pyo3(signature = (
+    pcooc_data,
+    pcooc_indices,
+    pcooc_indptr,
+    persona_item_counts,
+    top_k = 200,
+    min_cosine = 0.01,
+))]
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
+fn build_persona_cosine(
+    pcooc_data: Vec<Vec<f32>>,
+    pcooc_indices: Vec<Vec<i32>>,
+    pcooc_indptr: Vec<Vec<i32>>,
+    persona_item_counts: Vec<Vec<i64>>,
+    top_k: usize,
+    min_cosine: f64,
+) -> PyResult<(Vec<Vec<f32>>, Vec<Vec<i32>>, Vec<Vec<i32>>)> {
+    let n_personas = pcooc_data.len();
+    if n_personas != pcooc_indices.len()
+        || n_personas != pcooc_indptr.len()
+        || n_personas != persona_item_counts.len()
+    {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "all per-persona inputs must have the same outer length",
+        ));
+    }
+    let mut all_data: Vec<Vec<f32>> = Vec::with_capacity(n_personas);
+    let mut all_indices: Vec<Vec<i32>> = Vec::with_capacity(n_personas);
+    let mut all_indptr: Vec<Vec<i32>> = Vec::with_capacity(n_personas);
+    for p in 0..n_personas {
+        let data = &pcooc_data[p];
+        let indices = &pcooc_indices[p];
+        let indptr = &pcooc_indptr[p];
+        let counts = &persona_item_counts[p];
+        let n_items = indptr.len().saturating_sub(1);
+        if n_items == 0 || data.is_empty() {
+            all_data.push(Vec::new());
+            all_indices.push(Vec::new());
+            all_indptr.push(vec![0i32; n_items + 1]);
+            continue;
+        }
+        let inv_sqrt_count: Vec<f64> = counts
+            .iter()
+            .map(|&c| 1.0 / ((c.max(1) as f64).sqrt()))
+            .collect();
+        let mut out_data: Vec<f32> = Vec::new();
+        let mut out_indices: Vec<i32> = Vec::new();
+        let mut out_indptr: Vec<i32> = Vec::with_capacity(n_items + 1);
+        out_indptr.push(0i32);
+        for i in 0..n_items {
+            let start = indptr[i] as usize;
+            let end = indptr[i + 1] as usize;
+            let mut row: Vec<(i32, f32)> = Vec::with_capacity(end - start);
+            let inv_i = inv_sqrt_count[i];
+            for k in start..end {
+                let j = indices[k] as usize;
+                if j == i {
+                    continue;
+                }
+                let cos_val = (data[k] as f64) * inv_i * inv_sqrt_count[j];
+                if cos_val < min_cosine {
+                    continue;
+                }
+                row.push((j as i32, cos_val as f32));
+            }
+            if top_k > 0 && row.len() > top_k {
+                row.select_nth_unstable_by(top_k - 1, |a, b| {
+                    b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal)
+                });
+                row.truncate(top_k);
+            }
+            row.sort_by_key(|(c, _)| *c);
+            for (c, v) in &row {
+                out_indices.push(*c);
+                out_data.push(*v);
+            }
+            out_indptr.push(out_indices.len() as i32);
+        }
+        all_data.push(out_data);
+        all_indices.push(out_indices);
+        all_indptr.push(out_indptr);
+    }
+    Ok((all_data, all_indices, all_indptr))
+}
+
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(build_item_cosine, m)?)?;
+    m.add_function(wrap_pyfunction!(build_persona_cosine, m)?)?;
     Ok(())
 }
 

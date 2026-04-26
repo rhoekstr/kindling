@@ -81,7 +81,11 @@ class V2FitState:
     kernel: str = "pure_count"
     half_life_days: float = 30.0
     enabled_boost_layers: list[str] = field(default_factory=list)
-    # Base layer: global cooc CSR
+    # Base layer: global cooc CSR (raw, not popularity-corrected).
+    # We tested cosine-as-base; on popularity-biased test sets like
+    # amazon-beauty it over-suppressed popular items and crashed
+    # hit/recall/NDCG. Reverting to raw cooc as the base; bumping
+    # retrieval_budget so tail-favored items survive into the pool.
     cooc_data: np.ndarray = field(default_factory=lambda: np.array([], dtype=np.float32))
     cooc_indices: np.ndarray = field(default_factory=lambda: np.array([], dtype=np.int32))
     cooc_indptr: np.ndarray = field(default_factory=lambda: np.array([0], dtype=np.int32))
@@ -91,7 +95,7 @@ class V2FitState:
     user_to_persona: np.ndarray = field(default_factory=lambda: np.array([], dtype=np.int64))
     persona_distinctive: list[list[int]] = field(default_factory=list)
     persona_fit_threshold: float = 0.70
-    # Per-persona cooc CSRs
+    # Per-persona cooc CSRs.
     persona_cooc_data: list[np.ndarray] = field(default_factory=list)
     persona_cooc_indices: list[np.ndarray] = field(default_factory=list)
     persona_cooc_indptr: list[np.ndarray] = field(default_factory=list)
@@ -120,7 +124,7 @@ class EngineV2:
         n_personas: int = 30,
         persona_min_users: int = 1000,
         persona_fit_threshold: float = 0.70,
-        retrieval_budget: int = 200,
+        retrieval_budget: int = 500,
         random_state: int = 0,
     ):
         if not CORE_AVAILABLE:
@@ -181,7 +185,7 @@ class EngineV2:
         profile = self._profile(interactions, weights, n_users, n_items)
         plan = self._plan(profile)
 
-        # ── Base cooc.
+        # ── Base cooc (raw, not popularity-corrected).
         cooc_data, cooc_indices, cooc_indptr = kindling_core.build_cooccurrence(
             user_idx,
             item_idx,
@@ -290,23 +294,9 @@ class EngineV2:
                 np.asarray(spt, dtype=np.int32),
             )
 
-        # ── item_cosine: derive from cooc CSR + per-item user counts.
-        # Always builds when we have the cooc base; cheap (one matmul-shaped
-        # transform). Always-on per the v2 boost-layer table.
-        item_counts = np.bincount(
-            item_idx, minlength=n_items
-        ).astype(np.int64)
-        ic_data, ic_indices, ic_indptr = kindling_core.build_item_cosine(
-            cooc_data, cooc_indices, cooc_indptr,
-            item_counts,
-            top_k=200,
-            min_cosine=0.01,
-        )
-        boost_adj["item_cosine"] = (
-            np.asarray(ic_data, dtype=np.float32),
-            np.asarray(ic_indices, dtype=np.int32),
-            np.asarray(ic_indptr, dtype=np.int32),
-        )
+        # NOTE: item_cosine is no longer a boost layer — it IS the v2 base
+        # (built earlier in this fit). Boost layers are now reserved for
+        # *refinements* on different axes (temporal, session, path).
 
         # ── path_tail + path_basket: infer sessions, build indices.
         # Build is plan-aware: skip basket on rating-burst datasets, etc.
@@ -380,14 +370,11 @@ class EngineV2:
             return []
 
         # ── 1. Retrieve candidate pool via cooc.
-        # NOTE: in the v2 boost-layer architecture, layers contribute
-        # only when items are *already in the cooc-retrieved pool*. Boost
-        # magnitudes are calibrated to ~3 rank positions within the
-        # base top-K, so they can't elevate out-of-pool items into top-K.
-        # path_tail / interaction_network etc. are useful only for
-        # candidates that BOTH cooc retrieves AND the layer ranks high.
-        # On no-session datasets where the two distributions don't
-        # intersect (e.g., amazon-beauty), those layers don't fire.
+        # Boost layers refine ranking within this pool but cannot promote
+        # items outside it; some path-favored items will be missed when
+        # they fall below the cooc top-K cut. We bump retrieval_budget
+        # (default 500) to cut that miss rate without expanding to a
+        # multi-retriever fusion stage.
         cand_ids, _scores = kindling_core.cooccurrence_retrieve(
             st.cooc_data, st.cooc_indices, st.cooc_indptr,
             owned_indices=owned.tolist(),
