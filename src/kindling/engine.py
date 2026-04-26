@@ -168,6 +168,25 @@ class Recommendation:
     credible_coverage: float | None = None
 
 
+def _v2_to_recommendation(r: Any) -> "Recommendation":
+    """Adapt a `engine_v2.RecommendationV2` to the public `Recommendation`.
+
+    The v2 path doesn't produce credible intervals (the layered scorer
+    isn't a posterior). Explanation summarizes the base kind + that
+    boost layers may have fired; the per-layer breakdown is a follow-on.
+    """
+    primary_text = (
+        "Driven by users in your taste cluster (persona_cooc base)."
+        if r.base_kind == "persona_cooc"
+        else "Often seen with items you've already interacted with (cooc base)."
+    )
+    explanation = Explanation(
+        primary=primary_text,
+        debug_payload={"v2_base_kind": r.base_kind, "score": r.score},
+    )
+    return Recommendation(item_id=r.item_id, score=r.score, explanation=explanation)
+
+
 class EngineNotFittedError(RuntimeError):
     pass
 
@@ -253,7 +272,24 @@ class Engine:
         # credible intervals - layered doesn't produce them.
         layered_scoring: bool = False,
         layered_config: "LayeredConfig | None" = None,
+        # v2 Rust core path. When True, fit/recommend forward to
+        # ``EngineV2`` (built on ``kindling_core``). Independent of the
+        # legacy v1 surface; defaulted off so existing users continue
+        # on v1 until cutover. See PRD §"Migration plan".
+        use_v2_core: bool = False,
     ) -> None:
+        self.use_v2_core = use_v2_core
+        self._v2_engine: object | None = None
+        if use_v2_core:
+            from kindling.engine_v2 import EngineV2
+
+            # Forward the relevant v2-relevant config; v1 knobs are ignored.
+            self._v2_engine = EngineV2(
+                persona_fit_threshold=0.70,
+                retrieval_budget=retrieval_budget,
+                random_state=seed,
+            )
+
         self.retrieval_budget = retrieval_budget
         self.decay: DecayProtocol = (
             decay
@@ -406,6 +442,11 @@ class Engine:
 
     def fit(self, interactions: pd.DataFrame) -> Engine:
         """Validate, canonicalize, and build derived structures."""
+        if self.use_v2_core and self._v2_engine is not None:
+            # PRD §"Migration plan" parallel-build path. Skip the v1
+            # state machinery entirely and forward to EngineV2.
+            self._v2_engine.fit(interactions)  # type: ignore[attr-defined]
+            return self
         schema = validate_interactions(interactions)
         self._schema = schema
         canonical = canonicalize(interactions, schema)
@@ -1164,6 +1205,12 @@ class Engine:
     ) -> list[Recommendation]:
         """Return up to ``n`` recommendations for the given entity.
 
+        When ``use_v2_core=True``, the call is forwarded to ``EngineV2``
+        and the v1 re-rank parameters (``diversity``, ``temperature``,
+        ``calibration_weight``, ``emphasis``, ``lift_weight``) are
+        ignored — v2's pipeline collapses re-rank into the boost-layer
+        architecture.
+
         Phase 4 adds re-rank controls layered on top of the Bayesian score:
 
         * ``diversity`` in ``[0, 1]``: DPP diversity weight.
@@ -1178,6 +1225,12 @@ class Engine:
         * ``lift_weight`` in ``[0, 1]``: strength of the lift boost when
           ``emphasis="distinctive"``.
         """
+        if self.use_v2_core and self._v2_engine is not None:
+            v2_recs = self._v2_engine.recommend(entity_id=entity_id, n=n)  # type: ignore[attr-defined]
+            # Adapt EngineV2 outputs to the public Recommendation type.
+            return [
+                _v2_to_recommendation(r) for r in v2_recs
+            ]
         self._require_fitted()
         assert self._tail_index is not None
         assert self._path_tree is not None
