@@ -277,6 +277,24 @@ class EngineV2:
                 np.asarray(spt, dtype=np.int32),
             )
 
+        # ── item_cosine: derive from cooc CSR + per-item user counts.
+        # Always builds when we have the cooc base; cheap (one matmul-shaped
+        # transform). Always-on per the v2 boost-layer table.
+        item_counts = np.bincount(
+            item_idx, minlength=n_items
+        ).astype(np.int64)
+        ic_data, ic_indices, ic_indptr = kindling_core.build_item_cosine(
+            cooc_data, cooc_indices, cooc_indptr,
+            item_counts,
+            top_k=200,
+            min_cosine=0.01,
+        )
+        boost_adj["item_cosine"] = (
+            np.asarray(ic_data, dtype=np.float32),
+            np.asarray(ic_indices, dtype=np.int32),
+            np.asarray(ic_indptr, dtype=np.int32),
+        )
+
         # path_tail / path_basket signals not yet wired here — they require
         # path_tree fit-time machinery from the Python side. Stubs reserved.
 
