@@ -140,14 +140,11 @@ def run(
         train = interactions[~is_test].reset_index(drop=True)
         test = interactions[is_test].reset_index(drop=True)
     else:
-        # Real loader (e.g., movielens-1m).
-        if loader == "movielens-1m":
-            from kindling.loaders.movielens import load_1m
+        # Real loader — delegate to the unified comparison harness loader.
+        from kindling.benchmarks.comparison import _load_dataset
 
-            split = load_1m(test_fraction=test_fraction)
-            train, test = split.train, split.test
-        else:
-            raise ValueError(f"unknown loader: {loader}; supported: synthetic_*, movielens-1m")
+        split = _load_dataset(loader, test_fraction=test_fraction)
+        train, test = split.train, split.test
 
     eval_set = _build_eval_set(train, test, max_users=max_eval_users, seed=seed)
     if not eval_set:
