@@ -427,30 +427,24 @@ class EngineV2:
         n_items: int,
         n_factors: int = 32,
     ) -> np.ndarray:
-        """Compute user factors. TruncatedSVD as a stand-in for ALS implicit
-        until Phase 1f Rust port. Returns float64 (n_users, n_factors).
+        """Compute user factors via Rust implicit ALS (Hu, Koren, Volinsky 2008).
 
-        SVD on the binary user-item matrix gives factors aligned with
-        co-purchase structure — close enough to ALS implicit for HDBSCAN
-        to find taste clusters.
+        Returns float64 (n_users, n_factors) suitable as HDBSCAN input.
         """
-        from scipy.sparse.linalg import svds
-
-        S = sp.csr_matrix(
-            (weights, (user_idx, item_idx)),
-            shape=(n_users, n_items),
-            dtype=np.float32,
+        # Cap factors to feasible value for tiny datasets.
+        k = min(n_factors, max(2, min(n_users, n_items) - 1))
+        # 5 iters is sufficient for HDBSCAN inputs — factors converge
+        # to taste-coherent clusters quickly even before full convergence.
+        user_factors, _item_factors, _losses = kindling_core.fit_als_py(
+            user_idx, item_idx, weights,
+            n_users=n_users, n_items=n_items,
+            n_factors=k,
+            n_iters=5,
+            alpha=40.0,
+            regularization=0.01,
+            seed=self.random_state,
         )
-        # SVD requires k < min(shape) - 1. Cap aggressively.
-        k = min(n_factors, min(S.shape) - 1)
-        if k < 2:
-            # Tiny dataset: random factors as fallback.
-            rng = np.random.default_rng(self.random_state)
-            return rng.normal(0.0, 1.0, size=(n_users, max(2, n_factors)))
-        U, sigma, _ = svds(S.astype(np.float32), k=k)
-        # Order singular components descending.
-        order = np.argsort(-sigma)
-        return (U[:, order] * sigma[order][np.newaxis, :]).astype(np.float64)
+        return np.asarray(user_factors, dtype=np.float64)
 
     def _profile(
         self,

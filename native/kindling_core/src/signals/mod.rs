@@ -10,17 +10,18 @@
 
 use pyo3::prelude::*;
 
+pub mod als;
 pub mod cooccurrence;
 pub mod cosine;
 pub mod path_family;
 pub mod persona_cooccurrence;
 pub mod session_cooccurrence;
 // temporal_cooccurrence is build_cooccurrence with kernel="hybrid_temporal".
-// pub mod interaction_network;   // Phase 1f.next
-// pub mod als_factors;           // Phase 1f.next (linfa or hand-rolled)
+// pub mod interaction_network;   // Phase 1f.next (PPR walks)
 // pub mod lightgcn;              // Phase 1f.next (hand-rolled)
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    als::register(m)?;
     cooccurrence::register(m)?;
     cosine::register(m)?;
     path_family::register(m)?;
