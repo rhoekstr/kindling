@@ -9,11 +9,13 @@
 
 use pyo3::prelude::*;
 
-// pub mod period;     // Phase 1
-// pub mod pattern;    // Phase 1
-// pub mod multiplier; // Phase 1
-// pub mod profile;    // Phase 1
+pub mod multiplier;
+pub mod period;
+// pub mod pattern;    // Phase 1g.next — KS-distance shape classifier.
+//                     // Currently fits in Python (uses scipy.stats.ks_2samp).
 
-pub(crate) fn register(_m: &Bound<'_, PyModule>) -> PyResult<()> {
+pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    multiplier::register(m)?;
+    period::register(m)?;
     Ok(())
 }
