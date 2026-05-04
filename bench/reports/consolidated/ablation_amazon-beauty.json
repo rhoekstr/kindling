@@ -1,0 +1,70 @@
+{
+  "loader": "amazon-beauty",
+  "n_train": 178651,
+  "n_test": 19851,
+  "n_users_evaluated": 500,
+  "k": 10,
+  "variants": {
+    "A_als_hdbscan": {
+      "kwargs": {
+        "hdbscan_factor_method": "als",
+        "als_as_boost": false
+      },
+      "fit_seconds": 69.34109420800814,
+      "metrics": {
+        "ndcg_at_k": 0.028991904825981442,
+        "recall_at_k": 0.03271192608204804,
+        "mrr": 0.040679365079365086,
+        "hit_rate": 0.086,
+        "coverage": 0.12484321431557822
+      },
+      "latency": {
+        "p50_ms": 0.225499999942258,
+        "p95_ms": 0.3203624946763738,
+        "p99_ms": 0.39433470694348216
+      },
+      "personas_actual": 2
+    },
+    "B_svd_hdbscan": {
+      "kwargs": {
+        "hdbscan_factor_method": "svd",
+        "als_as_boost": false
+      },
+      "fit_seconds": 91.22836095798993,
+      "metrics": {
+        "ndcg_at_k": 0.028991904825981442,
+        "recall_at_k": 0.03271192608204804,
+        "mrr": 0.040679365079365086,
+        "hit_rate": 0.086,
+        "coverage": 0.12484321431557822
+      },
+      "latency": {
+        "p50_ms": 0.21812497288919985,
+        "p95_ms": 0.30858932295814157,
+        "p99_ms": 0.3862637502606957
+      },
+      "personas_actual": 2
+    },
+    "C_svd_plus_als_boost": {
+      "kwargs": {
+        "hdbscan_factor_method": "svd",
+        "als_as_boost": true
+      },
+      "fit_seconds": 91.34545687498758,
+      "metrics": {
+        "ndcg_at_k": 0.029551074377753436,
+        "recall_at_k": 0.03321192608204804,
+        "mrr": 0.041726984126984126,
+        "hit_rate": 0.088,
+        "coverage": 0.12124759595283886
+      },
+      "latency": {
+        "p50_ms": 0.24908347404561937,
+        "p95_ms": 0.33324760734103615,
+        "p99_ms": 0.4200576548464596
+      },
+      "personas_actual": 2
+    }
+  },
+  "timestamp": "2026-05-03T21:56:10"
+}

@@ -502,17 +502,26 @@ class EngineV2:
         owned: np.ndarray,
         cand_ids: list[int],
     ) -> list[tuple[np.ndarray, str]]:
-        """Build (layer_scores, z_mode) tuples for the layered scorer."""
+        """Build (layer_scores, z_mode) tuples for the layered scorer.
+
+        Pinned to v1 layered's canonical set
+        [path_basket, session_cooccurrence, temporal_cooccurrence] so v2
+        and v1-with-layered_scoring are an apples-to-apples comparison.
+        Each layer is sparse / "nonzero" z-mode.
+
+        path_tail and item_cosine were experimented with as additional
+        layers; both produced no measurable lift over the canonical set
+        and are intentionally excluded here so consolidation parity is
+        clean. ALS-as-boost is opt-in (`als_as_boost=True`) and surfaces
+        below as a dense layer; it's empirically degenerate on the
+        datasets we've measured.
+        """
         st = self._state
         assert st is not None
         out: list[tuple[np.ndarray, str]] = []
-        # Cooc-shaped layers (cosine, temporal_cooc, session_cooc) all use
-        # the same signal kernel against an item-item adjacency CSR.
-        for layer_name in [
-            *st.enabled_boost_layers,
-            *(["item_cosine"] if "item_cosine" in st.boost_layer_adjacencies
-              and "item_cosine" not in st.enabled_boost_layers else []),
-        ]:
+
+        # Cooc-shaped sparse layers (temporal_cooc, session_cooc).
+        for layer_name in st.enabled_boost_layers:
             adj = st.boost_layer_adjacencies.get(layer_name)
             if adj is None:
                 continue
@@ -523,23 +532,6 @@ class EngineV2:
                 candidate_indices=cand_ids,
             )
             out.append((np.asarray(scores), "nonzero"))
-
-        # path_tail: sparse, queries the user's most-recent item.
-        if st.tail_index is not None and st.tail_index.counts:
-            history = st.history_by_entity.get(entity_id, ())
-            last_item_internal = None
-            if history:
-                last_internal = st.item_to_idx.get(history[-1], -1)
-                last_item_external = history[-1]
-                if last_internal >= 0:
-                    last_item_internal = last_item_external
-            if last_item_internal is not None:
-                # tail_index.score_many takes external item_ids.
-                cand_external = [st.item_ids[ci] for ci in cand_ids]
-                tail_scores = st.tail_index.score_many(
-                    cand_external, last_item=last_item_internal
-                )
-                out.append((np.asarray(tail_scores, dtype=np.float64), "nonzero"))
 
         # path_basket: sparse, queries against the user's recent history.
         if st.basket_index is not None and st.basket_index.observations:

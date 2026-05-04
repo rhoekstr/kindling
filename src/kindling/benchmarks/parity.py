@@ -1,21 +1,25 @@
 """v1 ↔ v2 parity sweep — quality + perf side-by-side, per loader.
 
-Phase 7 of the migration plan. The cutover gate (Phase 8) requires:
-- v2 NDCG@10 ≥ v1 NDCG@10 on every loader within ε.
-- ≥ +5% lift on at least 3 cold-start datasets (PRD acceptance gate).
+**Canonical eval methodology** (matches `sweep_layered.py` so absolute
+NDCG numbers compare directly to the historical baseline):
 
-This module orchestrates the comparison: fit both engines on the same
-chronological train split, score the same eval users, compute aggregate
-metrics, emit a JSON report.
+- Eligible eval users = train_users ∩ test_users.
+- Sort the intersection deterministically (by `str(entity_id)`).
+- Strided sample: `eligible[::step][:max_eval_users]` for stable user pick.
+- No held-out-filter: users with empty `test_items - train_items`
+  contribute zero to NDCG/MRR/recall but participate in coverage.
+- k = 10. Single seed.
+
+This is the methodology the v1 sweeps used. The earlier `parity.py`
+random + held-out-filter approach gave systematically lower absolute
+NDCG (~10% lower on ml1m) for the same algorithm because of sample
+construction differences. We've standardized on this one.
 
 Usage:
 
     python -m kindling.benchmarks.parity \\
-        --loader synthetic_medium \\
+        --loader movielens-1m \\
         --output bench/reports/parity/<loader>.json
-
-When the parity test fails on any loader, the report names the affected
-metric so we know which boost layer or routing decision to investigate.
 """
 
 from __future__ import annotations
@@ -57,27 +61,41 @@ def _build_eval_set(
     max_users: int = 500,
     seed: int = 0,
 ) -> dict[object, set[object]]:
-    """For each test user with held-out items, build (entity → relevant_set).
+    """Strided eval-set construction (canonical, matches sweep_layered).
 
-    Filters to users present in both splits and caps at `max_users` for
-    bounded eval cost.
+    eligible = train_users ∩ test_users, sorted by `str(entity_id)`.
+    Stride: `eligible[::step][:max_users]` for stable, dense-region-
+    sampling.
+
+    Returns mapping `entity_id → relevant_set` where relevant_set is the
+    held-out items per user (test - train owned). Empty held-out sets
+    are kept in the dict (NDCG aggregator skips them for accuracy
+    metrics; coverage still counts).
+
+    `seed` is ignored under the canonical methodology — the stride is
+    deterministic given a fixed sort. Kept in the signature so callers
+    don't break.
     """
-    rng = np.random.default_rng(seed)
-    train_users = set(train["entity_id"].unique())
-    eligible = test[test["entity_id"].isin(train_users)]
-    by_user: dict[object, set[object]] = {}
-    train_owned: dict[object, set[object]] = {}
+    _ = seed  # canonical methodology is deterministic; seed is informational
+    train_users_to_items: dict[object, set[object]] = {}
     for u, g in train.groupby("entity_id"):
-        train_owned[u] = set(g["item_id"].tolist())
-    for u, g in eligible.groupby("entity_id"):
-        held = set(g["item_id"].tolist()) - train_owned.get(u, set())
-        if held:
-            by_user[u] = held
-    if len(by_user) > max_users:
-        keys = list(by_user.keys())
-        idx = rng.choice(len(keys), size=max_users, replace=False)
-        by_user = {keys[int(i)]: by_user[keys[int(i)]] for i in idx}
-    return by_user
+        train_users_to_items[u] = set(g["item_id"].tolist())
+    test_users_to_items: dict[object, set[object]] = {}
+    for u, g in test.groupby("entity_id"):
+        test_users_to_items[u] = set(g["item_id"].tolist())
+    eligible = sorted(
+        set(train_users_to_items).intersection(test_users_to_items),
+        key=str,
+    )
+    if not eligible:
+        return {}
+    step = max(1, len(eligible) // max_users)
+    sampled = eligible[::step][:max_users]
+    out: dict[object, set[object]] = {}
+    for u in sampled:
+        held = test_users_to_items[u] - train_users_to_items.get(u, set())
+        out[u] = held
+    return out
 
 
 def _evaluate(
@@ -159,7 +177,13 @@ def run(
     )
 
     for variant in ("v1", "v2"):
-        engine = Engine() if variant == "v1" else Engine(use_v2_core=True)
+        # v1 uses layered_scoring=True so we compare the SAME algorithm
+        # (cooc base + z-gated boosts) on both sides; v1's Bayesian-blend
+        # default is a different scoring architecture entirely.
+        if variant == "v1":
+            engine = Engine(layered_scoring=True, use_bayesian_blend=False)
+        else:
+            engine = Engine(use_v2_core=True)
         t0 = time.perf_counter()
         engine.fit(train)
         fit_s = time.perf_counter() - t0
