@@ -686,14 +686,17 @@ class EngineV2:
         """A3: profile-gated data graph for GR-MF.
 
         Preference order:
-          1. Directional cooc derived from session-ordered interactions
-             (when session_id present OR timestamps allow inference) +
-             symmetrize via D + Dᵀ.
-          2. Existing co-ownership cooc CSR (always available).
-          3. None (signals graph_mf to skip the data layer).
+          1. Explicit session_id column → directional cooc + symmetrize.
+          2. Timestamps present → infer sessions via GMM gap detection,
+             then directional cooc + symmetrize.
+          3. Fallback to co-ownership cooc CSR (always available).
 
-        Returns ((data, indices, indptr), kind_label) or (None, "none").
+        Returns ((data, indices, indptr), kind_label).
         """
+        sidx: np.ndarray | None = None
+        n_sessions: int = 0
+        kind: str = "none"
+
         # Path 1: explicit session_id column.
         if "session_id" in interactions.columns:
             session_ids = pd.Index(interactions["session_id"].unique())
@@ -703,6 +706,28 @@ class EngineV2:
                 .map(session_to_idx)
                 .to_numpy(dtype=np.int64)
             )
+            n_sessions = len(session_ids)
+            kind = "directional_explicit"
+
+        # Path 2: timestamp-inferred sessions (GMM gap detection).
+        elif "timestamp" in interactions.columns:
+            try:
+                inferred = infer_sessions(interactions)
+                sidx_arr = np.asarray(inferred.session_ids, dtype=np.int64)
+                if sidx_arr.size > 0 and sidx_arr.max() >= 0:
+                    sidx = sidx_arr
+                    n_sessions = int(sidx_arr.max()) + 1
+                    kind = "directional_inferred"
+            except Exception as exc:  # pragma: no cover — defensive
+                import warnings
+                warnings.warn(
+                    f"session inference failed ({exc!r}); "
+                    "falling back to co-ownership graph for graph_mf",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+
+        if sidx is not None and n_sessions > 0:
             ts = (
                 interactions["timestamp"].to_numpy(dtype=np.float64)
                 if "timestamp" in interactions.columns
@@ -711,7 +736,7 @@ class EngineV2:
             ws = np.ones(len(interactions), dtype=np.float32)
             d_data, d_indices, d_indptr = kindling_core.build_directional_cooc(
                 sidx, item_idx, ws,
-                n_sessions=len(session_ids),
+                n_sessions=n_sessions,
                 n_items=n_items,
                 timestamps=ts,
             )
@@ -726,9 +751,10 @@ class EngineV2:
                     np.asarray(sym_indices, dtype=np.int32),
                     np.asarray(sym_indptr, dtype=np.int32),
                 ),
-                "directional",
+                kind,
             )
-        # Path 2: existing co-ownership cooc.
+
+        # Path 3: existing co-ownership cooc.
         return ((cooc_data, cooc_indices, cooc_indptr), "co-ownership")
 
     def _fit_factors(
