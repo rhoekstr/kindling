@@ -102,7 +102,7 @@ def run(loader: str, max_eval_users: int = 500, k: int = 10, seed: int = 0) -> G
     for name, kwargs in VARIANT_SPECS.items():
         engine = EngineV2(retrieval_budget=500, random_state=seed, **kwargs)
         t0 = time.perf_counter()
-        engine.fit(train)
+        engine.fit(train, item_metadata=split.items)
         fit_s = time.perf_counter() - t0
         metrics, latencies = _evaluate(engine, eval_set, k=k)
         st = engine._state

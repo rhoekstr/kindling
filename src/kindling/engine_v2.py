@@ -200,7 +200,11 @@ class EngineV2:
     # fit
     # ------------------------------------------------------------------
 
-    def fit(self, interactions: pd.DataFrame) -> "EngineV2":
+    def fit(
+        self,
+        interactions: pd.DataFrame,
+        item_metadata: pd.DataFrame | None = None,
+    ) -> "EngineV2":
         t0 = time.perf_counter()
         # Same contract as v1: validate → canonicalize → preprocess.
         schema = validate_interactions(interactions)
@@ -388,7 +392,9 @@ class EngineV2:
                 interactions, item_to_idx, item_idx, n_items, cooc_data,
                 cooc_indices, cooc_indptr,
             )
-            hier_graph = None  # B2: optional hierarchy graph; not wired yet
+            hier_graph = self._build_hierarchy_graph(
+                item_metadata, item_to_idx, n_items,
+            )
             gmf_u, gmf_i, gmf_iters, gmf_deltas = kindling_core.fit_graph_mf_py(
                 user_idx, item_idx, weights,
                 n_users=n_users, n_items=n_items,
@@ -669,6 +675,85 @@ class EngineV2:
                 out.append((als_scores, "pool"))
 
         return out
+
+    def _build_hierarchy_graph(
+        self,
+        item_metadata: pd.DataFrame | None,
+        item_to_idx: dict[object, int],
+        n_items: int,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray] | None:
+        """B2: build a flat-partition hierarchy graph from item metadata.
+
+        Strategy: cluster items by `store` (brand) when present. Items in
+        the same brand → undirected edge with weight 1.0.
+
+        Caveat: this is *brand-as-hierarchy*, NOT a tree-structured
+        hierarchy. The 2023 Amazon Reviews dataset (only available HF
+        mirror) ships `categories: []` for All_Beauty — the original
+        2018 hierarchical category tree was dropped in the rewrite. So
+        brand is the strongest flat-partition signal we can extract on
+        amazon-beauty today; a real hierarchy with ancestor/descendant
+        edges would need either a different metadata source or hand-
+        curated taxonomies.
+
+        Returns CSR triple or None when no usable metadata.
+        """
+        if item_metadata is None or len(item_metadata) == 0:
+            return None
+        if "store" not in item_metadata.columns:
+            return None
+
+        from collections import defaultdict
+
+        # Bucket items in our catalog by their brand.
+        by_brand: dict[object, list[int]] = defaultdict(list)
+        for _, row in item_metadata.iterrows():
+            item_id = row["item_id"]
+            store = row.get("store")
+            if not store or pd.isna(store):
+                continue
+            idx = item_to_idx.get(item_id, -1)
+            if idx < 0:
+                continue
+            by_brand[store].append(idx)
+
+        # Drop singleton brands (no edges to add). Cap brand size to
+        # avoid quadratic blowup on dominant brands.
+        max_brand_size = 100
+        rows_acc: dict[int, list[tuple[int, float]]] = {}
+        for brand_items in by_brand.values():
+            if len(brand_items) < 2:
+                continue
+            members = brand_items[:max_brand_size]
+            # Symmetric clique edges with unit weight.
+            for a in members:
+                for b in members:
+                    if a == b:
+                        continue
+                    rows_acc.setdefault(a, []).append((b, 1.0))
+        if not rows_acc:
+            return None
+        # Pack as CSR.
+        out_data: list[float] = []
+        out_indices: list[int] = []
+        out_indptr: list[int] = [0]
+        for i in range(n_items):
+            row = rows_acc.get(i, [])
+            row.sort(key=lambda t: t[0])
+            # Dedup (a brand member could appear multiple times if duplicated).
+            seen: set[int] = set()
+            for j, w in row:
+                if j in seen:
+                    continue
+                seen.add(j)
+                out_indices.append(j)
+                out_data.append(w)
+            out_indptr.append(len(out_indices))
+        return (
+            np.asarray(out_data, dtype=np.float32),
+            np.asarray(out_indices, dtype=np.int32),
+            np.asarray(out_indptr, dtype=np.int32),
+        )
 
     def _build_data_graph(
         self,

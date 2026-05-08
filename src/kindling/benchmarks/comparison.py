@@ -210,7 +210,11 @@ def _load_amazon_5core(data_dir: Path, test_fraction: float, label: str) -> Data
         )
     candidates = sorted(data_dir.glob("*5*.json*"))
     if candidates:
-        split = amazon.load(candidates[0], test_fraction=test_fraction)
+        meta_candidates = sorted(data_dir.glob("meta_*.jsonl*"))
+        meta_file = meta_candidates[0] if meta_candidates else None
+        split = amazon.load(
+            candidates[0], test_fraction=test_fraction, meta_file=meta_file,
+        )
         return DatasetSplit(
             name=label,
             train=split.train,
