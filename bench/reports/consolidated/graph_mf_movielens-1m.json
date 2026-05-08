@@ -1,0 +1,72 @@
+{
+  "loader": "movielens-1m",
+  "n_train": 900188,
+  "n_test": 100021,
+  "n_users_evaluated": 500,
+  "k": 10,
+  "variants": {
+    "A_cooc_base": {
+      "kwargs": {
+        "use_graph_mf": false
+      },
+      "fit_seconds": 16.933324916055426,
+      "metrics": {
+        "ndcg_at_k": 0.25206244417514223,
+        "recall_at_k": 0.044234740159365564,
+        "mrr": 0.4202444444444445,
+        "hit_rate": 0.67,
+        "coverage": 0.05057096247960848
+      },
+      "latency": {
+        "p50_ms": 0.7286249892786145,
+        "p95_ms": 2.8450601501390276,
+        "p99_ms": 4.431816398864611
+      },
+      "graph_mf_active": false,
+      "graph_mf_data_graph_kind": "none"
+    },
+    "B_graph_mf_base": {
+      "kwargs": {
+        "use_graph_mf": true,
+        "graph_mf_role": "base"
+      },
+      "fit_seconds": 18.072512292070314,
+      "metrics": {
+        "ndcg_at_k": 0.21625819341967384,
+        "recall_at_k": 0.042664813564705924,
+        "mrr": 0.36196904761904763,
+        "hit_rate": 0.662,
+        "coverage": 0.2275693311582382
+      },
+      "latency": {
+        "p50_ms": 0.4279165295884013,
+        "p95_ms": 1.492302078986539,
+        "p99_ms": 2.1572151873260736
+      },
+      "graph_mf_active": true,
+      "graph_mf_data_graph_kind": "co-ownership"
+    },
+    "C_graph_mf_boost": {
+      "kwargs": {
+        "use_graph_mf": true,
+        "graph_mf_role": "boost"
+      },
+      "fit_seconds": 21.310753584024496,
+      "metrics": {
+        "ndcg_at_k": 0.2517051302652202,
+        "recall_at_k": 0.0442221519010677,
+        "mrr": 0.4172309523809524,
+        "hit_rate": 0.668,
+        "coverage": 0.05057096247960848
+      },
+      "latency": {
+        "p50_ms": 0.9942500619217753,
+        "p95_ms": 4.325470456387847,
+        "p99_ms": 9.369317110395054
+      },
+      "graph_mf_active": true,
+      "graph_mf_data_graph_kind": "co-ownership"
+    }
+  },
+  "timestamp": "2026-05-08T17:05:09"
+}

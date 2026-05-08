@@ -1,0 +1,72 @@
+{
+  "loader": "amazon-beauty",
+  "n_train": 178651,
+  "n_test": 19851,
+  "n_users_evaluated": 500,
+  "k": 10,
+  "variants": {
+    "A_cooc_base": {
+      "kwargs": {
+        "use_graph_mf": false
+      },
+      "fit_seconds": 117.42579825001303,
+      "metrics": {
+        "ndcg_at_k": 0.028991904825981442,
+        "recall_at_k": 0.03271192608204804,
+        "mrr": 0.040679365079365086,
+        "hit_rate": 0.086,
+        "coverage": 0.12484321431557822
+      },
+      "latency": {
+        "p50_ms": 0.25143747916445136,
+        "p95_ms": 0.4185684141702949,
+        "p99_ms": 0.6392171222250904
+      },
+      "graph_mf_active": false,
+      "graph_mf_data_graph_kind": "none"
+    },
+    "B_graph_mf_base": {
+      "kwargs": {
+        "use_graph_mf": true,
+        "graph_mf_role": "base"
+      },
+      "fit_seconds": 115.56705349998083,
+      "metrics": {
+        "ndcg_at_k": 0.025289802764898495,
+        "recall_at_k": 0.030417871423968987,
+        "mrr": 0.03701507936507936,
+        "hit_rate": 0.09,
+        "coverage": 0.08060874655071494
+      },
+      "latency": {
+        "p50_ms": 0.1326880301348865,
+        "p95_ms": 0.25688402820378536,
+        "p99_ms": 0.34122348064556646
+      },
+      "graph_mf_active": true,
+      "graph_mf_data_graph_kind": "co-ownership"
+    },
+    "C_graph_mf_boost": {
+      "kwargs": {
+        "use_graph_mf": true,
+        "graph_mf_role": "boost"
+      },
+      "fit_seconds": 80.54579583392479,
+      "metrics": {
+        "ndcg_at_k": 0.029150098342397478,
+        "recall_at_k": 0.033092878463000415,
+        "mrr": 0.04114603174603174,
+        "hit_rate": 0.088,
+        "coverage": 0.1176519775900995
+      },
+      "latency": {
+        "p50_ms": 0.2887499867938459,
+        "p95_ms": 0.6142827507574107,
+        "p99_ms": 0.8130297856405374
+      },
+      "graph_mf_active": true,
+      "graph_mf_data_graph_kind": "co-ownership"
+    }
+  },
+  "timestamp": "2026-05-08T17:06:14"
+}
