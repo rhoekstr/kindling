@@ -112,6 +112,12 @@ class V2FitState:
     # item factors. None when als_as_boost is disabled.
     als_user_factors: np.ndarray | None = None
     als_item_factors: np.ndarray | None = None
+    # Graph-regularized MF state: per-entity user factors + per-item
+    # item factors. None when use_graph_mf is False.
+    gmf_user_factors: np.ndarray | None = None
+    gmf_item_factors: np.ndarray | None = None
+    gmf_role: str = "boost"  # "base" or "boost" — recorded so recommend knows what to do
+    gmf_data_graph_kind: str = "none"  # "directional" | "co-ownership" | "none"
     # Calibrated scoring config
     z_threshold: float = 2.5
     boost_multiplier: float = 3.0
@@ -143,6 +149,23 @@ class EngineV2:
         # SVD and boost is off.
         hdbscan_factor_method: str = "als",
         als_as_boost: bool = False,
+        # Graph-regularized matrix factorization (GR-MF / graph_mf).
+        # Off by default. When enabled, GR-MF runs alongside the existing
+        # base path:
+        #   role="base"  — replace cooc base for retrieval+scoring
+        #   role="boost" — add as a dense z-mode boost layer
+        # Two graphs feed it:
+        #   - data graph: A3 profile-gated. When session structure is
+        #     inferable, builds directional cooc + symmetrizes via
+        #     D + Dᵀ. Else falls back to existing co-ownership cooc.
+        #   - hierarchy graph: optional, from item_metadata when the
+        #     loader provides it (B2). amazon-beauty supported first.
+        use_graph_mf: bool = False,
+        graph_mf_role: str = "boost",  # "base" or "boost"
+        graph_mf_alpha_data: float = 0.1,
+        graph_mf_alpha_hierarchy: float = 0.5,
+        graph_mf_n_iters: int = 15,
+        graph_mf_dim: int = 32,
     ):
         if not CORE_AVAILABLE:
             raise ImportError(
@@ -161,6 +184,16 @@ class EngineV2:
             )
         self.hdbscan_factor_method = hdbscan_factor_method
         self.als_as_boost = als_as_boost
+        if graph_mf_role not in ("base", "boost"):
+            raise ValueError(
+                f"graph_mf_role must be 'base' or 'boost'; got {graph_mf_role!r}"
+            )
+        self.use_graph_mf = use_graph_mf
+        self.graph_mf_role = graph_mf_role
+        self.graph_mf_alpha_data = graph_mf_alpha_data
+        self.graph_mf_alpha_hierarchy = graph_mf_alpha_hierarchy
+        self.graph_mf_n_iters = graph_mf_n_iters
+        self.graph_mf_dim = graph_mf_dim
         self._state: V2FitState | None = None
 
     # ------------------------------------------------------------------
@@ -342,6 +375,42 @@ class EngineV2:
         # (built earlier in this fit). Boost layers are now reserved for
         # *refinements* on different axes (temporal, session, path).
 
+        # ── Graph-regularized MF (GR-MF / graph_mf). Optional.
+        # Builds the data-driven graph (A3 profile-gated: directional
+        # cooc-derived-symmetric when sessions are inferable, else
+        # co-ownership cooc fallback). Hierarchy graph plumbed but
+        # currently always None (B2 extractor lands as a follow-on).
+        gmf_user_factors: np.ndarray | None = None
+        gmf_item_factors: np.ndarray | None = None
+        gmf_data_graph_kind = "none"
+        if self.use_graph_mf:
+            data_graph, gmf_data_graph_kind = self._build_data_graph(
+                interactions, item_to_idx, item_idx, n_items, cooc_data,
+                cooc_indices, cooc_indptr,
+            )
+            hier_graph = None  # B2: optional hierarchy graph; not wired yet
+            gmf_u, gmf_i, gmf_iters, gmf_deltas = kindling_core.fit_graph_mf_py(
+                user_idx, item_idx, weights,
+                n_users=n_users, n_items=n_items,
+                dim=self.graph_mf_dim,
+                n_iters=self.graph_mf_n_iters,
+                alpha_data=self.graph_mf_alpha_data,
+                alpha_hierarchy=self.graph_mf_alpha_hierarchy,
+                regularization=0.01,
+                als_alpha=40.0,
+                seed=self.random_state,
+                min_users=10,
+                min_items=10,
+                data_graph_data=data_graph[0] if data_graph else None,
+                data_graph_indices=data_graph[1] if data_graph else None,
+                data_graph_indptr=data_graph[2] if data_graph else None,
+                hierarchy_graph_data=hier_graph[0] if hier_graph else None,
+                hierarchy_graph_indices=hier_graph[1] if hier_graph else None,
+                hierarchy_graph_indptr=hier_graph[2] if hier_graph else None,
+            )
+            gmf_user_factors = np.asarray(gmf_u, dtype=np.float64)
+            gmf_item_factors = np.asarray(gmf_i, dtype=np.float64)
+
         # ── path_tail + path_basket: infer sessions, build indices.
         # Build is plan-aware: skip basket on rating-burst datasets, etc.
         # The Rust score_many kernels run at recommend time; here we just
@@ -395,6 +464,10 @@ class EngineV2:
             persona_cooc_indptr=persona_cooc_indptr,
             als_user_factors=user_factors if self.als_as_boost else None,
             als_item_factors=item_factors_for_boost,
+            gmf_user_factors=gmf_user_factors,
+            gmf_item_factors=gmf_item_factors,
+            gmf_role=self.graph_mf_role,
+            gmf_data_graph_kind=gmf_data_graph_kind,
             boost_layer_adjacencies=boost_adj,
             z_threshold=2.5,
             boost_multiplier=3.0,
@@ -464,9 +537,27 @@ class EngineV2:
     def _compute_base(
         self, entity_id: object, owned: np.ndarray, cand_ids: list[int]
     ) -> tuple[str, np.ndarray]:
-        """Two-gate routing. Returns (base_kind, base_scores)."""
+        """Two-gate routing. Returns (base_kind, base_scores).
+
+        When `graph_mf_role == "base"` and GR-MF factors are fitted,
+        replace the cooc base with `user_factor · item_factor` over the
+        candidate pool. Otherwise the standard cooc/persona_cooc routing.
+        """
         st = self._state
         assert st is not None
+        # GR-MF as base: skip the cooc/persona routing entirely.
+        if (
+            st.gmf_role == "base"
+            and st.gmf_user_factors is not None
+            and st.gmf_item_factors is not None
+        ):
+            uidx = st.entity_to_user_idx.get(entity_id, -1)
+            if 0 <= uidx < st.gmf_user_factors.shape[0]:
+                u_vec = st.gmf_user_factors[uidx]
+                cand_arr = np.asarray(cand_ids, dtype=np.int64)
+                item_vecs = st.gmf_item_factors[cand_arr]
+                base = (item_vecs @ u_vec).astype(np.float64)
+                return "graph_mf", base
         cluster_id = -1
         if st.personas_enabled and len(st.user_to_persona):
             user_idx = st.entity_to_user_idx.get(entity_id, -1)
@@ -545,6 +636,22 @@ class EngineV2:
                 )
                 out.append((np.asarray(basket_scores, dtype=np.float64), "nonzero"))
 
+        # GR-MF-as-boost (dense, candidate-pool z-mode). Mirrors the
+        # ALS-as-boost path but uses GR-MF factors which are graph-
+        # regularized — same scoring shape (user_factor · item_factor).
+        if (
+            st.gmf_role == "boost"
+            and st.gmf_user_factors is not None
+            and st.gmf_item_factors is not None
+        ):
+            uidx = st.entity_to_user_idx.get(entity_id, -1)
+            if 0 <= uidx < st.gmf_user_factors.shape[0]:
+                u_vec = st.gmf_user_factors[uidx]
+                cand_arr = np.asarray(cand_ids, dtype=np.int64)
+                item_vecs = st.gmf_item_factors[cand_arr]
+                gmf_scores = (item_vecs @ u_vec).astype(np.float64)
+                out.append((gmf_scores, "pool"))
+
         # ALS-as-boost (dense, candidate-pool z-mode per the v2 PRD).
         # score(c) = user_factor[entity] · item_factor[c]. Fires when
         # the user-item dot product stands out z-significantly across
@@ -562,6 +669,67 @@ class EngineV2:
                 out.append((als_scores, "pool"))
 
         return out
+
+    def _build_data_graph(
+        self,
+        interactions: pd.DataFrame,
+        item_to_idx: dict[object, int],
+        item_idx: np.ndarray,
+        n_items: int,
+        cooc_data: np.ndarray,
+        cooc_indices: np.ndarray,
+        cooc_indptr: np.ndarray,
+    ) -> tuple[
+        tuple[np.ndarray, np.ndarray, np.ndarray] | None,
+        str,
+    ]:
+        """A3: profile-gated data graph for GR-MF.
+
+        Preference order:
+          1. Directional cooc derived from session-ordered interactions
+             (when session_id present OR timestamps allow inference) +
+             symmetrize via D + Dᵀ.
+          2. Existing co-ownership cooc CSR (always available).
+          3. None (signals graph_mf to skip the data layer).
+
+        Returns ((data, indices, indptr), kind_label) or (None, "none").
+        """
+        # Path 1: explicit session_id column.
+        if "session_id" in interactions.columns:
+            session_ids = pd.Index(interactions["session_id"].unique())
+            session_to_idx = {s: i for i, s in enumerate(session_ids)}
+            sidx = (
+                interactions["session_id"]
+                .map(session_to_idx)
+                .to_numpy(dtype=np.int64)
+            )
+            ts = (
+                interactions["timestamp"].to_numpy(dtype=np.float64)
+                if "timestamp" in interactions.columns
+                else None
+            )
+            ws = np.ones(len(interactions), dtype=np.float32)
+            d_data, d_indices, d_indptr = kindling_core.build_directional_cooc(
+                sidx, item_idx, ws,
+                n_sessions=len(session_ids),
+                n_items=n_items,
+                timestamps=ts,
+            )
+            sym_data, sym_indices, sym_indptr = kindling_core.symmetrize_via_transpose(
+                np.asarray(d_data, dtype=np.float32),
+                np.asarray(d_indices, dtype=np.int32),
+                np.asarray(d_indptr, dtype=np.int32),
+            )
+            return (
+                (
+                    np.asarray(sym_data, dtype=np.float32),
+                    np.asarray(sym_indices, dtype=np.int32),
+                    np.asarray(sym_indptr, dtype=np.int32),
+                ),
+                "directional",
+            )
+        # Path 2: existing co-ownership cooc.
+        return ((cooc_data, cooc_indices, cooc_indptr), "co-ownership")
 
     def _fit_factors(
         self,
@@ -719,4 +887,7 @@ class EngineV2:
             "z_threshold": st.z_threshold,
             "boost_multiplier": st.boost_multiplier,
             "profile": st.profile,
+            "graph_mf_active": st.gmf_user_factors is not None,
+            "graph_mf_role": st.gmf_role if st.gmf_user_factors is not None else None,
+            "graph_mf_data_graph_kind": st.gmf_data_graph_kind,
         }
