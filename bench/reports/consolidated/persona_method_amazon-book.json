@@ -1,0 +1,74 @@
+{
+  "loader": "amazon-book",
+  "n_train": 2380730,
+  "n_test": 603378,
+  "n_users_evaluated": 500,
+  "k": 10,
+  "variants": {
+    "A_no_personas": {
+      "kwargs": {
+        "persona_min_users": 10000000
+      },
+      "fit_seconds": 778.9344157080632,
+      "metrics": {
+        "ndcg_at_k": 0.025299856755560218,
+        "recall_at_k": 0.02463316382175408,
+        "mrr": 0.0562515873015873,
+        "hit_rate": 0.14,
+        "coverage": 0.013832028733938143
+      },
+      "latency": {
+        "p50_ms": 1.0699790436774492,
+        "p95_ms": 2.6353565801400682,
+        "p99_ms": 4.845993740018456
+      },
+      "n_personas": 0,
+      "persona_method_used": "none",
+      "signal_kind": "binary"
+    },
+    "B_svd_hdbscan": {
+      "kwargs": {
+        "persona_method": "hdbscan_factors",
+        "use_als": "force_off"
+      },
+      "fit_seconds": 1086.8227417919552,
+      "metrics": {
+        "ndcg_at_k": 0.025855554822425592,
+        "recall_at_k": 0.025647884068827273,
+        "mrr": 0.05696269841269841,
+        "hit_rate": 0.144,
+        "coverage": 0.014301466173211498
+      },
+      "latency": {
+        "p50_ms": 1.0482505313120782,
+        "p95_ms": 2.5499600626062575,
+        "p99_ms": 4.9825773865450165
+      },
+      "n_personas": 25,
+      "persona_method_used": "hdbscan_factors",
+      "signal_kind": "forced_off"
+    },
+    "C_louvain": {
+      "kwargs": {
+        "persona_method": "louvain_graph"
+      },
+      "fit_seconds": 1106.940846457961,
+      "metrics": {
+        "ndcg_at_k": 0.023932020980173503,
+        "recall_at_k": 0.023344390267007454,
+        "mrr": 0.05325873015873015,
+        "hit_rate": 0.138,
+        "coverage": 0.014225046124957697
+      },
+      "latency": {
+        "p50_ms": 2.6081244577653706,
+        "p95_ms": 9.683430922450485,
+        "p99_ms": 21.440718974918127
+      },
+      "n_personas": 5,
+      "persona_method_used": "louvain_graph",
+      "signal_kind": "binary"
+    }
+  },
+  "timestamp": "2026-05-08T21:29:01"
+}

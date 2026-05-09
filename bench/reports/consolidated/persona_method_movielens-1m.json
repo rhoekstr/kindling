@@ -1,0 +1,74 @@
+{
+  "loader": "movielens-1m",
+  "n_train": 900188,
+  "n_test": 100021,
+  "n_users_evaluated": 500,
+  "k": 10,
+  "variants": {
+    "A_no_personas": {
+      "kwargs": {
+        "persona_min_users": 10000000
+      },
+      "fit_seconds": 12.770971124991775,
+      "metrics": {
+        "ndcg_at_k": 0.2560655050162427,
+        "recall_at_k": 0.044237433402905466,
+        "mrr": 0.4199222222222222,
+        "hit_rate": 0.682,
+        "coverage": 0.034801522566612286
+      },
+      "latency": {
+        "p50_ms": 0.6996875163167715,
+        "p95_ms": 2.7541131421457954,
+        "p99_ms": 4.087958607124164
+      },
+      "n_personas": 0,
+      "persona_method_used": "none",
+      "signal_kind": "ratings"
+    },
+    "B_svd_hdbscan": {
+      "kwargs": {
+        "persona_method": "hdbscan_factors",
+        "use_als": "force_off"
+      },
+      "fit_seconds": 15.490434708073735,
+      "metrics": {
+        "ndcg_at_k": 0.2529461029102048,
+        "recall_at_k": 0.04424274229054978,
+        "mrr": 0.4180436507936508,
+        "hit_rate": 0.682,
+        "coverage": 0.043501903208265365
+      },
+      "latency": {
+        "p50_ms": 0.7204374414868653,
+        "p95_ms": 2.9018964734859756,
+        "p99_ms": 4.222268528537824
+      },
+      "n_personas": 3,
+      "persona_method_used": "hdbscan_factors",
+      "signal_kind": "forced_off"
+    },
+    "C_louvain": {
+      "kwargs": {
+        "persona_method": "louvain_graph"
+      },
+      "fit_seconds": 15.681628499994986,
+      "metrics": {
+        "ndcg_at_k": 0.25618243766648946,
+        "recall_at_k": 0.04426096281467018,
+        "mrr": 0.4198222222222222,
+        "hit_rate": 0.682,
+        "coverage": 0.034801522566612286
+      },
+      "latency": {
+        "p50_ms": 0.7626039441674948,
+        "p95_ms": 3.039685077965259,
+        "p99_ms": 4.339605239219963
+      },
+      "n_personas": 1,
+      "persona_method_used": "louvain_graph",
+      "signal_kind": "ratings"
+    }
+  },
+  "timestamp": "2026-05-08T21:25:18"
+}

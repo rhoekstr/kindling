@@ -1,0 +1,74 @@
+{
+  "loader": "amazon-beauty",
+  "n_train": 178651,
+  "n_test": 19851,
+  "n_users_evaluated": 500,
+  "k": 10,
+  "variants": {
+    "A_no_personas": {
+      "kwargs": {
+        "persona_min_users": 10000000
+      },
+      "fit_seconds": 37.63796695799101,
+      "metrics": {
+        "ndcg_at_k": 0.028991904825981442,
+        "recall_at_k": 0.03271192608204804,
+        "mrr": 0.040679365079365086,
+        "hit_rate": 0.086,
+        "coverage": 0.1258466426958776
+      },
+      "latency": {
+        "p50_ms": 0.0766665325500071,
+        "p95_ms": 0.22093930165283374,
+        "p99_ms": 0.30705965356901277
+      },
+      "n_personas": 0,
+      "persona_method_used": "none",
+      "signal_kind": "ratings"
+    },
+    "B_svd_hdbscan": {
+      "kwargs": {
+        "persona_method": "hdbscan_factors",
+        "use_als": "force_off"
+      },
+      "fit_seconds": 90.78372920805123,
+      "metrics": {
+        "ndcg_at_k": 0.028991904825981442,
+        "recall_at_k": 0.03271192608204804,
+        "mrr": 0.040679365079365086,
+        "hit_rate": 0.086,
+        "coverage": 0.12484321431557822
+      },
+      "latency": {
+        "p50_ms": 0.2216664724983275,
+        "p95_ms": 0.32134199864231033,
+        "p99_ms": 0.3880948096048087
+      },
+      "n_personas": 2,
+      "persona_method_used": "hdbscan_factors",
+      "signal_kind": "forced_off"
+    },
+    "C_louvain": {
+      "kwargs": {
+        "persona_method": "louvain_graph"
+      },
+      "fit_seconds": 38.96335095795803,
+      "metrics": {
+        "ndcg_at_k": 0.029682848575338205,
+        "recall_at_k": 0.03706510068522264,
+        "mrr": 0.03901825396825397,
+        "hit_rate": 0.09,
+        "coverage": 0.13019483234384147
+      },
+      "latency": {
+        "p50_ms": 0.20385446259751916,
+        "p95_ms": 0.2977523894514888,
+        "p99_ms": 0.3982778580393642
+      },
+      "n_personas": 4,
+      "persona_method_used": "louvain_graph",
+      "signal_kind": "ratings"
+    }
+  },
+  "timestamp": "2026-05-08T21:26:10"
+}

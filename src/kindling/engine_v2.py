@@ -121,6 +121,7 @@ class V2FitState:
     # Rating-signal classification + resolved use_als decision.
     signal_kind: str = "unknown"        # "binary" | "counts" | "ratings" | "forced_*"
     als_ran: bool = False               # whether ALS actually ran in this fit
+    persona_method_used: str = "none"   # "hdbscan_factors" | "louvain_graph" | "none"
     # Calibrated scoring config
     z_threshold: float = 2.5
     boost_multiplier: float = 3.0
@@ -164,6 +165,24 @@ class EngineV2:
         # collapses to weighted SVD on the cooc structure — same signal
         # cooc already captures (see graph_mf ablation discussion).
         use_als: str = "auto",
+        # `persona_method`: how to identify personas (i.e., user clusters).
+        #   "auto"             — pick based on signal_kind:
+        #                          ratings → hdbscan_factors
+        #                          binary / counts → louvain_graph
+        #   "hdbscan_factors"  — HDBSCAN over (ALS or SVD) user factors.
+        #                        Density-based, k-dim continuous embedding.
+        #   "louvain_graph"    — Louvain community detection on the
+        #                        user-user projected graph. Modularity-
+        #                        based, operates on raw edge structure.
+        # The output of either path feeds the same downstream persona-
+        # index pipeline (rates → z-filter → distinctive_items → fit_gate).
+        persona_method: str = "auto",
+        # Per-item user cap when projecting bipartite to user-user graph
+        # for Louvain. Bounds memory on popular items.
+        louvain_max_users_per_item: int = 100,
+        # Communities below this size become noise (-1) — analogous to
+        # HDBSCAN's noise label. Default mirrors HDBSCAN's min_cluster_size.
+        louvain_min_community_size: int = 30,
         # Graph-regularized matrix factorization (GR-MF / graph_mf).
         # Off by default. When enabled, GR-MF runs alongside the existing
         # base path:
@@ -204,6 +223,14 @@ class EngineV2:
                 f"use_als must be 'auto', 'force_on', or 'force_off'; got {use_als!r}"
             )
         self.use_als = use_als
+        if persona_method not in ("auto", "hdbscan_factors", "louvain_graph"):
+            raise ValueError(
+                f"persona_method must be 'auto', 'hdbscan_factors', or "
+                f"'louvain_graph'; got {persona_method!r}"
+            )
+        self.persona_method = persona_method
+        self.louvain_max_users_per_item = louvain_max_users_per_item
+        self.louvain_min_community_size = louvain_min_community_size
         if graph_mf_role not in ("base", "boost"):
             raise ValueError(
                 f"graph_mf_role must be 'base' or 'boost'; got {graph_mf_role!r}"
@@ -346,11 +373,21 @@ class EngineV2:
         persona_cooc_data: list[np.ndarray] = []
         persona_cooc_indices: list[np.ndarray] = []
         persona_cooc_indptr: list[np.ndarray] = []
+        # Resolve persona_method (auto picks based on signal_kind).
+        persona_method = self.persona_method
+        if persona_method == "auto":
+            persona_method = (
+                "hdbscan_factors" if signal_kind == "ratings" or signal_kind == "forced_on"
+                else "louvain_graph"
+            )
         # ALS-as-boost requires item factors even if personas aren't on.
-        # SVD-for-HDBSCAN cleanly skips ALS when boost is also off.
+        # Factor fitting only needed for hdbscan_factors path or als_as_boost.
         item_factors_for_boost: np.ndarray | None = None
         user_factors: np.ndarray | None = None
-        need_factors = personas_enabled or self.als_as_boost
+        need_factors = (
+            (personas_enabled and persona_method == "hdbscan_factors")
+            or self.als_as_boost
+        )
         if need_factors:
             user_factors, item_factors = self._fit_factors(
                 user_idx, item_idx, weights, n_users, n_items
@@ -368,7 +405,8 @@ class EngineV2:
             user_factors_normalized = user_factors / np.maximum(user_norms, 1e-9)
         else:
             user_factors_normalized = None
-        if personas_enabled:
+        noise_frac: float = 0.0
+        if personas_enabled and persona_method == "hdbscan_factors":
             assert user_factors_normalized is not None
             # On the unit sphere, eps=0.5 is sane and 30 is enough to
             # form meaningful clusters without the 0.5% threshold dominating.
@@ -379,41 +417,66 @@ class EngineV2:
             )
             assignments = np.asarray(assignments, dtype=np.int64)
             user_to_persona = assignments
-            if n_personas_actual > 0:
-                # Build persona index (rates → z-filter → distinctive_items → TF-IDF → L2).
-                _sizes, _rates_csr, _tfidf_csr, _idf, distinctive = (
-                    kindling_core.build_persona_index_py(
-                        assignments.tolist(),
-                        user_idx.tolist(),
-                        item_idx.tolist(),
-                        n_personas=n_personas_actual,
-                        n_items=n_items,
-                        z_filter=1.5,
-                    )
+        elif personas_enabled and persona_method == "louvain_graph":
+            # Build user-user projected graph + run Louvain.
+            uu_data, uu_indices, uu_indptr = kindling_core.build_user_user_graph(
+                user_idx, item_idx, weights,
+                n_users=n_users, n_items=n_items,
+                max_users_per_item=self.louvain_max_users_per_item,
+                seed=self.random_state,
+            )
+            uu_data = np.asarray(uu_data, dtype=np.float32)
+            uu_indices = np.asarray(uu_indices, dtype=np.int32)
+            uu_indptr = np.asarray(uu_indptr, dtype=np.int32)
+            assignments, n_personas_actual, modularity, _passes, noise_frac = (
+                kindling_core.fit_louvain_py(
+                    uu_data, uu_indices, uu_indptr,
+                    min_community_size=self.louvain_min_community_size,
+                    max_passes=30,
+                    modularity_tol=1e-6,
                 )
-                persona_distinctive = [list(d) for d in distinctive]
-                # Build per-persona cooc.
-                pc_data, pc_indices, pc_indptr, _pc_sizes = (
-                    kindling_core.build_persona_cooccurrence(
-                        user_idx,
-                        item_idx,
-                        weights,
-                        user_to_persona=assignments.tolist(),
-                        n_users=n_users,
-                        n_items=n_items,
-                        n_personas=n_personas_actual,
-                        kernel=plan["kernel"],
-                        alpha=plan["alpha"],
-                        half_life_days=plan["half_life_days"],
-                        timestamps=timestamps_col,
-                        min_persona_users=5,
-                    )
+            )
+            assignments = np.asarray(assignments, dtype=np.int64)
+            user_to_persona = assignments
+            profile["louvain_modularity"] = float(modularity)
+
+        # Shared post-clustering: build persona index + per-persona cooc
+        # if any method produced ≥1 cluster.
+        if personas_enabled and n_personas_actual > 0:
+            _sizes, _rates_csr, _tfidf_csr, _idf, distinctive = (
+                kindling_core.build_persona_index_py(
+                    assignments.tolist(),
+                    user_idx.tolist(),
+                    item_idx.tolist(),
+                    n_personas=n_personas_actual,
+                    n_items=n_items,
+                    z_filter=1.5,
                 )
-                persona_cooc_data = [np.asarray(d, dtype=np.float32) for d in pc_data]
-                persona_cooc_indices = [np.asarray(i, dtype=np.int32) for i in pc_indices]
-                persona_cooc_indptr = [np.asarray(p, dtype=np.int32) for p in pc_indptr]
+            )
+            persona_distinctive = [list(d) for d in distinctive]
+            pc_data, pc_indices, pc_indptr, _pc_sizes = (
+                kindling_core.build_persona_cooccurrence(
+                    user_idx,
+                    item_idx,
+                    weights,
+                    user_to_persona=assignments.tolist(),
+                    n_users=n_users,
+                    n_items=n_items,
+                    n_personas=n_personas_actual,
+                    kernel=plan["kernel"],
+                    alpha=plan["alpha"],
+                    half_life_days=plan["half_life_days"],
+                    timestamps=timestamps_col,
+                    min_persona_users=5,
+                )
+            )
+            persona_cooc_data = [np.asarray(d, dtype=np.float32) for d in pc_data]
+            persona_cooc_indices = [np.asarray(i, dtype=np.int32) for i in pc_indices]
+            persona_cooc_indptr = [np.asarray(p, dtype=np.int32) for p in pc_indptr]
+        if personas_enabled:
             profile["noise_fraction"] = float(noise_frac)
             profile["n_personas"] = int(n_personas_actual)
+            profile["persona_method"] = persona_method
 
         # ── Boost layers. Each gets its own cooc-shaped adjacency.
         boost_adj: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
@@ -552,6 +615,7 @@ class EngineV2:
             gmf_data_graph_kind=gmf_data_graph_kind,
             signal_kind=signal_kind,
             als_ran=run_als,
+            persona_method_used=persona_method if personas_enabled else "none",
             boost_layer_adjacencies=boost_adj,
             z_threshold=2.5,
             boost_multiplier=3.0,
@@ -1082,4 +1146,6 @@ class EngineV2:
             "signal_kind": st.signal_kind,
             "als_ran": st.als_ran,
             "use_als_setting": self.use_als,
+            "persona_method_used": st.persona_method_used,
+            "persona_method_setting": self.persona_method,
         }
