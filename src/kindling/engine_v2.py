@@ -118,6 +118,9 @@ class V2FitState:
     gmf_item_factors: np.ndarray | None = None
     gmf_role: str = "boost"  # "base" or "boost" — recorded so recommend knows what to do
     gmf_data_graph_kind: str = "none"  # "directional" | "co-ownership" | "none"
+    # Rating-signal classification + resolved use_als decision.
+    signal_kind: str = "unknown"        # "binary" | "counts" | "ratings" | "forced_*"
+    als_ran: bool = False               # whether ALS actually ran in this fit
     # Calibrated scoring config
     z_threshold: float = 2.5
     boost_multiplier: float = 3.0
@@ -149,6 +152,18 @@ class EngineV2:
         # SVD and boost is off.
         hdbscan_factor_method: str = "als",
         als_as_boost: bool = False,
+        # `use_als`: governs whether ALS runs at all on this dataset.
+        #   "auto"      — detect signal kind from the rating/weight column;
+        #                 enable ALS only when the signal is "ratings" (a
+        #                 bounded narrow-range distribution with multiple
+        #                 distinct values). Skip on "binary" or "counts".
+        #   "force_on"  — run ALS regardless of detected signal.
+        #   "force_off" — never run ALS; HDBSCAN inputs fall back to SVD,
+        #                 als_as_boost is silently disabled.
+        # On detected "binary" / "counts" data the implicit-feedback trick
+        # collapses to weighted SVD on the cooc structure — same signal
+        # cooc already captures (see graph_mf ablation discussion).
+        use_als: str = "auto",
         # Graph-regularized matrix factorization (GR-MF / graph_mf).
         # Off by default. When enabled, GR-MF runs alongside the existing
         # base path:
@@ -184,6 +199,11 @@ class EngineV2:
             )
         self.hdbscan_factor_method = hdbscan_factor_method
         self.als_as_boost = als_as_boost
+        if use_als not in ("auto", "force_on", "force_off"):
+            raise ValueError(
+                f"use_als must be 'auto', 'force_on', or 'force_off'; got {use_als!r}"
+            )
+        self.use_als = use_als
         if graph_mf_role not in ("base", "boost"):
             raise ValueError(
                 f"graph_mf_role must be 'base' or 'boost'; got {graph_mf_role!r}"
@@ -200,6 +220,53 @@ class EngineV2:
     # fit
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def detect_rating_signal(values: np.ndarray) -> str:
+        """Classify a rating/weight column as 'binary' | 'counts' | 'ratings'.
+
+        Heuristic:
+          - single value (or coefficient of variation < 5%): 'binary'
+          - p99/median > 10 (heavy right tail): 'counts'
+          - bounded narrow range with ≥3 distinct values: 'ratings'
+          - default fallback: 'counts'
+
+        The implicit-feedback ALS confidence trick only earns its name
+        when the input is 'ratings' (data-driven c_ui spread). On
+        'binary' or 'counts' inputs, ALS collapses to a low-rank
+        rewrite of the cooc structure — same signal cooc already has.
+        """
+        vals = np.asarray(values, dtype=np.float64)
+        vals = vals[np.isfinite(vals) & (vals > 0)]
+        if vals.size == 0:
+            return "binary"
+        unique = np.unique(vals)
+        if len(unique) <= 1:
+            return "binary"
+        cv = vals.std() / max(abs(vals.mean()), 1e-9)
+        if cv < 0.05:
+            return "binary"
+        median = np.median(vals)
+        p99 = np.percentile(vals, 99)
+        if p99 / max(median, 1e-9) > 10.0:
+            return "counts"
+        if unique.max() <= 10.0 and len(unique) >= 3:
+            return "ratings"
+        return "counts"
+
+    def _resolve_use_als(self, weights: np.ndarray) -> tuple[bool, str]:
+        """Resolve self.use_als into (effective_bool, signal_kind).
+
+        Returns:
+          (run_als, signal_kind) where signal_kind is one of
+          'binary' | 'counts' | 'ratings' | 'forced_on' | 'forced_off'.
+        """
+        if self.use_als == "force_on":
+            return True, "forced_on"
+        if self.use_als == "force_off":
+            return False, "forced_off"
+        kind = self.detect_rating_signal(weights)
+        return (kind == "ratings"), kind
+
     def fit(
         self,
         interactions: pd.DataFrame,
@@ -212,6 +279,15 @@ class EngineV2:
         canonical, _ctx = preprocess_interactions(canonical, use_ratings=None)
         interactions = canonical
         weights = weights_of(interactions).astype(np.float32)
+        # Resolve use_als BEFORE building the persona pipeline so we
+        # know whether to instantiate ALS at all.
+        run_als, signal_kind = self._resolve_use_als(weights)
+        if not run_als:
+            # When ALS won't run, force HDBSCAN to use SVD inputs and
+            # silently disable ALS-as-boost. Caller can still see the
+            # decision in fit_summary().
+            self.hdbscan_factor_method = "svd"
+            self.als_as_boost = False
         # Build catalogs.
         item_ids = pd.Index(interactions["item_id"].unique())
         item_to_idx = {item: i for i, item in enumerate(item_ids)}
@@ -474,6 +550,8 @@ class EngineV2:
             gmf_item_factors=gmf_item_factors,
             gmf_role=self.graph_mf_role,
             gmf_data_graph_kind=gmf_data_graph_kind,
+            signal_kind=signal_kind,
+            als_ran=run_als,
             boost_layer_adjacencies=boost_adj,
             z_threshold=2.5,
             boost_multiplier=3.0,
@@ -1001,4 +1079,7 @@ class EngineV2:
             "graph_mf_active": st.gmf_user_factors is not None,
             "graph_mf_role": st.gmf_role if st.gmf_user_factors is not None else None,
             "graph_mf_data_graph_kind": st.gmf_data_graph_kind,
+            "signal_kind": st.signal_kind,
+            "als_ran": st.als_ran,
+            "use_als_setting": self.use_als,
         }
