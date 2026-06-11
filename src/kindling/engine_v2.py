@@ -126,6 +126,15 @@ class V2FitState:
     # n_items). None when timestamps are absent or trend_alpha == 0.
     trend_z: np.ndarray | None = None
     trend_alpha: float = 0.0
+    # Sequential transition channel: directional cooc CSR (item → item),
+    # user-level timestamp-ordered. None when gated off (no timestamps /
+    # rating bursts / transition_alpha == 0).
+    trans_data: np.ndarray | None = None
+    trans_indices: np.ndarray | None = None
+    trans_indptr: np.ndarray | None = None
+    transition_alpha: float = 0.0
+    transition_last_k: int = 5
+    transition_decay: float = 0.7
     # Rating-signal classification + resolved use_als decision.
     signal_kind: str = "unknown"        # "binary" | "counts" | "ratings" | "forced_*"
     als_ran: bool = False               # whether ALS actually ran in this fit
@@ -304,6 +313,20 @@ class EngineV2:
         # ml1m). Gated by timestamp availability. 0.0 disables.
         trend_alpha: float = 0.5,
         trend_window_fraction: float = 0.10,
+        # Sequential transition channel: directional cooc D[i→j] built
+        # from each user's timestamp-ordered history; at recommend time
+        # the last `transition_last_k` owned items vote with exponential
+        # decay:
+        #   trans = Σ_j decay^j · D[last_j, :]
+        #   score += transition_alpha · z(trans)
+        # Gated by: timestamps present AND NOT rating_burst_detected.
+        # On burst datasets (ml1m: users rate dozens of movies in one
+        # sitting) within-burst order is meaningless and this channel
+        # measurably hurts; on purchase streams (amazon) it lifts both
+        # NDCG and recall. 0.0 disables.
+        transition_alpha: float = 0.25,
+        transition_last_k: int = 5,
+        transition_decay: float = 0.7,
         use_graph_mf: bool = False,
         graph_mf_role: str = "boost",  # "base" or "boost"
         graph_mf_alpha_data: float = 0.1,
@@ -410,6 +433,19 @@ class EngineV2:
                 f"got {trend_window_fraction!r}"
             )
         self.trend_window_fraction = trend_window_fraction
+        if transition_alpha < 0.0:
+            raise ValueError(f"transition_alpha must be >= 0; got {transition_alpha!r}")
+        self.transition_alpha = transition_alpha
+        if transition_last_k < 1:
+            raise ValueError(
+                f"transition_last_k must be >= 1; got {transition_last_k!r}"
+            )
+        self.transition_last_k = transition_last_k
+        if not (0.0 < transition_decay <= 1.0):
+            raise ValueError(
+                f"transition_decay must be in (0, 1]; got {transition_decay!r}"
+            )
+        self.transition_decay = transition_decay
         if dc_sbm_max_passes < 1:
             raise ValueError(
                 f"dc_sbm_max_passes must be >= 1; got {dc_sbm_max_passes!r}"
@@ -618,6 +654,32 @@ class EngineV2:
                     trend_z = (counts - counts.mean()) / std
                     profile["trend_window_fraction"] = self.trend_window_fraction
                     profile["trend_alpha"] = self.trend_alpha
+
+        # ── Sequential transition channel (timestamp-gated AND burst-
+        # gated). Directional cooc over each user's timestamp-ordered
+        # history; rating-burst datasets are excluded because within-
+        # burst order carries no sequence information.
+        trans_data: np.ndarray | None = None
+        trans_indices: np.ndarray | None = None
+        trans_indptr: np.ndarray | None = None
+        if (
+            self.transition_alpha > 0.0
+            and timestamps_col is not None
+            and len(timestamps_col)
+            and not profile.get("rating_burst_detected", False)
+        ):
+            td, ti, tp = kindling_core.build_directional_cooc(
+                user_idx, item_idx, weights,
+                n_sessions=n_users, n_items=n_items,
+                timestamps=timestamps_col,
+            )
+            trans_data = np.asarray(td, dtype=np.float32)
+            trans_indices = np.asarray(ti, dtype=np.int32)
+            trans_indptr = np.asarray(tp, dtype=np.int32)
+            profile["transition_channel_active"] = True
+            profile["transition_alpha"] = self.transition_alpha
+        else:
+            profile["transition_channel_active"] = False
 
         # ── Personas (if enabled).
         personas_enabled = bool(plan["personas_enabled"]) and n_users >= self.persona_min_users
@@ -1036,6 +1098,12 @@ class EngineV2:
             base_scorer_used=base_scorer_used,
             trend_z=trend_z,
             trend_alpha=self.trend_alpha,
+            trans_data=trans_data,
+            trans_indices=trans_indices,
+            trans_indptr=trans_indptr,
+            transition_alpha=self.transition_alpha,
+            transition_last_k=self.transition_last_k,
+            transition_decay=self.transition_decay,
             personas_enabled=personas_enabled and n_personas_actual > 0,
             n_personas=n_personas_actual,
             user_to_persona=user_to_persona,
@@ -1090,6 +1158,23 @@ class EngineV2:
                         ease_scores_full - ease_scores_full.mean()
                     ) / std
                 ease_scores_full = ease_scores_full + st.trend_alpha * st.trend_z
+            # Sequential transition channel: the user's most recent items
+            # vote for likely next items via the directional-cooc rows.
+            if st.trans_data is not None and st.transition_alpha > 0.0:
+                trans = np.zeros(st.n_items, dtype=np.float64)
+                recent = owned[::-1][: st.transition_last_k]
+                for j, item in enumerate(recent):
+                    s_ = int(st.trans_indptr[item])
+                    e_ = int(st.trans_indptr[item + 1])
+                    if e_ > s_:
+                        trans[st.trans_indices[s_:e_]] += (
+                            st.transition_decay ** j
+                        ) * st.trans_data[s_:e_]
+                t_std = trans.std()
+                if t_std > 0:
+                    ease_scores_full = ease_scores_full + st.transition_alpha * (
+                        (trans - trans.mean()) / t_std
+                    )
             ease_scores_full[owned] = -np.inf
             budget = min(self.retrieval_budget, ease_scores_full.size)
             top = np.argpartition(-ease_scores_full, budget - 1)[:budget]
