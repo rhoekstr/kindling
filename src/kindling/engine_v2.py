@@ -327,6 +327,21 @@ class EngineV2:
         transition_alpha: float = 0.25,
         transition_last_k: int = 5,
         transition_decay: float = 0.7,
+        # Per-fit base calibration (EXPERIMENTAL — default off). Holds
+        # out the final 10% of train events and grid-searches
+        # (ease_lambda, trend_alpha, transition_alpha) on internal
+        # NDCG@10, then refits on full train with the winners.
+        #
+        # Measured 2026-06: internal choices do NOT transfer — on
+        # amazon-beauty the internal ranking inverts the test ranking
+        # for trend_alpha (internal prefers 0.0; test strongly prefers
+        # 0.5) and degrades test NDCG 0.0310 → 0.0203; ml1m degrades
+        # 0.2859 → 0.2741. Shifting every window back one slice changes
+        # the popularity-drift structure that the trend channel
+        # exploits, so the holdout systematically undervalues it. The
+        # cross-dataset-validated fixed defaults are more robust. Keep
+        # for diagnostics (profile["base_calibration"]["grid"]).
+        calibrate_base: bool = False,
         use_graph_mf: bool = False,
         graph_mf_role: str = "boost",  # "base" or "boost"
         graph_mf_alpha_data: float = 0.1,
@@ -446,6 +461,7 @@ class EngineV2:
                 f"transition_decay must be in (0, 1]; got {transition_decay!r}"
             )
         self.transition_decay = transition_decay
+        self.calibrate_base = bool(calibrate_base)
         if dc_sbm_max_passes < 1:
             raise ValueError(
                 f"dc_sbm_max_passes must be >= 1; got {dc_sbm_max_passes!r}"
@@ -537,6 +553,155 @@ class EngineV2:
         kind = self.detect_rating_signal(weights)
         return (kind == "ratings"), kind
 
+    def _calibrate_base_params(
+        self,
+        user_idx: np.ndarray,
+        item_idx: np.ndarray,
+        timestamps_col: np.ndarray | None,
+        n_users: int,
+        n_items: int,
+        transition_gate_open: bool,
+        profile: dict[str, Any],
+    ) -> tuple[float, float, float]:
+        """Pick (ease_lambda, trend_alpha, transition_alpha) on an
+        internal chronological holdout.
+
+        Splits the train rows by time (last 10% = calibration slice),
+        fits EASE per λ candidate on the remaining 90%, and evaluates
+        every (λ, trend_α, trans_α) triple by NDCG@10 against each
+        calibration user's held-out items. The α grids cost no refits —
+        the channels are independent of B — so the search is |λ grid|
+        inversions plus cheap vector math.
+        """
+        n_obs = len(user_idx)
+        if timestamps_col is not None and len(timestamps_col) == n_obs:
+            order = np.argsort(timestamps_col, kind="mergesort")
+        else:
+            order = np.random.RandomState(self.random_state).permutation(n_obs)
+        cut = int(n_obs * 0.9)
+        fit_rows, cal_rows = order[:cut], order[cut:]
+        fu, fi = user_idx[fit_rows], item_idx[fit_rows]
+        ft = timestamps_col[fit_rows] if timestamps_col is not None else None
+        cu, ci = user_idx[cal_rows], item_idx[cal_rows]
+
+        # Per-user fit-slice history (time-ordered: fit_rows is sorted)
+        # + calibration relevant sets.
+        owned_fit: dict[int, list[int]] = {}
+        for u, i in zip(fu.tolist(), fi.tolist()):
+            owned_fit.setdefault(u, []).append(i)
+        cal_rel: dict[int, set[int]] = {}
+        for u, i in zip(cu.tolist(), ci.tolist()):
+            cal_rel.setdefault(u, set()).add(i)
+        eligible = sorted(u for u in cal_rel if u in owned_fit)
+        if len(eligible) > 400:
+            step = len(eligible) // 400
+            eligible = eligible[::step][:400]
+        if not eligible:
+            auto_lam = 20.0 * n_obs / max(n_items, 1)
+            return auto_lam, self.trend_alpha, self.transition_alpha
+
+        # Channels from the fit slice.
+        trend_z = None
+        if ft is not None and len(ft):
+            t_hi, t_lo = float(np.max(ft)), float(np.min(ft))
+            if t_hi > t_lo:
+                cut_t = t_hi - (t_hi - t_lo) * self.trend_window_fraction
+                counts = np.bincount(
+                    fi[ft >= cut_t], minlength=n_items
+                ).astype(np.float64)
+                if counts.std() > 0:
+                    trend_z = (counts - counts.mean()) / counts.std()
+        trans_csr = None
+        if transition_gate_open and ft is not None:
+            td, ti_, tp = kindling_core.build_directional_cooc(
+                fu, fi, np.ones(len(fu), dtype=np.float32),
+                n_sessions=n_users, n_items=n_items, timestamps=ft,
+            )
+            trans_csr = (
+                np.asarray(td, dtype=np.float32),
+                np.asarray(ti_, dtype=np.int32),
+                np.asarray(tp, dtype=np.int32),
+            )
+
+        def _user_trans_z(owned_list: list[int]) -> np.ndarray | None:
+            if trans_csr is None:
+                return None
+            td, ti_, tp = trans_csr
+            v = np.zeros(n_items, dtype=np.float64)
+            for j, item in enumerate(owned_list[::-1][: self.transition_last_k]):
+                s_, e_ = int(tp[item]), int(tp[item + 1])
+                if e_ > s_:
+                    v[ti_[s_:e_]] += (self.transition_decay ** j) * td[s_:e_]
+            std = v.std()
+            return (v - v.mean()) / std if std > 0 else None
+
+        def _ndcg10(top: np.ndarray, rel: set[int]) -> float:
+            dcg = sum(
+                1.0 / np.log2(r + 2) for r, it in enumerate(top.tolist()) if it in rel
+            )
+            ideal = sum(1.0 / np.log2(r + 2) for r in range(min(10, len(rel))))
+            return dcg / ideal if ideal > 0 else 0.0
+
+        auto_lam = 20.0 * len(fu) / max(n_items, 1)
+        lam_grid = (
+            [self.ease_lambda]
+            if self.ease_lambda is not None
+            else [auto_lam * m for m in (0.5, 1.0, 2.0, 4.0)]
+        )
+        trend_grid = [0.0, 0.25, 0.5, 1.0] if trend_z is not None else [0.0]
+        trans_grid = [0.0, 0.25, 0.5] if trans_csr is not None else [0.0]
+
+        best = (lam_grid[0], self.trend_alpha if trend_z is not None else 0.0, 0.0)
+        best_score = -1.0
+        results: list[dict[str, float]] = []
+        for lam in lam_grid:
+            b = np.asarray(
+                kindling_core.fit_ease_py(
+                    fu, fi, n_users=n_users, n_items=n_items, lambda_=lam
+                ),
+                dtype=np.float32,
+            )
+            # Precompute per-user z(ease) + trans_z once per λ.
+            per_user: list[tuple[np.ndarray, np.ndarray | None, np.ndarray, set[int]]] = []
+            for u in eligible:
+                owned_list = owned_fit[u]
+                owned_arr = np.asarray(owned_list, dtype=np.int64)
+                ease = b[owned_arr].sum(axis=0, dtype=np.float64)
+                std = ease.std()
+                if std > 0:
+                    ease = (ease - ease.mean()) / std
+                per_user.append((ease, _user_trans_z(owned_list), owned_arr, cal_rel[u]))
+            del b
+            for ta in trend_grid:
+                for xa in trans_grid:
+                    total = 0.0
+                    for ez, tz, owned_arr, rel in per_user:
+                        s = ez.copy()
+                        if ta > 0 and trend_z is not None:
+                            s += ta * trend_z
+                        if xa > 0 and tz is not None:
+                            s += xa * tz
+                        s[owned_arr] = -np.inf
+                        top = np.argpartition(-s, 10)[:10]
+                        top = top[np.argsort(-s[top], kind="stable")]
+                        total += _ndcg10(top, rel)
+                    mean_ndcg = total / len(per_user)
+                    results.append(
+                        {"lambda": lam, "trend_alpha": ta,
+                         "transition_alpha": xa, "ndcg10": mean_ndcg}
+                    )
+                    if mean_ndcg > best_score:
+                        best_score = mean_ndcg
+                        best = (lam, ta, xa)
+        profile["base_calibration"] = {
+            "n_cal_users": len(eligible),
+            "chosen": {"lambda": best[0], "trend_alpha": best[1],
+                       "transition_alpha": best[2]},
+            "internal_ndcg10": best_score,
+            "grid": results,
+        }
+        return best
+
     def fit(
         self,
         interactions: pd.DataFrame,
@@ -614,33 +779,53 @@ class EngineV2:
         # Cholesky inversion is feasible to ~20k items.
         ease_b: np.ndarray | None = None
         base_scorer_used = "cooc"
-        if self.base_scorer == "ease" or (
+        ease_eligible = self.base_scorer == "ease" or (
             self.base_scorer == "auto" and n_items <= self.ease_max_items
-        ):
+        )
+        transition_gate_open = (
+            timestamps_col is not None
+            and len(timestamps_col) > 0
+            and not profile.get("rating_burst_detected", False)
+        )
+        # Effective hyper-params: calibrated per fit when enabled, else
+        # the configured/auto values.
+        eff_trend_alpha = self.trend_alpha
+        eff_trans_alpha = self.transition_alpha if transition_gate_open else 0.0
+        if ease_eligible:
+            if self.calibrate_base:
+                t_cal = time.perf_counter()
+                eff_lambda, eff_trend_alpha, eff_trans_alpha = (
+                    self._calibrate_base_params(
+                        user_idx, item_idx, timestamps_col,
+                        n_users, n_items, transition_gate_open, profile,
+                    )
+                )
+                profile["base_calibration_seconds"] = time.perf_counter() - t_cal
+            else:
+                eff_lambda = (
+                    self.ease_lambda
+                    if self.ease_lambda is not None
+                    else 20.0 * len(user_idx) / max(n_items, 1)
+                )
             t_ease = time.perf_counter()
-            ease_lambda = (
-                self.ease_lambda
-                if self.ease_lambda is not None
-                else 20.0 * len(user_idx) / max(n_items, 1)
-            )
             ease_b = np.asarray(
                 kindling_core.fit_ease_py(
                     user_idx, item_idx,
                     n_users=n_users, n_items=n_items,
-                    lambda_=ease_lambda,
+                    lambda_=eff_lambda,
                 ),
                 dtype=np.float32,
             )
             base_scorer_used = "ease"
             profile["ease_fit_seconds"] = time.perf_counter() - t_ease
-            profile["ease_lambda"] = ease_lambda
+            profile["ease_lambda"] = eff_lambda
         profile["base_scorer_used"] = base_scorer_used
 
         # ── Trend signal (timestamp-gated). Item interaction counts in
         # the most recent window of the training span, z-normalized
         # across the catalog.
         trend_z: np.ndarray | None = None
-        if self.trend_alpha > 0.0 and timestamps_col is not None and len(timestamps_col):
+        if eff_trend_alpha > 0.0 and timestamps_col is not None and len(timestamps_col):
             t_hi = float(np.max(timestamps_col))
             t_lo = float(np.min(timestamps_col))
             if t_hi > t_lo:
@@ -653,7 +838,7 @@ class EngineV2:
                 if std > 0:
                     trend_z = (counts - counts.mean()) / std
                     profile["trend_window_fraction"] = self.trend_window_fraction
-                    profile["trend_alpha"] = self.trend_alpha
+                    profile["trend_alpha"] = eff_trend_alpha
 
         # ── Sequential transition channel (timestamp-gated AND burst-
         # gated). Directional cooc over each user's timestamp-ordered
@@ -662,12 +847,7 @@ class EngineV2:
         trans_data: np.ndarray | None = None
         trans_indices: np.ndarray | None = None
         trans_indptr: np.ndarray | None = None
-        if (
-            self.transition_alpha > 0.0
-            and timestamps_col is not None
-            and len(timestamps_col)
-            and not profile.get("rating_burst_detected", False)
-        ):
+        if eff_trans_alpha > 0.0 and transition_gate_open:
             td, ti, tp = kindling_core.build_directional_cooc(
                 user_idx, item_idx, weights,
                 n_sessions=n_users, n_items=n_items,
@@ -677,7 +857,7 @@ class EngineV2:
             trans_indices = np.asarray(ti, dtype=np.int32)
             trans_indptr = np.asarray(tp, dtype=np.int32)
             profile["transition_channel_active"] = True
-            profile["transition_alpha"] = self.transition_alpha
+            profile["transition_alpha"] = eff_trans_alpha
         else:
             profile["transition_channel_active"] = False
 
@@ -1097,11 +1277,11 @@ class EngineV2:
             ease_b=ease_b,
             base_scorer_used=base_scorer_used,
             trend_z=trend_z,
-            trend_alpha=self.trend_alpha,
+            trend_alpha=eff_trend_alpha,
             trans_data=trans_data,
             trans_indices=trans_indices,
             trans_indptr=trans_indptr,
-            transition_alpha=self.transition_alpha,
+            transition_alpha=eff_trans_alpha,
             transition_last_k=self.transition_last_k,
             transition_decay=self.transition_decay,
             personas_enabled=personas_enabled and n_personas_actual > 0,
@@ -1147,39 +1327,38 @@ class EngineV2:
         # quality, so the better signal must drive the pool as well.
         ease_scores_full: np.ndarray | None = None
         if st.ease_b is not None:
-            ease_scores_full = st.ease_b[owned].sum(axis=0, dtype=np.float64)
-            # Blend in the trend signal on the z scale: the EASE score
-            # distribution varies per user (history length), so z-
-            # normalize it before adding the catalog-level trend z.
-            if st.trend_z is not None and st.trend_alpha > 0.0:
-                std = ease_scores_full.std()
-                if std > 0:
-                    ease_scores_full = (
-                        ease_scores_full - ease_scores_full.mean()
-                    ) / std
-                ease_scores_full = ease_scores_full + st.trend_alpha * st.trend_z
-            # Sequential transition channel: the user's most recent items
-            # vote for likely next items via the directional-cooc rows.
-            if st.trans_data is not None and st.transition_alpha > 0.0:
-                trans = np.zeros(st.n_items, dtype=np.float64)
-                recent = owned[::-1][: st.transition_last_k]
-                for j, item in enumerate(recent):
-                    s_ = int(st.trans_indptr[item])
-                    e_ = int(st.trans_indptr[item + 1])
-                    if e_ > s_:
-                        trans[st.trans_indices[s_:e_]] += (
-                            st.transition_decay ** j
-                        ) * st.trans_data[s_:e_]
-                t_std = trans.std()
-                if t_std > 0:
-                    ease_scores_full = ease_scores_full + st.transition_alpha * (
-                        (trans - trans.mean()) / t_std
-                    )
+            ease_scores_full = self._blend_channels(
+                st, owned, st.ease_b[owned].sum(axis=0, dtype=np.float64)
+            )
             ease_scores_full[owned] = -np.inf
             budget = min(self.retrieval_budget, ease_scores_full.size)
             top = np.argpartition(-ease_scores_full, budget - 1)[:budget]
             top = top[np.argsort(-ease_scores_full[top], kind="stable")]
             cand_ids = [int(c) for c in top if np.isfinite(ease_scores_full[c])]
+            base_kind = "ease"
+        elif (st.trend_z is not None and st.trend_alpha > 0.0) or (
+            st.trans_data is not None and st.transition_alpha > 0.0
+        ):
+            # Fused cooc path (large catalogs where the EASE inversion is
+            # gated off). Same channel blend over the full-catalog cooc
+            # vector. Because cooc is SPARSE — zero score for any item
+            # the history has no co-occurrence edge to — taking the pool
+            # from the blended scores is genuine retrieval fusion: trend/
+            # transition channels can promote items into the pool that
+            # the cooc retriever alone would never surface.
+            cooc_full = np.zeros(st.n_items, dtype=np.float64)
+            for item in owned.tolist():
+                s_ = int(st.cooc_indptr[item])
+                e_ = int(st.cooc_indptr[item + 1])
+                if e_ > s_:
+                    cooc_full[st.cooc_indices[s_:e_]] += st.cooc_data[s_:e_]
+            ease_scores_full = self._blend_channels(st, owned, cooc_full)
+            ease_scores_full[owned] = -np.inf
+            budget = min(self.retrieval_budget, ease_scores_full.size)
+            top = np.argpartition(-ease_scores_full, budget - 1)[:budget]
+            top = top[np.argsort(-ease_scores_full[top], kind="stable")]
+            cand_ids = [int(c) for c in top if np.isfinite(ease_scores_full[c])]
+            base_kind = "cooc_fused"
         else:
             cand_ids, _scores = kindling_core.cooccurrence_retrieve(
                 st.cooc_data, st.cooc_indices, st.cooc_indptr,
@@ -1188,13 +1367,14 @@ class EngineV2:
                 include_owned=False,
             )
             cand_ids = list(cand_ids)
+            base_kind = ""
         if not cand_ids:
             return []
 
-        # ── 2. Base scores. EASE base bypasses the cooc/persona routing;
-        # otherwise the two-gate persona routing applies.
+        # ── 2. Base scores. Fused paths (ease / cooc_fused) bypass the
+        # cooc/persona routing; the legacy path applies two-gate persona
+        # routing.
         if ease_scores_full is not None:
-            base_kind = "ease"
             base = ease_scores_full[np.asarray(cand_ids, dtype=np.int64)]
         else:
             base_kind, base = self._compute_base(entity_id, owned, cand_ids)
@@ -1215,7 +1395,7 @@ class EngineV2:
         order = np.argsort(-composite)[:n]
         out: list[RecommendationV2] = []
         for rank, idx in enumerate(order):
-            if composite[idx] <= 0.0 and base_kind != "ease":
+            if composite[idx] <= 0.0 and base_kind not in ("ease", "cooc_fused"):
                 continue
             cid = cand_ids[idx]
             out.append(RecommendationV2(
@@ -1228,6 +1408,43 @@ class EngineV2:
     # ------------------------------------------------------------------
     # internals
     # ------------------------------------------------------------------
+
+    def _blend_channels(
+        self, st: V2FitState, owned: np.ndarray, scores_full: np.ndarray
+    ) -> np.ndarray:
+        """z-normalize a full-catalog base vector and add the active
+        trend / transition channels:
+
+            z(base) + trend_alpha·z(trend) + transition_alpha·z(trans)
+
+        Channels are independent of which base produced `scores_full`
+        (EASE or cooc), so both paths share this blend.
+        """
+        trend_on = st.trend_z is not None and st.trend_alpha > 0.0
+        trans_on = st.trans_data is not None and st.transition_alpha > 0.0
+        if not (trend_on or trans_on):
+            return scores_full
+        std = scores_full.std()
+        if std > 0:
+            scores_full = (scores_full - scores_full.mean()) / std
+        if trend_on:
+            scores_full = scores_full + st.trend_alpha * st.trend_z
+        if trans_on:
+            trans = np.zeros(st.n_items, dtype=np.float64)
+            recent = owned[::-1][: st.transition_last_k]
+            for j, item in enumerate(recent):
+                s_ = int(st.trans_indptr[item])
+                e_ = int(st.trans_indptr[item + 1])
+                if e_ > s_:
+                    trans[st.trans_indices[s_:e_]] += (
+                        st.transition_decay ** j
+                    ) * st.trans_data[s_:e_]
+            t_std = trans.std()
+            if t_std > 0:
+                scores_full = scores_full + st.transition_alpha * (
+                    (trans - trans.mean()) / t_std
+                )
+        return scores_full
 
     def _compute_base(
         self, entity_id: object, owned: np.ndarray, cand_ids: list[int]
