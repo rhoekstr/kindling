@@ -35,8 +35,20 @@ calibration):
          and random_pair_mean_sim <= 0.30
          and substitution_p_at_k >= 2 x random_chance
 
-Stage-0 priors (cost, curated-metadata thinness, cold population) are
-the caller's job — this module measures keyword signal quality only.
+Stage-0 priors (cost, cold population) are the caller's job — this
+module measures keyword signal quality only.
+
+VALIDATED 2026-06-11 (ml1m end-to-end): passing gates means keywords
+CAN stand in for interaction signal — it does NOT mean they lift warm
+protocols. ml1m passed (d=0.60) yet the keyword channel was flat-to-
+negative on warm NDCG (0.2931 -> 0.2914): with dense interactions the
+keywords are aligned-but-redundant, same as beauty's curated metadata.
+Curated-metadata thinness is NOT a valid substitute for the cold-
+population requirement. Hence the verdict vocabulary below:
+
+    SIGNAL_OK   gates pass -> enrich IF a cold/sparse population exists
+                (cold items, item churn, cold-start serving)
+    SKIP        gates fail -> keywords carry no taste signal; don't pay
 """
 
 from __future__ import annotations
@@ -185,7 +197,7 @@ def probe(
         "keywords_per_item_mean": len(all_kws) / max(n, 1),
         "modal_keyword_share": float(modal_share),
         "gates": gates,
-        "verdict": "ENRICH" if all(gates.values()) else "SKIP",
+        "verdict": "SIGNAL_OK" if all(gates.values()) else "SKIP",
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
     }
 

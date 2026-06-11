@@ -1,2 +1,22 @@
 Fetching 12 files:   0%|          | 0/12 [00:00<?, ?it/s]Fetching 12 files: 100%|██████████| 12/12 [00:00<00:00, 129055.51it/s]
 This model config has set a `rope_parameters['original_max_position_embeddings']` field, to be used together with `max_position_embeddings` to determine a scaling factor. Please set the `factor` field of `rope_parameters`with this ratio instead -- we recommend the use of this field over `original_max_position_embeddings`, as it is compatible with most model architectures.
+batch 25/484 (213 items keyworded)
+batch 50/484 (413 items keyworded)
+batch 75/484 (604 items keyworded)
+batch 100/484 (804 items keyworded)
+batch 125/484 (996 items keyworded)
+batch 150/484 (1194 items keyworded)
+batch 175/484 (1369 items keyworded)
+batch 200/484 (1566 items keyworded)
+batch 225/484 (1764 items keyworded)
+batch 250/484 (1961 items keyworded)
+batch 275/484 (2149 items keyworded)
+batch 300/484 (2344 items keyworded)
+batch 325/484 (2541 items keyworded)
+batch 350/484 (2734 items keyworded)
+batch 375/484 (2920 items keyworded)
+batch 400/484 (3095 items keyworded)
+batch 425/484 (3277 items keyworded)
+batch 450/484 (3474 items keyworded)
+batch 475/484 (3666 items keyworded)
+DONE: 3732 of 3883 keyworded
