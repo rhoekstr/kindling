@@ -135,6 +135,14 @@ class V2FitState:
     transition_alpha: float = 0.0
     transition_last_k: int = 5
     transition_decay: float = 0.7
+    # Content channel: generic item features (item_features.ItemFeatures)
+    # + per-item coldness ∈ [0, 1] (1 = no train interactions). The
+    # channel contribution is cold-gated: content_alpha · coldness ·
+    # z(content) — content only speaks where interaction signal is
+    # data-starved. None when metadata absent or content_alpha == 0.
+    content_features: Any = None
+    content_coldness: np.ndarray | None = None
+    content_alpha: float = 0.0
     # Rating-signal classification + resolved use_als decision.
     signal_kind: str = "unknown"        # "binary" | "counts" | "ratings" | "forced_*"
     als_ran: bool = False               # whether ALS actually ran in this fit
@@ -327,6 +335,23 @@ class EngineV2:
         transition_alpha: float = 0.25,
         transition_last_k: int = 5,
         transition_decay: float = 0.7,
+        # Content channel (opt-in): generic item-feature similarity from
+        # `item_metadata` (schema-inferring extractor — categorical /
+        # multi-categorical / numeric / text columns all handled; see
+        # item_features.py). Contribution is COLD-GATED per item:
+        #   + content_alpha · clip(1 − train_count/warmth_threshold, 0, 1) · z(content)
+        # so it only speaks for items the interaction channels are
+        # data-starved on, never diluting warm ranking.
+        #
+        # Measured 2026-06 (ml1m, 100% metadata coverage): un-gated
+        # blending HURTS warm ranking (0.2841 → 0.2755 at α=0.5);
+        # cold-gated blending is harmless but unrewarded because the
+        # canonical protocol's held-out items are never cold. Default
+        # 0.0 (off) until a cold-start protocol shows lift. amazon-beauty
+        # note: its 2023 metadata matches only 0.17% of the 2014 review
+        # catalog — the channel is inert there regardless.
+        content_alpha: float = 0.0,
+        content_warmth_threshold: int = 20,
         # Per-fit base calibration (EXPERIMENTAL — default off). Holds
         # out the final 10% of train events and grid-searches
         # (ease_lambda, trend_alpha, transition_alpha) on internal
@@ -461,6 +486,15 @@ class EngineV2:
                 f"transition_decay must be in (0, 1]; got {transition_decay!r}"
             )
         self.transition_decay = transition_decay
+        if content_alpha < 0.0:
+            raise ValueError(f"content_alpha must be >= 0; got {content_alpha!r}")
+        self.content_alpha = content_alpha
+        if content_warmth_threshold < 1:
+            raise ValueError(
+                f"content_warmth_threshold must be >= 1; "
+                f"got {content_warmth_threshold!r}"
+            )
+        self.content_warmth_threshold = content_warmth_threshold
         self.calibrate_base = bool(calibrate_base)
         if dc_sbm_max_passes < 1:
             raise ValueError(
@@ -860,6 +894,30 @@ class EngineV2:
             profile["transition_alpha"] = eff_trans_alpha
         else:
             profile["transition_channel_active"] = False
+
+        # ── Content channel (metadata-gated, opt-in). Generic schema-
+        # inferring feature extraction; contribution is cold-gated per
+        # item at blend time so warm ranking is never diluted.
+        content_features = None
+        content_coldness: np.ndarray | None = None
+        if self.content_alpha > 0.0 and item_metadata is not None:
+            from kindling.item_features import ItemFeatureExtractor
+
+            content_features = ItemFeatureExtractor().fit_transform(
+                item_metadata, item_to_idx, n_items
+            )
+            item_counts = np.bincount(item_idx, minlength=n_items).astype(np.float64)
+            content_coldness = np.clip(
+                1.0 - item_counts / float(self.content_warmth_threshold), 0.0, 1.0
+            )
+            profile["content_channel_active"] = content_features.n_features > 0
+            profile["content_n_features"] = content_features.n_features
+            profile["content_coverage"] = content_features.coverage
+            profile["content_specs"] = [
+                f"{s.column}:{s.kind}({s.n_features})" for s in content_features.specs
+            ]
+        else:
+            profile["content_channel_active"] = False
 
         # ── Personas (if enabled).
         personas_enabled = bool(plan["personas_enabled"]) and n_users >= self.persona_min_users
@@ -1282,6 +1340,9 @@ class EngineV2:
             trans_indices=trans_indices,
             trans_indptr=trans_indptr,
             transition_alpha=eff_trans_alpha,
+            content_features=content_features,
+            content_coldness=content_coldness,
+            content_alpha=self.content_alpha,
             transition_last_k=self.transition_last_k,
             transition_decay=self.transition_decay,
             personas_enabled=personas_enabled and n_personas_actual > 0,
@@ -1422,13 +1483,31 @@ class EngineV2:
         """
         trend_on = st.trend_z is not None and st.trend_alpha > 0.0
         trans_on = st.trans_data is not None and st.transition_alpha > 0.0
-        if not (trend_on or trans_on):
+        content_on = (
+            st.content_features is not None
+            and st.content_alpha > 0.0
+            and st.content_features.n_features > 0
+        )
+        if not (trend_on or trans_on or content_on):
             return scores_full
         std = scores_full.std()
         if std > 0:
             scores_full = (scores_full - scores_full.mean()) / std
         if trend_on:
             scores_full = scores_full + st.trend_alpha * st.trend_z
+        if content_on:
+            from kindling.item_features import content_scores
+
+            cs = content_scores(st.content_features, owned)
+            c_std = cs.std()
+            if c_std > 0:
+                cz = (cs - cs.mean()) / c_std
+                coldness = (
+                    st.content_coldness
+                    if st.content_coldness is not None
+                    else 1.0
+                )
+                scores_full = scores_full + st.content_alpha * coldness * cz
         if trans_on:
             trans = np.zeros(st.n_items, dtype=np.float64)
             recent = owned[::-1][: st.transition_last_k]
