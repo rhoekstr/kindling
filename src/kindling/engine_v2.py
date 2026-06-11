@@ -73,6 +73,10 @@ class V2FitState:
     item_ids: np.ndarray = field(default_factory=lambda: np.array([], dtype=object))
     item_to_idx: dict[object, int] = field(default_factory=dict)
     n_items: int = 0
+    # Train-subspace size: interaction structures (EASE B, cooc CSRs,
+    # transitions) cover indices [0, n_train_items); open-catalog
+    # extension items occupy [n_train_items, n_items).
+    n_train_items: int = 0
     # User → owned items (sparse)
     owned_by_entity: dict[object, np.ndarray] = field(default_factory=dict)
     entity_to_user_idx: dict[object, int] = field(default_factory=dict)
@@ -365,6 +369,14 @@ class EngineV2:
         # catalog — the channel is inert there regardless.
         content_alpha: float = 0.0,
         content_warmth_threshold: int = 20,
+        # Open catalog: when item_metadata is provided, extend the
+        # recommendable catalog with metadata-only items (items that
+        # never appear in train). Interaction channels score them zero
+        # by construction; the cold-gated content channel is their only
+        # voice. This is the cold-START serving capability — without it
+        # the engine can only ever re-rank its training history (steam:
+        # 13% of test events were structurally unreachable).
+        open_catalog: bool = True,
         # Last-item context channel: blends z(B[last_item, :]) — the
         # EASE row of the user's most recent item — emphasizing the
         # current taste neighborhood over the whole-history average.
@@ -538,6 +550,7 @@ class EngineV2:
                 f"got {content_warmth_threshold!r}"
             )
         self.content_warmth_threshold = content_warmth_threshold
+        self.open_catalog = bool(open_catalog)
         if last_item_alpha < 0.0:
             raise ValueError(f"last_item_alpha must be >= 0; got {last_item_alpha!r}")
         self.last_item_alpha = last_item_alpha
@@ -832,6 +845,25 @@ class EngineV2:
         user_idx = (
             interactions["entity_id"].map(entity_to_user_idx).to_numpy(dtype=np.int64)
         )
+        # ── Open catalog: metadata-only items get catalog indices ≥
+        # n_items. All interaction-derived structures (cooc, EASE,
+        # transitions, personas, user-CF) stay in the train subspace
+        # [0, n_items); only catalog-length vectors (trend, content,
+        # blend output) span the extension.
+        n_items_ext = n_items
+        if (
+            self.open_catalog
+            and item_metadata is not None
+            and "item_id" in item_metadata.columns
+        ):
+            extra = pd.Index(
+                item_metadata["item_id"].dropna().unique()
+            ).difference(item_ids)
+            if len(extra):
+                item_ids = item_ids.append(pd.Index(extra))
+                for j, it in enumerate(extra):
+                    item_to_idx[it] = n_items + j
+                n_items_ext = len(item_ids)
         timestamps_col = (
             interactions["timestamp"].to_numpy(dtype=np.float64)
             if "timestamp" in interactions.columns
@@ -950,7 +982,7 @@ class EngineV2:
                 cut = t_hi - (t_hi - t_lo) * self.trend_window_fraction
                 recent_mask = timestamps_col >= cut
                 counts = np.bincount(
-                    item_idx[recent_mask], minlength=n_items
+                    item_idx[recent_mask], minlength=n_items_ext
                 ).astype(np.float64)
                 std = counts.std()
                 if std > 0:
@@ -988,9 +1020,9 @@ class EngineV2:
             from kindling.item_features import ItemFeatureExtractor
 
             content_features = ItemFeatureExtractor().fit_transform(
-                item_metadata, item_to_idx, n_items
+                item_metadata, item_to_idx, n_items_ext
             )
-            item_counts = np.bincount(item_idx, minlength=n_items).astype(np.float64)
+            item_counts = np.bincount(item_idx, minlength=n_items_ext).astype(np.float64)
             content_coldness = np.clip(
                 1.0 - item_counts / float(self.content_warmth_threshold), 0.0, 1.0
             )
@@ -1443,7 +1475,8 @@ class EngineV2:
         self._state = V2FitState(
             item_ids=np.asarray(item_ids, dtype=object),
             item_to_idx=item_to_idx,
-            n_items=n_items,
+            n_items=n_items_ext,
+            n_train_items=n_items,
             owned_by_entity=owned_by_entity,
             entity_to_user_idx=entity_to_user_idx,
             n_users=n_users,
@@ -1519,8 +1552,14 @@ class EngineV2:
         # quality, so the better signal must drive the pool as well.
         ease_scores_full: np.ndarray | None = None
         if st.ease_b is not None:
+            base_vec = st.ease_b[owned].sum(axis=0, dtype=np.float64)
+            if base_vec.size < st.n_items:
+                # Open-catalog extension items: no EASE evidence → 0.
+                base_vec = np.concatenate(
+                    [base_vec, np.zeros(st.n_items - base_vec.size)]
+                )
             ease_scores_full = self._blend_channels(
-                st, owned, st.ease_b[owned].sum(axis=0, dtype=np.float64),
+                st, owned, base_vec,
                 user_row=st.entity_to_user_idx.get(entity_id, -1),
             )
             ease_scores_full[owned] = -np.inf
@@ -1679,6 +1718,10 @@ class EngineV2:
                     )
         if last_on:
             last_row = st.ease_b[int(owned[-1])].astype(np.float64)
+            if last_row.size < st.n_items:
+                last_row = np.concatenate(
+                    [last_row, np.zeros(st.n_items - last_row.size)]
+                )
             l_std = last_row.std()
             if l_std > 0:
                 scores_full = scores_full + st.last_item_alpha * (
