@@ -193,6 +193,23 @@ def _load_dataset(name: str, test_fraction: float) -> DatasetSplit:
         return _load_amazon_5core(cache / "amazon-beauty", test_fraction=test_fraction, label="amazon-beauty")
     if name == "amazon-book":
         return _load_amazon_5core(cache / "amazon-book", test_fraction=test_fraction, label="amazon-book")
+    if name == "amazon-book-chrono":
+        # Realistic-protocol tier for books: 2014 5-core reviews with a
+        # chronological global split (vs the timestamp-less LightGCN
+        # academic split that plain "amazon-book" falls back to).
+        from kindling.loaders.amazon_chrono import load_amazon_chrono
+        train, test = load_amazon_chrono(
+            Path("~/.cache/kindling/amazon-book/reviews_Books_5.json.gz"),
+            cache_dir=Path("~/.cache/kindling/amazon-book"),
+            test_fraction=test_fraction,
+        )
+        return DatasetSplit(
+            name="amazon-book-chrono",
+            train=train,
+            test=test,
+            items=None,
+            description="Amazon Books 5-core 2014, chronological global split",
+        )
     if name == "steam":
         # Realistic-protocol tier: NO k-core filtering, chronological
         # global split. Cold items and one-shot users included — the

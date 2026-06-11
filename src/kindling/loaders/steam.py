@@ -70,8 +70,11 @@ def _parse_games(path: Path) -> pd.DataFrame:
                 "title": d.get("title") or d.get("app_name"),
                 "genres": list(d.get("genres") or []),
                 "tags": list(d.get("tags") or []),
+                "specs": list(d.get("specs") or []),
+                "developer": d.get("developer"),
                 "publisher": d.get("publisher"),
                 "price": d.get("price") if isinstance(d.get("price"), (int, float)) else None,
+                "release_date": d.get("release_date"),
             })
     return pd.DataFrame(rows).drop_duplicates(subset="item_id", keep="first")
 
