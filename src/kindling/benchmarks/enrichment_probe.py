@@ -90,14 +90,24 @@ def probe(
     knn_k: int = 10,
     min_interactions: int = 20,
     seed: int = 0,
+    item_vectors: dict[object, np.ndarray] | None = None,
 ) -> dict:
-    """Run the stage-1 probe. Returns a metrics + verdict dict."""
+    """Run the stage-1 probe. Returns a metrics + verdict dict.
+
+    `item_vectors`: optional dense (L2-normalized) embeddings per item.
+    When given, content similarity is vector cosine instead of multi-hot
+    keyword cosine — same gates, so multi-hot vs dense representations
+    are directly comparable on separation_d / substitution.
+    """
     rng = np.random.RandomState(seed)
 
     # ── Warm eligible items: enough interactions AND keyworded.
     counts = train.groupby("item_id").size()
     eligible = [
-        i for i, c in counts.items() if c >= min_interactions and i in keywords
+        i for i, c in counts.items()
+        if c >= min_interactions
+        and i in keywords
+        and (item_vectors is None or i in item_vectors)
     ]
     eligible.sort(key=lambda i: -counts[i])
     if len(eligible) < max(30, knn_k * 3):
@@ -126,16 +136,20 @@ def probe(
                 s = inter / np.sqrt(len(ua) * len(ub))
                 inter_sim[a, b] = inter_sim[b, a] = s
 
-    # ── Keyword similarity (same featurization as the content channel).
-    frame = pd.DataFrame(
-        {"item_id": sample, "keywords": [keywords[i] for i in sample]}
-    )
-    idx_map = {i: r for r, i in enumerate(sample)}
-    feats = ItemFeatureExtractor(min_df=1).fit_transform(frame, idx_map, n)
-    dense = np.zeros((n, feats.n_features), dtype=np.float64)
-    for r in range(n):
-        s_, e_ = int(feats.indptr[r]), int(feats.indptr[r + 1])
-        dense[r, feats.indices[s_:e_]] = feats.data[s_:e_]
+    # ── Content similarity: dense vectors when given, else the same
+    # multi-hot featurization the sparse content channel uses.
+    if item_vectors is not None:
+        dense = np.stack([np.asarray(item_vectors[i], dtype=np.float64) for i in sample])
+    else:
+        frame = pd.DataFrame(
+            {"item_id": sample, "keywords": [keywords[i] for i in sample]}
+        )
+        idx_map = {i: r for r, i in enumerate(sample)}
+        feats = ItemFeatureExtractor(min_df=1).fit_transform(frame, idx_map, n)
+        dense = np.zeros((n, feats.n_features), dtype=np.float64)
+        for r in range(n):
+            s_, e_ = int(feats.indptr[r]), int(feats.indptr[r + 1])
+            dense[r, feats.indices[s_:e_]] = feats.data[s_:e_]
     kw_sim = dense @ dense.T
     np.fill_diagonal(kw_sim, 0.0)
 
@@ -178,9 +192,16 @@ def probe(
         (all_kws.count(k) for k in set(all_kws)), default=0
     ) / max(n, 1)
 
+    # Degeneracy threshold is representation-aware: sparse multi-hot
+    # random pairs should sit near 0, but dense sentence embeddings are
+    # anisotropic (MiniLM random-text cosine baseline ~0.3-0.5), so the
+    # "model says the same thing about everything" failure only shows
+    # above ~0.6 there. The z-scored channel is offset-invariant, so the
+    # absolute baseline itself is harmless.
+    degen_threshold = 0.60 if item_vectors is not None else 0.30
     gates = {
         "separation": separation_d >= 0.5,
-        "non_degenerate": float(rd.mean()) <= 0.30,
+        "non_degenerate": float(rd.mean()) <= degen_threshold,
         "substitution": substitution >= 2 * chance,
     }
     return {

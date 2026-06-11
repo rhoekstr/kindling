@@ -193,6 +193,19 @@ def _load_dataset(name: str, test_fraction: float) -> DatasetSplit:
         return _load_amazon_5core(cache / "amazon-beauty", test_fraction=test_fraction, label="amazon-beauty")
     if name == "amazon-book":
         return _load_amazon_5core(cache / "amazon-book", test_fraction=test_fraction, label="amazon-book")
+    if name == "steam":
+        # Realistic-protocol tier: NO k-core filtering, chronological
+        # global split. Cold items and one-shot users included — the
+        # population 5-core academic preprocessing deletes.
+        from kindling.loaders.steam import load_steam
+        train, test, items = load_steam(test_fraction=test_fraction)
+        return DatasetSplit(
+            name="steam",
+            train=train,
+            test=test,
+            items=items,
+            description="Steam reviews 2010-2018, no k-core, chronological split",
+        )
     raise ValueError(f"Unknown dataset: {name}")
 
 
