@@ -147,6 +147,15 @@ class V2FitState:
     # the user's most recent item as a current-taste signal. Only
     # active on the EASE path (needs B).
     last_item_alpha: float = 0.0
+    # User-user CF channel: item→user inverted CSR + per-user degree.
+    # Otsuka-Ochiai k-NN over interaction vectors; gated to sparse-
+    # history datasets. None when gated off.
+    uu_users_data: np.ndarray | None = None     # concatenated user ids
+    uu_users_indptr: np.ndarray | None = None   # per-item offsets
+    uu_user_deg: np.ndarray | None = None
+    user_row_items: dict[int, np.ndarray] = field(default_factory=dict)
+    user_cf_alpha: float = 0.0
+    user_cf_k: int = 100
     # Rating-signal classification + resolved use_als decision.
     signal_kind: str = "unknown"        # "binary" | "counts" | "ratings" | "forced_*"
     als_ran: bool = False               # whether ALS actually ran in this fit
@@ -366,6 +375,20 @@ class EngineV2:
         # overshoots on both; profile-wide recency decay was also
         # measured and rejected (forgetting full history always hurt).
         last_item_alpha: float = 0.25,
+        # User-user CF channel: k-NN over user interaction vectors
+        # (Otsuka-Ochiai cosine), neighbors vote for their items.
+        # Complementary geometry to item-item: connects a sparse-history
+        # user to items none of their own items co-occur with.
+        #
+        # Gated by MEDIAN USER HISTORY ≤ user_cf_history_gate: on sparse-
+        # history data (beauty, median ≈ 7) it is the largest single
+        # post-EASE lift (+5% NDCG, +6% HR at k=100, α=1.0); on dense-
+        # history data (ml1m, median ≈ 100) EASE already encodes the
+        # user-user structure and the crude k-NN measurably hurts
+        # (0.2879 → 0.2814 at α=0.5). k=200 dilutes; α beyond 1.0 flat.
+        user_cf_alpha: float = 1.0,
+        user_cf_k: int = 100,
+        user_cf_history_gate: int = 20,
         # Per-fit base calibration (EXPERIMENTAL — default off). Holds
         # out the final 10% of train events and grid-searches
         # (ease_lambda, trend_alpha, transition_alpha) on internal
@@ -512,6 +535,17 @@ class EngineV2:
         if last_item_alpha < 0.0:
             raise ValueError(f"last_item_alpha must be >= 0; got {last_item_alpha!r}")
         self.last_item_alpha = last_item_alpha
+        if user_cf_alpha < 0.0:
+            raise ValueError(f"user_cf_alpha must be >= 0; got {user_cf_alpha!r}")
+        self.user_cf_alpha = user_cf_alpha
+        if user_cf_k < 1:
+            raise ValueError(f"user_cf_k must be >= 1; got {user_cf_k!r}")
+        self.user_cf_k = user_cf_k
+        if user_cf_history_gate < 0:
+            raise ValueError(
+                f"user_cf_history_gate must be >= 0; got {user_cf_history_gate!r}"
+            )
+        self.user_cf_history_gate = user_cf_history_gate
         self.calibrate_base = bool(calibrate_base)
         if dc_sbm_max_passes < 1:
             raise ValueError(
@@ -935,6 +969,46 @@ class EngineV2:
             ]
         else:
             profile["content_channel_active"] = False
+
+        # ── User-user CF channel (history-gated). Build the item→user
+        # inverted CSR once at fit; neighbors are computed per recommend.
+        uu_users_data: np.ndarray | None = None
+        uu_users_indptr: np.ndarray | None = None
+        uu_user_deg: np.ndarray | None = None
+        user_counts_for_gate = np.bincount(user_idx, minlength=n_users)
+        median_history = float(
+            np.median(user_counts_for_gate[user_counts_for_gate > 0])
+        ) if (user_counts_for_gate > 0).any() else 0.0
+        profile["median_items_per_user"] = median_history
+        user_cf_open = (
+            self.user_cf_alpha > 0.0
+            and median_history <= self.user_cf_history_gate
+        )
+        if user_cf_open:
+            # Binarize (unique user-item pairs), bucket users by item.
+            pair_key = user_idx.astype(np.int64) * n_items + item_idx.astype(np.int64)
+            uniq = np.unique(pair_key)
+            uu_u = (uniq // n_items).astype(np.int64)
+            uu_i = (uniq % n_items).astype(np.int64)
+            order = np.argsort(uu_i, kind="stable")
+            uu_users_data = uu_u[order]
+            uu_users_indptr = np.zeros(n_items + 1, dtype=np.int64)
+            np.add.at(uu_users_indptr, uu_i + 1, 1)
+            uu_users_indptr = np.cumsum(uu_users_indptr)
+            uu_user_deg = np.bincount(uu_u, minlength=n_users).astype(np.float64)
+            # user-row → unique item indices (for neighbor voting).
+            u_order = np.argsort(uu_u, kind="stable")
+            sorted_u = uu_u[u_order]
+            sorted_i = uu_i[u_order]
+            bounds = np.searchsorted(sorted_u, np.arange(n_users + 1))
+            user_row_items = {
+                u: sorted_i[bounds[u]:bounds[u + 1]]
+                for u in range(n_users)
+                if bounds[u + 1] > bounds[u]
+            }
+        else:
+            user_row_items = {}
+        profile["user_cf_channel_active"] = bool(user_cf_open)
 
         # ── Personas (if enabled).
         personas_enabled = bool(plan["personas_enabled"]) and n_users >= self.persona_min_users
@@ -1361,6 +1435,12 @@ class EngineV2:
             content_coldness=content_coldness,
             content_alpha=self.content_alpha,
             last_item_alpha=self.last_item_alpha,
+            uu_users_data=uu_users_data,
+            uu_users_indptr=uu_users_indptr,
+            uu_user_deg=uu_user_deg,
+            user_row_items=user_row_items,
+            user_cf_alpha=self.user_cf_alpha if user_cf_open else 0.0,
+            user_cf_k=self.user_cf_k,
             transition_last_k=self.transition_last_k,
             transition_decay=self.transition_decay,
             personas_enabled=personas_enabled and n_personas_actual > 0,
@@ -1407,7 +1487,8 @@ class EngineV2:
         ease_scores_full: np.ndarray | None = None
         if st.ease_b is not None:
             ease_scores_full = self._blend_channels(
-                st, owned, st.ease_b[owned].sum(axis=0, dtype=np.float64)
+                st, owned, st.ease_b[owned].sum(axis=0, dtype=np.float64),
+                user_row=st.entity_to_user_idx.get(entity_id, -1),
             )
             ease_scores_full[owned] = -np.inf
             budget = min(self.retrieval_budget, ease_scores_full.size)
@@ -1431,7 +1512,10 @@ class EngineV2:
                 e_ = int(st.cooc_indptr[item + 1])
                 if e_ > s_:
                     cooc_full[st.cooc_indices[s_:e_]] += st.cooc_data[s_:e_]
-            ease_scores_full = self._blend_channels(st, owned, cooc_full)
+            ease_scores_full = self._blend_channels(
+                st, owned, cooc_full,
+                user_row=st.entity_to_user_idx.get(entity_id, -1),
+            )
             ease_scores_full[owned] = -np.inf
             budget = min(self.retrieval_budget, ease_scores_full.size)
             top = np.argpartition(-ease_scores_full, budget - 1)[:budget]
@@ -1489,15 +1573,19 @@ class EngineV2:
     # ------------------------------------------------------------------
 
     def _blend_channels(
-        self, st: V2FitState, owned: np.ndarray, scores_full: np.ndarray
+        self,
+        st: V2FitState,
+        owned: np.ndarray,
+        scores_full: np.ndarray,
+        user_row: int = -1,
     ) -> np.ndarray:
         """z-normalize a full-catalog base vector and add the active
-        trend / transition channels:
-
-            z(base) + trend_alpha·z(trend) + transition_alpha·z(trans)
+        channels (trend / last-item / transitions / content / user-CF).
 
         Channels are independent of which base produced `scores_full`
-        (EASE or cooc), so both paths share this blend.
+        (EASE or cooc), so both paths share this blend. `user_row` is
+        the engine user index, needed only by the user-CF channel for
+        self-exclusion.
         """
         trend_on = st.trend_z is not None and st.trend_alpha > 0.0
         trans_on = st.trans_data is not None and st.transition_alpha > 0.0
@@ -1507,13 +1595,55 @@ class EngineV2:
             and st.content_features.n_features > 0
         )
         last_on = st.ease_b is not None and st.last_item_alpha > 0.0 and owned.size > 0
-        if not (trend_on or trans_on or content_on or last_on):
+        uu_on = (
+            st.uu_users_data is not None
+            and st.user_cf_alpha > 0.0
+            and owned.size > 0
+        )
+        if not (trend_on or trans_on or content_on or last_on or uu_on):
             return scores_full
         std = scores_full.std()
         if std > 0:
             scores_full = (scores_full - scores_full.mean()) / std
         if trend_on:
             scores_full = scores_full + st.trend_alpha * st.trend_z
+        if uu_on:
+            # Otsuka-Ochiai k-NN: overlap counts via the inverted index,
+            # normalized by sqrt(deg_u · deg_v); top-k neighbors vote
+            # for their items, weighted by similarity.
+            n_users_total = st.uu_user_deg.shape[0]
+            counts = np.zeros(n_users_total, dtype=np.float64)
+            for i in owned.tolist():
+                s_ = int(st.uu_users_indptr[i])
+                e_ = int(st.uu_users_indptr[i + 1])
+                if e_ > s_:
+                    counts[st.uu_users_data[s_:e_]] += 1.0
+            if 0 <= user_row < n_users_total:
+                counts[user_row] = 0.0
+            nz = np.nonzero(counts)[0]
+            if nz.size > 0:
+                sims = counts[nz] / (
+                    np.sqrt(st.uu_user_deg[nz]) * np.sqrt(max(owned.size, 1))
+                )
+                if nz.size > st.user_cf_k:
+                    keep = np.argpartition(-sims, st.user_cf_k)[: st.user_cf_k]
+                else:
+                    keep = np.arange(nz.size)
+                # Neighbors vote: accumulate their item sets. Inverted
+                # again via the per-user owned arrays would need a
+                # second index; instead vote through the entity map.
+                uu_vec = np.zeros(st.n_items, dtype=np.float64)
+                neighbor_rows = nz[keep]
+                neighbor_sims = sims[keep]
+                for v_row, sim in zip(neighbor_rows.tolist(), neighbor_sims.tolist()):
+                    v_items = st.user_row_items.get(int(v_row))
+                    if v_items is not None:
+                        uu_vec[v_items] += sim
+                u_std = uu_vec.std()
+                if u_std > 0:
+                    scores_full = scores_full + st.user_cf_alpha * (
+                        (uu_vec - uu_vec.mean()) / u_std
+                    )
         if last_on:
             last_row = st.ease_b[int(owned[-1])].astype(np.float64)
             l_std = last_row.std()
