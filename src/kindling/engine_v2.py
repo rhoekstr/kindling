@@ -839,16 +839,27 @@ class EngineV2:
         )
 
         # owned_by_entity + history (timestamp-ordered) per entity.
+        # Vectorized: one stable lexsort over (entity, time) + boundary
+        # split. The per-user pandas groupby this replaces dominated fit
+        # time on large datasets (2.3M users on steam → 10+ minutes).
+        # entity_ids is first-appearance ordered, so ascending user_idx
+        # preserves the original dict insertion order.
         owned_by_entity: dict[object, np.ndarray] = {}
         history_by_entity: dict[object, tuple[object, ...]] = {}
-        sort_col = "timestamp" if "timestamp" in interactions.columns else None
-        for entity, group in interactions.groupby("entity_id", sort=False):
-            if sort_col is not None:
-                group = group.sort_values(sort_col, kind="mergesort")
-            owned_by_entity[entity] = (
-                group["item_id"].map(item_to_idx).dropna().astype(np.int64).to_numpy()
-            )
-            history_by_entity[entity] = tuple(group["item_id"].tolist())
+        if timestamps_col is not None:
+            order = np.lexsort((timestamps_col, user_idx))
+        else:
+            order = np.lexsort((np.arange(len(user_idx)), user_idx))
+        su = user_idx[order]
+        si = item_idx[order]
+        item_ids_arr = np.asarray(item_ids, dtype=object)
+        if len(su):
+            boundaries = np.flatnonzero(np.diff(su)) + 1
+            starts = np.concatenate(([0], boundaries))
+            for start, items_arr in zip(starts, np.split(si, boundaries)):
+                ent = entity_ids[int(su[start])]
+                owned_by_entity[ent] = items_arr
+                history_by_entity[ent] = tuple(item_ids_arr[items_arr])
 
         # ── Profile + Plan decisions.
         profile = self._profile(interactions, weights, n_users, n_items)
