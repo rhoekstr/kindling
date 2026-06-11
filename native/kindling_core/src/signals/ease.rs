@@ -28,7 +28,7 @@ use ndarray::Array2;
 use numpy::{PyArray2, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use rustc_hash::FxHashSet;
+use rustc_hash::FxHashMap;
 
 use faer::{Mat, Side};
 use faer::prelude::*;
@@ -38,6 +38,7 @@ use faer::prelude::*;
 pub fn fit_ease(
     user_idx: &[i64],
     item_idx: &[i64],
+    weights: Option<&[f32]>,
     n_users: usize,
     n_items: usize,
     lambda: f64,
@@ -47,10 +48,13 @@ pub fn fit_ease(
     }
     let n_obs = user_idx.len().min(item_idx.len());
 
-    // ── 1. Per-user unique item sets (binarize X).
-    let mut by_user: Vec<Vec<u32>> = vec![Vec::new(); n_users];
+    // ── 1. Per-user item sets. Without weights, X is binarized
+    // (duplicates count once). With weights, X_ui = the user's MAX
+    // weight for the item (a re-rated item keeps its strongest signal).
+    let mut by_user: Vec<Vec<(u32, f64)>> = vec![Vec::new(); n_users];
     {
-        let mut seen: Vec<FxHashSet<u32>> = vec![FxHashSet::default(); n_users];
+        let mut seen: Vec<FxHashMap<u32, usize>> =
+            vec![FxHashMap::default(); n_users];
         for k in 0..n_obs {
             let u = user_idx[k];
             let i = item_idx[k];
@@ -61,8 +65,24 @@ pub fn fit_ease(
             if u >= n_users || i >= n_items {
                 continue;
             }
-            if seen[u].insert(i as u32) {
-                by_user[u].push(i as u32);
+            let w = match weights {
+                Some(ws) => ws.get(k).copied().unwrap_or(1.0) as f64,
+                None => 1.0,
+            };
+            if w <= 0.0 {
+                continue;
+            }
+            match seen[u].entry(i as u32) {
+                std::collections::hash_map::Entry::Occupied(e) => {
+                    let pos = *e.get();
+                    if w > by_user[u][pos].1 {
+                        by_user[u][pos].1 = w;
+                    }
+                }
+                std::collections::hash_map::Entry::Vacant(e) => {
+                    e.insert(by_user[u].len());
+                    by_user[u].push((i as u32, w));
+                }
             }
         }
     }
@@ -71,13 +91,14 @@ pub fn fit_ease(
     // Symmetric; fill both triangles directly (simpler than mirroring).
     let mut g = Mat::<f64>::zeros(n_items, n_items);
     for items in &by_user {
-        for (a_pos, &a) in items.iter().enumerate() {
+        for (a_pos, &(a, wa)) in items.iter().enumerate() {
             let a = a as usize;
-            g[(a, a)] += 1.0;
-            for &b in &items[a_pos + 1..] {
+            g[(a, a)] += wa * wa;
+            for &(b, wb) in &items[a_pos + 1..] {
                 let b = b as usize;
-                g[(a, b)] += 1.0;
-                g[(b, a)] += 1.0;
+                let v = wa * wb;
+                g[(a, b)] += v;
+                g[(b, a)] += v;
             }
         }
     }
@@ -111,7 +132,7 @@ pub fn fit_ease(
 
 /// PyO3 wrapper. Returns B as an (n_items, n_items) float32 ndarray.
 #[pyfunction]
-#[pyo3(signature = (user_idx, item_idx, n_users, n_items, lambda_ = 250.0))]
+#[pyo3(signature = (user_idx, item_idx, n_users, n_items, lambda_ = 250.0, weights = None))]
 fn fit_ease_py<'py>(
     py: Python<'py>,
     user_idx: PyReadonlyArray1<'py, i64>,
@@ -119,13 +140,20 @@ fn fit_ease_py<'py>(
     n_users: usize,
     n_items: usize,
     lambda_: f64,
+    weights: Option<PyReadonlyArray1<'py, f32>>,
 ) -> PyResult<Bound<'py, PyArray2<f32>>> {
     // Own the index arrays so the GIL can be released during the
     // O(n_items³) inversion.
     let users: Vec<i64> = user_idx.as_slice()?.to_vec();
     let items: Vec<i64> = item_idx.as_slice()?.to_vec();
+    let w_vec: Option<Vec<f32>> = match &weights {
+        Some(w) => Some(w.as_slice()?.to_vec()),
+        None => None,
+    };
     let b = py
-        .allow_threads(|| fit_ease(&users, &items, n_users, n_items, lambda_))
+        .allow_threads(|| {
+            fit_ease(&users, &items, w_vec.as_deref(), n_users, n_items, lambda_)
+        })
         .map_err(PyValueError::new_err)?;
     let arr = Array2::from_shape_vec((n_items, n_items), b)
         .map_err(|e| PyValueError::new_err(e.to_string()))?;
@@ -152,7 +180,7 @@ mod tests {
         let user_idx = vec![0_i64, 0, 1, 2];
         let item_idx = vec![0_i64, 1, 0, 1];
         let lambda = 0.5;
-        let b = fit_ease(&user_idx, &item_idx, 3, 2, lambda).unwrap();
+        let b = fit_ease(&user_idx, &item_idx, None, 3, 2, lambda).unwrap();
         let expect = 1.0 / (2.0 + lambda);
         assert!((b[0 * 2 + 1] as f64 - expect).abs() < 1e-6, "B01 = {}, want {}", b[1], expect);
         assert!((b[1 * 2 + 0] as f64 - expect).abs() < 1e-6, "B10 = {}, want {}", b[2], expect);
@@ -164,8 +192,8 @@ mod tests {
     /// item twice must not change G.
     #[test]
     fn duplicates_binarized() {
-        let once = fit_ease(&[0, 0, 1], &[0, 1, 0], 2, 2, 1.0).unwrap();
-        let dup = fit_ease(&[0, 0, 0, 1, 1], &[0, 1, 1, 0, 0], 2, 2, 1.0).unwrap();
+        let once = fit_ease(&[0, 0, 1], &[0, 1, 0], None, 2, 2, 1.0).unwrap();
+        let dup = fit_ease(&[0, 0, 0, 1, 1], &[0, 1, 1, 0, 0], None, 2, 2, 1.0).unwrap();
         for (a, b) in once.iter().zip(dup.iter()) {
             assert!((a - b).abs() < 1e-9);
         }
@@ -195,7 +223,7 @@ mod tests {
             users.push(u);
             items.push(3);
         }
-        let b = fit_ease(&users, &items, 6, 4, 0.5).unwrap();
+        let b = fit_ease(&users, &items, None, 6, 4, 0.5).unwrap();
         let n = 4;
         // For a user who owns item 1: B[1, 2] (true association) should
         // exceed B[1, 0] (popularity).
@@ -209,7 +237,7 @@ mod tests {
 
     #[test]
     fn empty_inputs_safe() {
-        let b = fit_ease(&[], &[], 0, 0, 1.0).unwrap();
+        let b = fit_ease(&[], &[], None, 0, 0, 1.0).unwrap();
         assert!(b.is_empty());
     }
 }

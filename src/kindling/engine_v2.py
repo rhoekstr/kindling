@@ -389,6 +389,12 @@ class EngineV2:
         user_cf_alpha: float = 1.0,
         user_cf_k: int = 100,
         user_cf_history_gate: int = 20,
+        # Rating-weighted EASE Gram: when the dataset carries true
+        # ratings (signal_kind == "ratings"), weight X by the rating
+        # (mean-normalized so the Gram scale and λ semantics stay
+        # comparable to the binary case) instead of binarizing.
+        # "auto" = on for ratings data only; "on"/"off" force.
+        ease_use_weights: str = "auto",
         # Per-fit base calibration (EXPERIMENTAL — default off). Holds
         # out the final 10% of train events and grid-searches
         # (ease_lambda, trend_alpha, transition_alpha) on internal
@@ -546,6 +552,12 @@ class EngineV2:
                 f"user_cf_history_gate must be >= 0; got {user_cf_history_gate!r}"
             )
         self.user_cf_history_gate = user_cf_history_gate
+        if ease_use_weights not in ("auto", "on", "off"):
+            raise ValueError(
+                f"ease_use_weights must be 'auto' | 'on' | 'off'; "
+                f"got {ease_use_weights!r}"
+            )
+        self.ease_use_weights = ease_use_weights
         self.calibrate_base = bool(calibrate_base)
         if dc_sbm_max_passes < 1:
             raise ValueError(
@@ -892,12 +904,22 @@ class EngineV2:
                     if self.ease_lambda is not None
                     else 20.0 * len(user_idx) / max(n_items, 1)
                 )
+            use_w = self.ease_use_weights == "on" or (
+                self.ease_use_weights == "auto" and signal_kind == "ratings"
+            )
+            ease_weights = None
+            if use_w:
+                w_mean = float(weights.mean()) if len(weights) else 1.0
+                if w_mean > 0:
+                    ease_weights = (weights / w_mean).astype(np.float32)
+            profile["ease_weighted"] = ease_weights is not None
             t_ease = time.perf_counter()
             ease_b = np.asarray(
                 kindling_core.fit_ease_py(
                     user_idx, item_idx,
                     n_users=n_users, n_items=n_items,
                     lambda_=eff_lambda,
+                    weights=ease_weights,
                 ),
                 dtype=np.float32,
             )
