@@ -143,6 +143,10 @@ class V2FitState:
     content_features: Any = None
     content_coldness: np.ndarray | None = None
     content_alpha: float = 0.0
+    # Last-item context channel: z(B[last_item, :]) — the EASE row of
+    # the user's most recent item as a current-taste signal. Only
+    # active on the EASE path (needs B).
+    last_item_alpha: float = 0.0
     # Rating-signal classification + resolved use_als decision.
     signal_kind: str = "unknown"        # "binary" | "counts" | "ratings" | "forced_*"
     als_ran: bool = False               # whether ALS actually ran in this fit
@@ -352,6 +356,16 @@ class EngineV2:
         # catalog — the channel is inert there regardless.
         content_alpha: float = 0.0,
         content_warmth_threshold: int = 20,
+        # Last-item context channel: blends z(B[last_item, :]) — the
+        # EASE row of the user's most recent item — emphasizing the
+        # current taste neighborhood over the whole-history average.
+        # Unlike the directional transition channel this is burst-robust
+        # (it reads co-occurrence structure, not within-burst order), so
+        # it is NOT burst-gated and helps on both ml1m (+1.3% NDCG,
+        # +1.7% MRR) and beauty (+8.8% recall, +6.7% HR). β=0.5
+        # overshoots on both; profile-wide recency decay was also
+        # measured and rejected (forgetting full history always hurt).
+        last_item_alpha: float = 0.25,
         # Per-fit base calibration (EXPERIMENTAL — default off). Holds
         # out the final 10% of train events and grid-searches
         # (ease_lambda, trend_alpha, transition_alpha) on internal
@@ -495,6 +509,9 @@ class EngineV2:
                 f"got {content_warmth_threshold!r}"
             )
         self.content_warmth_threshold = content_warmth_threshold
+        if last_item_alpha < 0.0:
+            raise ValueError(f"last_item_alpha must be >= 0; got {last_item_alpha!r}")
+        self.last_item_alpha = last_item_alpha
         self.calibrate_base = bool(calibrate_base)
         if dc_sbm_max_passes < 1:
             raise ValueError(
@@ -1343,6 +1360,7 @@ class EngineV2:
             content_features=content_features,
             content_coldness=content_coldness,
             content_alpha=self.content_alpha,
+            last_item_alpha=self.last_item_alpha,
             transition_last_k=self.transition_last_k,
             transition_decay=self.transition_decay,
             personas_enabled=personas_enabled and n_personas_actual > 0,
@@ -1488,13 +1506,21 @@ class EngineV2:
             and st.content_alpha > 0.0
             and st.content_features.n_features > 0
         )
-        if not (trend_on or trans_on or content_on):
+        last_on = st.ease_b is not None and st.last_item_alpha > 0.0 and owned.size > 0
+        if not (trend_on or trans_on or content_on or last_on):
             return scores_full
         std = scores_full.std()
         if std > 0:
             scores_full = (scores_full - scores_full.mean()) / std
         if trend_on:
             scores_full = scores_full + st.trend_alpha * st.trend_z
+        if last_on:
+            last_row = st.ease_b[int(owned[-1])].astype(np.float64)
+            l_std = last_row.std()
+            if l_std > 0:
+                scores_full = scores_full + st.last_item_alpha * (
+                    (last_row - last_row.mean()) / l_std
+                )
         if content_on:
             from kindling.item_features import content_scores
 
