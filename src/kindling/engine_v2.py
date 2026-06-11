@@ -377,6 +377,13 @@ class EngineV2:
         # the engine can only ever re-rank its training history (steam:
         # 13% of test events were structurally unreachable).
         open_catalog: bool = True,
+        # Reserved cold slots per recommendation list. 0 = pure-accuracy
+        # ranking (default). 1 recommended for serving deployments that
+        # value new-item discoverability: the last slot goes to the best
+        # cold-content candidate (requires item_metadata + content
+        # features). The aggregate-NDCG cost is small and explicit; the
+        # cold-coverage gain is not achievable by blend weights at all.
+        cold_slots: int = 0,
         # Last-item context channel: blends z(B[last_item, :]) — the
         # EASE row of the user's most recent item — emphasizing the
         # current taste neighborhood over the whole-history average.
@@ -551,6 +558,9 @@ class EngineV2:
             )
         self.content_warmth_threshold = content_warmth_threshold
         self.open_catalog = bool(open_catalog)
+        if cold_slots < 0:
+            raise ValueError(f"cold_slots must be >= 0; got {cold_slots!r}")
+        self.cold_slots = int(cold_slots)
         if last_item_alpha < 0.0:
             raise ValueError(f"last_item_alpha must be >= 0; got {last_item_alpha!r}")
         self.last_item_alpha = last_item_alpha
@@ -1638,6 +1648,42 @@ class EngineV2:
                 score=float(composite[idx]),
                 base_kind=base_kind,
             ))
+
+        # ── Reserved cold slots ("new releases shelf"). Cold items can
+        # never out-z the warm army in one blended ranking no matter the
+        # content weight (steam: rank-136-of-20k cold candidates vs 500
+        # warm EASE candidates for 10 slots). Reserving the final slots
+        # for the top cold-content candidates trades a sliver of warm
+        # accuracy for cold-start coverage — steam: cold-event recovery
+        # 0% → 5.1% for −0.6% aggregate NDCG at cold_slots=1.
+        if (
+            self.cold_slots > 0
+            and st.content_features is not None
+            and st.content_coldness is not None
+            and st.content_features.n_features > 0
+        ):
+            from kindling.item_features import content_scores
+
+            cs = content_scores(st.content_features, owned)
+            cs[st.content_coldness < 0.75] = -np.inf  # warm items excluded
+            cs[owned] = -np.inf
+            kept_ids = {st.item_to_idx.get(r.item_id, -1) for r in out}
+            cold_picks: list[int] = []
+            for i in np.argsort(-cs):
+                if not np.isfinite(cs[i]):
+                    break
+                if int(i) not in kept_ids:
+                    cold_picks.append(int(i))
+                    if len(cold_picks) >= self.cold_slots:
+                        break
+            if cold_picks:
+                out = out[: max(n - len(cold_picks), 0)]
+                for i in cold_picks:
+                    out.append(RecommendationV2(
+                        item_id=st.item_ids[i],
+                        score=float(cs[i]),
+                        base_kind="cold_content",
+                    ))
         return out
 
     # ------------------------------------------------------------------
