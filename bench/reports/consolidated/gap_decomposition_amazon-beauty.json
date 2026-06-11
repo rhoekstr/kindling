@@ -1,0 +1,29 @@
+{
+  "loader": "amazon-beauty",
+  "n_users": 500,
+  "k": 10,
+  "fit_seconds": 35.08693370805122,
+  "retrieval_budget": 500,
+  "pop_floor": {
+    "ndcg_at_k": 0.006319286641029769,
+    "recall_at_k": 0.008327056277056277,
+    "mrr": 0.012543650793650794,
+    "hit_rate": 0.032
+  },
+  "current_cooc": {
+    "ndcg_at_k": 0.028991904825981442,
+    "recall_at_k": 0.03271192608204804,
+    "mrr": 0.040679365079365086,
+    "hit_rate": 0.086
+  },
+  "oracle_pool": {
+    "ndcg_at_k": 0.26172981301483994,
+    "recall_at_k": 0.22595157572779526,
+    "mrr": 0.358,
+    "hit_rate": 0.358
+  },
+  "pool_recall_mean": 0.22601824239446192,
+  "pool_recall_median": 0.0,
+  "pool_size_mean": 453.232,
+  "timestamp": "2026-06-10T20:39:22"
+}

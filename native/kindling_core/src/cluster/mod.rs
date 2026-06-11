@@ -16,10 +16,12 @@ use pyo3::prelude::*;
 pub mod hdbscan;
 pub mod louvain;
 pub mod user_user_graph;
+pub mod dc_sbm;
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     hdbscan::register(m)?;
     louvain::register(m)?;
     user_user_graph::register(m)?;
+    dc_sbm::register(m)?;
     Ok(())
 }

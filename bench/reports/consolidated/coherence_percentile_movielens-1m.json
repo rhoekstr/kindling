@@ -1,0 +1,162 @@
+{
+  "loader": "movielens-1m",
+  "n_train": 900188,
+  "n_test": 100021,
+  "n_users_evaluated": 500,
+  "k": 10,
+  "best_variant": "louvain_gamma_2",
+  "best_kwargs": {
+    "persona_method": "louvain_graph",
+    "louvain_resolution": 2.0
+  },
+  "percentiles": [
+    0.0,
+    0.25,
+    0.5,
+    0.75
+  ],
+  "runs": {
+    "pct_0.00": {
+      "coherence_filter_percentile": 0.0,
+      "fit_seconds": 18.913689625100233,
+      "metrics": {
+        "ndcg_at_k": 0.25471779637632247,
+        "recall_at_k": 0.04139469043609977,
+        "mrr": 0.43557142857142855,
+        "hit_rate": 0.688,
+        "coverage": 0.05410549211528004
+      },
+      "latency": {
+        "p50_ms": 0.8424999541603029,
+        "p95_ms": 3.057066665496677,
+        "p99_ms": 4.566919924691319
+      },
+      "n_personas": 3,
+      "coherence": {
+        "mean": 6.015768111872139,
+        "median": 5.7534260513490905,
+        "p25": 5.69912879097129,
+        "p75": 6.201236402511463,
+        "min": 5.644831530593489,
+        "max": 6.649046753673836
+      },
+      "persona_vs_cooc_diff": {
+        "mean_jaccard_at_k": 0.4837654901380391,
+        "mean_kendall_tau": 0.3020811287477954,
+        "mean_rank_shift_unique": 35.516812169312175,
+        "fraction_identical": 0.0,
+        "n_users_sampled": 90,
+        "n_personas_sampled": 3
+      }
+    },
+    "pct_0.25": {
+      "coherence_filter_percentile": 0.25,
+      "fit_seconds": 17.479595832992345,
+      "metrics": {
+        "ndcg_at_k": 0.25824295892625937,
+        "recall_at_k": 0.04428306728176738,
+        "mrr": 0.42774285714285715,
+        "hit_rate": 0.69,
+        "coverage": 0.04540511147362697
+      },
+      "latency": {
+        "p50_ms": 0.7567079155705869,
+        "p95_ms": 2.9029580764472427,
+        "p99_ms": 4.246676329057663
+      },
+      "n_personas": 3,
+      "coherence": {
+        "mean": 6.015768111872139,
+        "median": 5.7534260513490905,
+        "p25": 5.69912879097129,
+        "p75": 6.201236402511463,
+        "min": 5.644831530593489,
+        "max": 6.649046753673836,
+        "n_personas_kept": 2,
+        "filter_threshold": 5.69912879097129,
+        "filter_percentile": 0.25
+      },
+      "persona_vs_cooc_diff": {
+        "mean_jaccard_at_k": 0.4989413364413363,
+        "mean_kendall_tau": 0.4552645502645503,
+        "mean_rank_shift_unique": 36.715833333333336,
+        "fraction_identical": 0.0,
+        "n_users_sampled": 60,
+        "n_personas_sampled": 2
+      }
+    },
+    "pct_0.50": {
+      "coherence_filter_percentile": 0.5,
+      "fit_seconds": 17.19517091603484,
+      "metrics": {
+        "ndcg_at_k": 0.25824295892625937,
+        "recall_at_k": 0.04428306728176738,
+        "mrr": 0.42774285714285715,
+        "hit_rate": 0.69,
+        "coverage": 0.04540511147362697
+      },
+      "latency": {
+        "p50_ms": 0.7569795125164092,
+        "p95_ms": 2.8751253266818786,
+        "p99_ms": 4.277076591970396
+      },
+      "n_personas": 3,
+      "coherence": {
+        "mean": 6.015768111872139,
+        "median": 5.7534260513490905,
+        "p25": 5.69912879097129,
+        "p75": 6.201236402511463,
+        "min": 5.644831530593489,
+        "max": 6.649046753673836,
+        "n_personas_kept": 2,
+        "filter_threshold": 5.7534260513490905,
+        "filter_percentile": 0.5
+      },
+      "persona_vs_cooc_diff": {
+        "mean_jaccard_at_k": 0.4989413364413363,
+        "mean_kendall_tau": 0.4552645502645503,
+        "mean_rank_shift_unique": 36.715833333333336,
+        "fraction_identical": 0.0,
+        "n_users_sampled": 60,
+        "n_personas_sampled": 2
+      }
+    },
+    "pct_0.75": {
+      "coherence_filter_percentile": 0.75,
+      "fit_seconds": 15.426045291009359,
+      "metrics": {
+        "ndcg_at_k": 0.2508552716388237,
+        "recall_at_k": 0.042903063729748926,
+        "mrr": 0.41907777777777777,
+        "hit_rate": 0.678,
+        "coverage": 0.03969548667754214
+      },
+      "latency": {
+        "p50_ms": 0.7500209612771869,
+        "p95_ms": 2.953966351924461,
+        "p99_ms": 4.26722694071941
+      },
+      "n_personas": 3,
+      "coherence": {
+        "mean": 6.015768111872139,
+        "median": 5.7534260513490905,
+        "p25": 5.69912879097129,
+        "p75": 6.201236402511463,
+        "min": 5.644831530593489,
+        "max": 6.649046753673836,
+        "n_personas_kept": 1,
+        "filter_threshold": 6.201236402511463,
+        "filter_percentile": 0.75
+      },
+      "persona_vs_cooc_diff": {
+        "mean_jaccard_at_k": 0.3927350427350428,
+        "mean_kendall_tau": 0.36,
+        "mean_rank_shift_unique": 45.306111111111115,
+        "fraction_identical": 0.0,
+        "n_users_sampled": 30,
+        "n_personas_sampled": 1
+      }
+    }
+  },
+  "timestamp": "2026-05-09T19:11:42"
+}

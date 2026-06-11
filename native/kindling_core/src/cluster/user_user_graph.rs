@@ -20,6 +20,23 @@ use rustc_hash::FxHashMap;
 
 /// Build symmetric user-user CSR by projecting the bipartite. Per-item
 /// user-cap bounds memory; deterministic sampling makes results stable.
+///
+/// Optional post-processing controls the edge-weight distribution that
+/// Louvain (or any downstream community detector) sees:
+///
+/// * `weight_transform = "raw"` — leave the accumulated `Σ w_u · w_v`
+///   counts as-is. Heavy-tailed distribution; popular-item-sharing
+///   pairs dominate modularity.
+/// * `weight_transform = "log"` — apply `ln(1 + w)` to each edge.
+///   Compresses dynamic range so a 100-shared pair no longer dwarfs a
+///   5-shared pair by 20×.
+///
+/// `min_edge_percentile ∈ [0, 1)` drops edges whose weight is below
+/// the given percentile across all non-zero edges. `0.05` removes the
+/// bottom 5% of edges (typically the long tail of single-shared-item
+/// pairs that contribute mostly noise to community detection).
+/// Pruning is applied **after** the weight transform so percentile
+/// thresholds are stable across transform choices.
 #[pyfunction]
 #[pyo3(signature = (
     user_idx,
@@ -29,6 +46,8 @@ use rustc_hash::FxHashMap;
     n_items,
     max_users_per_item = 100,
     seed = 0,
+    weight_transform = "raw",
+    min_edge_percentile = 0.0,
 ))]
 #[allow(clippy::too_many_arguments)]
 fn build_user_user_graph(
@@ -39,6 +58,8 @@ fn build_user_user_graph(
     n_items: usize,
     max_users_per_item: usize,
     seed: u64,
+    weight_transform: &str,
+    min_edge_percentile: f64,
 ) -> PyResult<(Vec<f32>, Vec<i32>, Vec<i32>)> {
     let user_idx = user_idx.as_slice()?;
     let item_idx = item_idx.as_slice()?;
@@ -98,6 +119,52 @@ fn build_user_user_graph(
                 *pair_weights.entry((lo, hi)).or_insert(0.0) += wa * wb;
             }
         }
+    }
+
+    // ── Optional weight transform.
+    match weight_transform {
+        "raw" => { /* no-op */ }
+        "log" => {
+            for v in pair_weights.values_mut() {
+                *v = (1.0 + *v).ln();
+            }
+        }
+        "cosine" => {
+            // Otsuka-Ochiai cosine: W'[u,v] = W[u,v] / sqrt(deg_u · deg_v)
+            // where deg_u = sum of W[u, ·]. Bounds edge weights to [0, 1]
+            // and discounts the inflation that very-active users get from
+            // sharing many items with everyone. Standard discount used in
+            // bipartite-projection community detection.
+            let mut deg = vec![0.0_f32; n_users];
+            for ((u, v), w) in pair_weights.iter() {
+                deg[*u as usize] += *w;
+                deg[*v as usize] += *w;
+            }
+            for ((u, v), w) in pair_weights.iter_mut() {
+                let du = deg[*u as usize];
+                let dv = deg[*v as usize];
+                let denom = (du * dv).sqrt();
+                if denom > 0.0 {
+                    *w /= denom;
+                }
+            }
+        }
+        other => {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "weight_transform must be 'raw' | 'log' | 'cosine'; got {other:?}"
+            )));
+        }
+    }
+
+    // ── Optional bottom-percentile edge prune. Computes the threshold
+    // across all (transformed) edge weights, then drops edges below it.
+    if min_edge_percentile > 0.0 && min_edge_percentile < 1.0 && !pair_weights.is_empty() {
+        let mut sorted_w: Vec<f32> = pair_weights.values().copied().collect();
+        sorted_w.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let cut_idx = ((sorted_w.len() as f64) * min_edge_percentile).floor() as usize;
+        let cut_idx = cut_idx.min(sorted_w.len().saturating_sub(1));
+        let threshold = sorted_w[cut_idx];
+        pair_weights.retain(|_, v| *v >= threshold);
     }
 
     // Pack symmetric CSR.

@@ -118,6 +118,14 @@ class V2FitState:
     gmf_item_factors: np.ndarray | None = None
     gmf_role: str = "boost"  # "base" or "boost" — recorded so recommend knows what to do
     gmf_data_graph_kind: str = "none"  # "directional" | "co-ownership" | "none"
+    # EASE base scorer: dense item-item weight matrix B (n_items × n_items,
+    # f32, zero diagonal). None when the cooc base is active.
+    ease_b: np.ndarray | None = None
+    base_scorer_used: str = "cooc"      # "cooc" | "ease"
+    # Trend signal: z-normalized recent-window item popularity (length
+    # n_items). None when timestamps are absent or trend_alpha == 0.
+    trend_z: np.ndarray | None = None
+    trend_alpha: float = 0.0
     # Rating-signal classification + resolved use_als decision.
     signal_kind: str = "unknown"        # "binary" | "counts" | "ratings" | "forced_*"
     als_ran: bool = False               # whether ALS actually ran in this fit
@@ -183,6 +191,79 @@ class EngineV2:
         # Communities below this size become noise (-1) — analogous to
         # HDBSCAN's noise label. Default mirrors HDBSCAN's min_cluster_size.
         louvain_min_community_size: int = 30,
+        # Pre-process the user-user graph weights before Louvain.
+        #   "raw" — accumulated Σ w_u·w_v counts (heavy-tailed);
+        #            popular-item-sharing pairs dominate modularity
+        #   "log" — ln(1 + w); compresses dynamic range so big-share
+        #            pairs don't drown out medium-share ones
+        louvain_weight_transform: str = "log",
+        # Drop the bottom percentile of edges by weight (after transform).
+        # 0.05 removes the long tail of single-shared-item pairs that
+        # are mostly noise. 0.0 disables pruning.
+        louvain_min_edge_percentile: float = 0.05,
+        # Trim users from the top/bottom percentiles of activity (interaction
+        # count) BEFORE building the user-user graph. Trimmed users have
+        # no edges in the projected graph, so they end up as cluster=-1
+        # (noise) and the persona-fit gate routes them to cooc base.
+        # Top trim removes "everyone-connects-to-them" hubs; bottom trim
+        # removes degenerate single-event users that only add noise.
+        # 0.0 / 0.0 disables (default).
+        louvain_user_trim_top: float = 0.0,
+        louvain_user_trim_bottom: float = 0.0,
+        # Resolution γ (Reichardt-Bornholdt 2006) for Louvain modularity:
+        #   Q_γ = (1/2m) Σ (A_ij − γ·k_i·k_j / 2m) δ(c_i, c_j)
+        # γ = 1.0 = standard modularity. γ > 1 produces more, smaller
+        # communities (helps when standard Louvain merges too aggressively
+        # on dense user-user graphs); γ < 1 produces fewer, larger.
+        # Practical range 0.5–3.0.
+        louvain_resolution: float = 1.0,
+        # Degree-corrected SBM knobs (only used when persona_method='dc_sbm').
+        # Warm-starts from Louvain on the same user-user graph and runs MAP
+        # iterations until <1% of nodes move per pass or `max_passes` is hit.
+        # `min_internal_fraction` provides per-node noise routing analogous
+        # to HDBSCAN's -1 label: a node whose within-block edge weight is
+        # below this fraction of its total degree gets reassigned to -1.
+        dc_sbm_max_passes: int = 15,
+        dc_sbm_min_internal_fraction: float = 0.0,
+        # Resolution γ used for the Louvain warm-start that seeds DC-SBM.
+        # Defaults higher than the standalone Louvain default (1.0) because
+        # SBM needs multiple starting blocks to refine — with γ=1.0,
+        # dense graphs can collapse to one block and SBM has nothing to
+        # split. γ=1.5 gives a richer init.
+        dc_sbm_warmstart_resolution: float = 1.5,
+        # Init mode for SBM blocks:
+        #   "louvain"  — warm-start from Louvain at warmstart_resolution
+        #   "random_k" — random K-block init (use when Louvain under-
+        #                clusters; SBM can't grow past warm-start block count)
+        #   "auto"     — Louvain first; if it produces < random_k_floor
+        #                blocks, fall back to random_k init
+        dc_sbm_init_mode: str = "louvain",
+        # Target block count for random init. Used directly in "random_k"
+        # mode and as the threshold in "auto" mode.
+        dc_sbm_random_k: int = 20,
+        # Coherence filter — algorithm-agnostic post-hoc persona quality
+        # gate. After clustering, compute per-persona coherence as the
+        # mean cooc[i,j] over (i,j) pairs in distinctive_items[p]; drop
+        # personas below the given percentile (their members → cluster=-1
+        # → fit-gate routes them to cooc base). Replaces algorithm-
+        # specific noise labels (HDBSCAN's -1, Louvain's min_community_size)
+        # with a uniform measure of "is this persona's item set actually
+        # clustered together in user co-occurrence?".
+        #
+        # 0.0 disables (no filtering). 0.5 keeps top half by coherence.
+        # 0.25 keeps top 75%. Practical range 0.0 - 0.7.
+        coherence_filter_percentile: float = 0.0,
+        # Personas with fewer than this many members are treated as
+        # noise *before* coherence ranking — small personas with rare
+        # items get artificially high pairwise cooc and would otherwise
+        # dominate the keep-list. Default: persona_min_users / 30
+        # (so for default 1000-user threshold, requires ≥33 members).
+        coherence_min_persona_users: int = 30,
+        # Personas with more than this fraction of total users are also
+        # treated as noise — a "persona" containing 90% of the user base
+        # is just a relabel of global cooc and adds no differentiation.
+        # 1.0 disables; 0.7 = drop personas spanning >70% of users.
+        coherence_max_persona_fraction: float = 0.7,
         # Graph-regularized matrix factorization (GR-MF / graph_mf).
         # Off by default. When enabled, GR-MF runs alongside the existing
         # base path:
@@ -194,6 +275,35 @@ class EngineV2:
         #     D + Dᵀ. Else falls back to existing co-ownership cooc.
         #   - hierarchy graph: optional, from item_metadata when the
         #     loader provides it (B2). amazon-beauty supported first.
+        # Base scorer selection. "cooc" is the legacy raw-count sum;
+        # "ease" is the closed-form EASE linear model (Steck 2019) —
+        # an inverse-Gram reweighting of the same co-occurrence signal
+        # that subtracts popularity/redundancy structure. The gap-
+        # decomposition diagnostic (2026-06) showed raw cooc scores
+        # degenerate toward popularity ranking; EASE is the fix.
+        #   "auto" — EASE when n_items <= ease_max_items (the O(n³)
+        #            inversion gate), else cooc.
+        # When EASE is active it powers BOTH retrieval and base scoring;
+        # boost layers stack on top unchanged.
+        base_scorer: str = "auto",
+        # EASE L2 regularization. None = auto: λ = 20 × (n_obs / n_items),
+        # i.e. ~20× the mean Gram diagonal. Empirically tracks the best
+        # fixed λ on both ml1m (dense; wanted ~8k) and amazon-beauty
+        # (sparse; wanted ~250) — λ must grow with item-count density or
+        # the inverse under-regularizes the popular-item rows.
+        ease_lambda: float | None = None,
+        ease_max_items: int = 20_000,
+        # Trend signal: z-normalized item popularity within the most
+        # recent `trend_window_fraction` of the training time span,
+        # blended additively into the (z-normalized) EASE base:
+        #   score = z(ease) + trend_alpha · z(recent_popularity)
+        # Motivated by the chronological eval splits: held-out events
+        # come from the final time window, where global popularity
+        # drift is a first-order signal the pairwise model can't see
+        # (a bare trending-items list beat every persona variant on
+        # ml1m). Gated by timestamp availability. 0.0 disables.
+        trend_alpha: float = 0.5,
+        trend_window_fraction: float = 0.10,
         use_graph_mf: bool = False,
         graph_mf_role: str = "boost",  # "base" or "boost"
         graph_mf_alpha_data: float = 0.1,
@@ -223,14 +333,111 @@ class EngineV2:
                 f"use_als must be 'auto', 'force_on', or 'force_off'; got {use_als!r}"
             )
         self.use_als = use_als
-        if persona_method not in ("auto", "hdbscan_factors", "louvain_graph"):
+        if persona_method not in (
+            "auto", "hdbscan_factors", "louvain_graph", "dc_sbm"
+        ):
             raise ValueError(
-                f"persona_method must be 'auto', 'hdbscan_factors', or "
-                f"'louvain_graph'; got {persona_method!r}"
+                f"persona_method must be 'auto', 'hdbscan_factors', "
+                f"'louvain_graph', or 'dc_sbm'; got {persona_method!r}"
             )
         self.persona_method = persona_method
         self.louvain_max_users_per_item = louvain_max_users_per_item
         self.louvain_min_community_size = louvain_min_community_size
+        if louvain_weight_transform not in ("raw", "log", "cosine"):
+            raise ValueError(
+                f"louvain_weight_transform must be 'raw' | 'log' | 'cosine'; "
+                f"got {louvain_weight_transform!r}"
+            )
+        self.louvain_weight_transform = louvain_weight_transform
+        if not (0.0 <= louvain_min_edge_percentile < 1.0):
+            raise ValueError(
+                f"louvain_min_edge_percentile must be in [0, 1); "
+                f"got {louvain_min_edge_percentile!r}"
+            )
+        self.louvain_min_edge_percentile = louvain_min_edge_percentile
+        if not (0.0 <= louvain_user_trim_top < 0.5):
+            raise ValueError(
+                f"louvain_user_trim_top must be in [0, 0.5); "
+                f"got {louvain_user_trim_top!r}"
+            )
+        if not (0.0 <= louvain_user_trim_bottom < 0.5):
+            raise ValueError(
+                f"louvain_user_trim_bottom must be in [0, 0.5); "
+                f"got {louvain_user_trim_bottom!r}"
+            )
+        self.louvain_user_trim_top = louvain_user_trim_top
+        self.louvain_user_trim_bottom = louvain_user_trim_bottom
+        if louvain_resolution <= 0.0:
+            raise ValueError(
+                f"louvain_resolution must be > 0; got {louvain_resolution!r}"
+            )
+        self.louvain_resolution = louvain_resolution
+        if not (0.0 <= coherence_filter_percentile < 1.0):
+            raise ValueError(
+                f"coherence_filter_percentile must be in [0, 1); "
+                f"got {coherence_filter_percentile!r}"
+            )
+        self.coherence_filter_percentile = coherence_filter_percentile
+        if coherence_min_persona_users < 0:
+            raise ValueError(
+                f"coherence_min_persona_users must be >= 0; "
+                f"got {coherence_min_persona_users!r}"
+            )
+        self.coherence_min_persona_users = coherence_min_persona_users
+        if not (0.0 < coherence_max_persona_fraction <= 1.0):
+            raise ValueError(
+                f"coherence_max_persona_fraction must be in (0, 1]; "
+                f"got {coherence_max_persona_fraction!r}"
+            )
+        self.coherence_max_persona_fraction = coherence_max_persona_fraction
+        if base_scorer not in ("auto", "cooc", "ease"):
+            raise ValueError(
+                f"base_scorer must be 'auto', 'cooc', or 'ease'; got {base_scorer!r}"
+            )
+        self.base_scorer = base_scorer
+        if ease_lambda is not None and ease_lambda <= 0.0:
+            raise ValueError(f"ease_lambda must be > 0 or None (auto); got {ease_lambda!r}")
+        self.ease_lambda = ease_lambda
+        if ease_max_items < 1:
+            raise ValueError(f"ease_max_items must be >= 1; got {ease_max_items!r}")
+        self.ease_max_items = ease_max_items
+        if trend_alpha < 0.0:
+            raise ValueError(f"trend_alpha must be >= 0; got {trend_alpha!r}")
+        self.trend_alpha = trend_alpha
+        if not (0.0 < trend_window_fraction <= 1.0):
+            raise ValueError(
+                f"trend_window_fraction must be in (0, 1]; "
+                f"got {trend_window_fraction!r}"
+            )
+        self.trend_window_fraction = trend_window_fraction
+        if dc_sbm_max_passes < 1:
+            raise ValueError(
+                f"dc_sbm_max_passes must be >= 1; got {dc_sbm_max_passes!r}"
+            )
+        self.dc_sbm_max_passes = dc_sbm_max_passes
+        if not (0.0 <= dc_sbm_min_internal_fraction < 1.0):
+            raise ValueError(
+                f"dc_sbm_min_internal_fraction must be in [0, 1); "
+                f"got {dc_sbm_min_internal_fraction!r}"
+            )
+        self.dc_sbm_min_internal_fraction = dc_sbm_min_internal_fraction
+        if dc_sbm_warmstart_resolution <= 0.0:
+            raise ValueError(
+                f"dc_sbm_warmstart_resolution must be > 0; "
+                f"got {dc_sbm_warmstart_resolution!r}"
+            )
+        self.dc_sbm_warmstart_resolution = dc_sbm_warmstart_resolution
+        if dc_sbm_init_mode not in ("louvain", "random_k", "auto"):
+            raise ValueError(
+                f"dc_sbm_init_mode must be 'louvain', 'random_k', or 'auto'; "
+                f"got {dc_sbm_init_mode!r}"
+            )
+        self.dc_sbm_init_mode = dc_sbm_init_mode
+        if dc_sbm_random_k < 2:
+            raise ValueError(
+                f"dc_sbm_random_k must be >= 2; got {dc_sbm_random_k!r}"
+            )
+        self.dc_sbm_random_k = dc_sbm_random_k
         if graph_mf_role not in ("base", "boost"):
             raise ValueError(
                 f"graph_mf_role must be 'base' or 'boost'; got {graph_mf_role!r}"
@@ -365,6 +572,53 @@ class EngineV2:
         cooc_indices = np.asarray(cooc_indices, dtype=np.int32)
         cooc_indptr = np.asarray(cooc_indptr, dtype=np.int32)
 
+        # ── EASE base (if selected). Closed-form inverse-Gram reweighting
+        # of the co-occurrence signal; replaces raw-count cooc for both
+        # retrieval and base scoring. Gated by catalog size: the O(n³)
+        # Cholesky inversion is feasible to ~20k items.
+        ease_b: np.ndarray | None = None
+        base_scorer_used = "cooc"
+        if self.base_scorer == "ease" or (
+            self.base_scorer == "auto" and n_items <= self.ease_max_items
+        ):
+            t_ease = time.perf_counter()
+            ease_lambda = (
+                self.ease_lambda
+                if self.ease_lambda is not None
+                else 20.0 * len(user_idx) / max(n_items, 1)
+            )
+            ease_b = np.asarray(
+                kindling_core.fit_ease_py(
+                    user_idx, item_idx,
+                    n_users=n_users, n_items=n_items,
+                    lambda_=ease_lambda,
+                ),
+                dtype=np.float32,
+            )
+            base_scorer_used = "ease"
+            profile["ease_fit_seconds"] = time.perf_counter() - t_ease
+            profile["ease_lambda"] = ease_lambda
+        profile["base_scorer_used"] = base_scorer_used
+
+        # ── Trend signal (timestamp-gated). Item interaction counts in
+        # the most recent window of the training span, z-normalized
+        # across the catalog.
+        trend_z: np.ndarray | None = None
+        if self.trend_alpha > 0.0 and timestamps_col is not None and len(timestamps_col):
+            t_hi = float(np.max(timestamps_col))
+            t_lo = float(np.min(timestamps_col))
+            if t_hi > t_lo:
+                cut = t_hi - (t_hi - t_lo) * self.trend_window_fraction
+                recent_mask = timestamps_col >= cut
+                counts = np.bincount(
+                    item_idx[recent_mask], minlength=n_items
+                ).astype(np.float64)
+                std = counts.std()
+                if std > 0:
+                    trend_z = (counts - counts.mean()) / std
+                    profile["trend_window_fraction"] = self.trend_window_fraction
+                    profile["trend_alpha"] = self.trend_alpha
+
         # ── Personas (if enabled).
         personas_enabled = bool(plan["personas_enabled"]) and n_users >= self.persona_min_users
         n_personas_actual = 0
@@ -418,12 +672,44 @@ class EngineV2:
             assignments = np.asarray(assignments, dtype=np.int64)
             user_to_persona = assignments
         elif personas_enabled and persona_method == "louvain_graph":
+            # Optional user trim: identify the top/bottom percentile users
+            # by raw interaction count and exclude their (user, item) rows
+            # from the graph build. Trimmed users will have no edges in
+            # the projected graph → cluster=-1 → fit-gate routes them
+            # to cooc base.
+            lo = self.louvain_user_trim_bottom
+            hi = self.louvain_user_trim_top
+            if lo > 0.0 or hi > 0.0:
+                user_counts = np.bincount(user_idx, minlength=n_users)
+                # Threshold by percentile across users that touched ≥1 item.
+                active = user_counts[user_counts > 0]
+                if active.size > 0:
+                    lo_thr = np.percentile(active, lo * 100.0) if lo > 0 else 0.0
+                    hi_thr = (
+                        np.percentile(active, (1.0 - hi) * 100.0)
+                        if hi > 0 else float("inf")
+                    )
+                    keep_user = (user_counts > lo_thr) & (user_counts <= hi_thr)
+                    keep_row = keep_user[user_idx]
+                    trim_user_idx = user_idx[keep_row]
+                    trim_item_idx = item_idx[keep_row]
+                    trim_weights = weights[keep_row]
+                else:
+                    trim_user_idx, trim_item_idx, trim_weights = (
+                        user_idx, item_idx, weights
+                    )
+            else:
+                trim_user_idx, trim_item_idx, trim_weights = (
+                    user_idx, item_idx, weights
+                )
             # Build user-user projected graph + run Louvain.
             uu_data, uu_indices, uu_indptr = kindling_core.build_user_user_graph(
-                user_idx, item_idx, weights,
+                trim_user_idx, trim_item_idx, trim_weights,
                 n_users=n_users, n_items=n_items,
                 max_users_per_item=self.louvain_max_users_per_item,
                 seed=self.random_state,
+                weight_transform=self.louvain_weight_transform,
+                min_edge_percentile=self.louvain_min_edge_percentile,
             )
             uu_data = np.asarray(uu_data, dtype=np.float32)
             uu_indices = np.asarray(uu_indices, dtype=np.int32)
@@ -434,11 +720,99 @@ class EngineV2:
                     min_community_size=self.louvain_min_community_size,
                     max_passes=30,
                     modularity_tol=1e-6,
+                    resolution=self.louvain_resolution,
                 )
             )
             assignments = np.asarray(assignments, dtype=np.int64)
             user_to_persona = assignments
             profile["louvain_modularity"] = float(modularity)
+        elif personas_enabled and persona_method == "dc_sbm":
+            # Degree-corrected stochastic block model — hand-rolled MAP
+            # estimator (Rust, `kindling_core::cluster::dc_sbm`) with
+            # Louvain warm-start on the same user-user graph. The
+            # Louvain weight-transform / edge-prune / user-trim knobs
+            # all apply to the underlying graph build.
+            lo = self.louvain_user_trim_bottom
+            hi = self.louvain_user_trim_top
+            if lo > 0.0 or hi > 0.0:
+                user_counts = np.bincount(user_idx, minlength=n_users)
+                active = user_counts[user_counts > 0]
+                if active.size > 0:
+                    lo_thr = np.percentile(active, lo * 100.0) if lo > 0 else 0.0
+                    hi_thr = (
+                        np.percentile(active, (1.0 - hi) * 100.0)
+                        if hi > 0 else float("inf")
+                    )
+                    keep_user = (user_counts > lo_thr) & (user_counts <= hi_thr)
+                    keep_row = keep_user[user_idx]
+                    trim_user_idx = user_idx[keep_row]
+                    trim_item_idx = item_idx[keep_row]
+                    trim_weights = weights[keep_row]
+                else:
+                    trim_user_idx, trim_item_idx, trim_weights = (
+                        user_idx, item_idx, weights
+                    )
+            else:
+                trim_user_idx, trim_item_idx, trim_weights = (
+                    user_idx, item_idx, weights
+                )
+            uu_data, uu_indices, uu_indptr = kindling_core.build_user_user_graph(
+                trim_user_idx, trim_item_idx, trim_weights,
+                n_users=n_users, n_items=n_items,
+                max_users_per_item=self.louvain_max_users_per_item,
+                seed=self.random_state,
+                weight_transform=self.louvain_weight_transform,
+                min_edge_percentile=self.louvain_min_edge_percentile,
+            )
+            uu_data = np.asarray(uu_data, dtype=np.float32)
+            uu_indices = np.asarray(uu_indices, dtype=np.int32)
+            uu_indptr = np.asarray(uu_indptr, dtype=np.int32)
+            # SBM init: pick between Louvain warm-start and random K-block
+            # init. SBM can't grow past the starting block count — it only
+            # reassigns nodes between existing blocks — so on sparse
+            # graphs where Louvain under-clusters, random_k init gives
+            # SBM more headroom.
+            init_mode = self.dc_sbm_init_mode
+            louv_init: np.ndarray | None = None
+            if init_mode in ("louvain", "auto"):
+                louv_assign, _louv_n, _modularity, _passes, _noise = (
+                    kindling_core.fit_louvain_py(
+                        uu_data, uu_indices, uu_indptr,
+                        min_community_size=self.louvain_min_community_size,
+                        max_passes=10,
+                        modularity_tol=1e-6,
+                        resolution=self.dc_sbm_warmstart_resolution,
+                    )
+                )
+                louv_init = np.asarray(louv_assign, dtype=np.int64)
+                positives = louv_init[louv_init >= 0]
+                n_louv_blocks = int(np.unique(positives).size) if positives.size > 0 else 0
+                profile["dc_sbm_louvain_blocks"] = n_louv_blocks
+                # auto: fall through to random_k if Louvain under-clusters
+                if init_mode == "auto" and n_louv_blocks < self.dc_sbm_random_k:
+                    init_mode = "random_k"
+            if init_mode == "random_k":
+                rng = np.random.RandomState(self.random_state)
+                louv_init = rng.randint(0, self.dc_sbm_random_k, size=n_users).astype(np.int64)
+                profile["dc_sbm_init_mode_used"] = "random_k"
+            else:
+                profile["dc_sbm_init_mode_used"] = "louvain"
+            assert louv_init is not None
+            assignments, n_blocks, sbm_passes, sbm_noise_frac = (
+                kindling_core.fit_dcsbm_py(
+                    uu_data, uu_indices, uu_indptr,
+                    init_assignments=louv_init,
+                    max_passes=self.dc_sbm_max_passes,
+                    min_internal_fraction=self.dc_sbm_min_internal_fraction,
+                    move_threshold_pct=0.01,
+                )
+            )
+            assignments = np.asarray(assignments, dtype=np.int64)
+            n_personas_actual = n_blocks
+            noise_frac = float(sbm_noise_frac)
+            user_to_persona = assignments
+            profile["dc_sbm_passes"] = int(sbm_passes)
+            profile["dc_sbm_n_blocks"] = int(n_blocks)
 
         # Shared post-clustering: build persona index + per-persona cooc
         # if any method produced ≥1 cluster.
@@ -454,6 +828,65 @@ class EngineV2:
                 )
             )
             persona_distinctive = [list(d) for d in distinctive]
+
+            # ── Coherence filter (algorithm-agnostic). For each persona
+            # compute the mean cooc[i,j] over its distinctive-item set;
+            # drop personas below the configured percentile so their
+            # members route to cooc base. Operates on the same cooc CSR
+            # the base scorer uses, so coherence is in the same units as
+            # base scores.
+            coherence_scores = np.asarray(
+                kindling_core.compute_persona_coherence_py(
+                    cooc_data, cooc_indices, cooc_indptr,
+                    distinctive_items=persona_distinctive,
+                ),
+                dtype=np.float64,
+            )
+            profile["persona_coherence"] = {
+                "mean": float(coherence_scores.mean()) if coherence_scores.size else 0.0,
+                "median": float(np.median(coherence_scores)) if coherence_scores.size else 0.0,
+                "p25": float(np.percentile(coherence_scores, 25)) if coherence_scores.size else 0.0,
+                "p75": float(np.percentile(coherence_scores, 75)) if coherence_scores.size else 0.0,
+                "min": float(coherence_scores.min()) if coherence_scores.size else 0.0,
+                "max": float(coherence_scores.max()) if coherence_scores.size else 0.0,
+            }
+            n_personas_kept = n_personas_actual
+            persona_sizes_arr = np.asarray(_sizes, dtype=np.int64)
+            # Pre-filter: drop personas that are too small (artificially
+            # high coherence on rare items) OR too large (≈ global cooc,
+            # adds no differentiation). Members of either get -1.
+            max_size = int(self.coherence_max_persona_fraction * n_users)
+            size_ok = (persona_sizes_arr >= self.coherence_min_persona_users) & (
+                persona_sizes_arr <= max_size
+            )
+            if self.coherence_filter_percentile > 0.0 and coherence_scores.size > 0:
+                # Threshold on personas that pass size + have >0 coherence.
+                valid_mask = size_ok & (coherence_scores > 0.0)
+                if valid_mask.any():
+                    valid_coh = coherence_scores[valid_mask]
+                    threshold = float(np.percentile(
+                        valid_coh, self.coherence_filter_percentile * 100.0
+                    ))
+                    keep_persona = size_ok & (coherence_scores >= threshold)
+                else:
+                    # No persona passes size + coherence → keep none.
+                    keep_persona = np.zeros(n_personas_actual, dtype=bool)
+                # Reassign users in dropped personas to -1 (noise).
+                pos_mask = assignments >= 0
+                drop_user = pos_mask & ~keep_persona[assignments.clip(min=0)]
+                if drop_user.any():
+                    assignments = assignments.copy()
+                    assignments[drop_user] = -1
+                    user_to_persona = assignments
+                n_personas_kept = int(keep_persona.sum())
+                profile["persona_coherence"]["n_personas_kept"] = n_personas_kept
+                profile["persona_coherence"]["filter_threshold"] = (
+                    threshold if valid_mask.any() else 0.0
+                )
+                profile["persona_coherence"]["filter_percentile"] = (
+                    self.coherence_filter_percentile
+                )
+
             pc_data, pc_indices, pc_indptr, _pc_sizes = (
                 kindling_core.build_persona_cooccurrence(
                     user_idx,
@@ -599,6 +1032,10 @@ class EngineV2:
             cooc_data=cooc_data,
             cooc_indices=cooc_indices,
             cooc_indptr=cooc_indptr,
+            ease_b=ease_b,
+            base_scorer_used=base_scorer_used,
+            trend_z=trend_z,
+            trend_alpha=self.trend_alpha,
             personas_enabled=personas_enabled and n_personas_actual > 0,
             n_personas=n_personas_actual,
             user_to_persona=user_to_persona,
@@ -636,24 +1073,46 @@ class EngineV2:
         if owned is None or owned.size == 0:
             return []
 
-        # ── 1. Retrieve candidate pool via cooc.
-        # Boost layers refine ranking within this pool but cannot promote
-        # items outside it; some path-favored items will be missed when
-        # they fall below the cooc top-K cut. We bump retrieval_budget
-        # (default 500) to cut that miss rate without expanding to a
-        # multi-retriever fusion stage.
-        cand_ids, _scores = kindling_core.cooccurrence_retrieve(
-            st.cooc_data, st.cooc_indices, st.cooc_indptr,
-            owned_indices=owned.tolist(),
-            budget=self.retrieval_budget,
-            include_owned=False,
-        )
+        # ── 1. Retrieve candidate pool. When EASE is the base scorer it
+        # powers retrieval too — the gap-decomposition diagnostic showed
+        # the raw-cooc retrieval/scoring tautology caps achievable
+        # quality, so the better signal must drive the pool as well.
+        ease_scores_full: np.ndarray | None = None
+        if st.ease_b is not None:
+            ease_scores_full = st.ease_b[owned].sum(axis=0, dtype=np.float64)
+            # Blend in the trend signal on the z scale: the EASE score
+            # distribution varies per user (history length), so z-
+            # normalize it before adding the catalog-level trend z.
+            if st.trend_z is not None and st.trend_alpha > 0.0:
+                std = ease_scores_full.std()
+                if std > 0:
+                    ease_scores_full = (
+                        ease_scores_full - ease_scores_full.mean()
+                    ) / std
+                ease_scores_full = ease_scores_full + st.trend_alpha * st.trend_z
+            ease_scores_full[owned] = -np.inf
+            budget = min(self.retrieval_budget, ease_scores_full.size)
+            top = np.argpartition(-ease_scores_full, budget - 1)[:budget]
+            top = top[np.argsort(-ease_scores_full[top], kind="stable")]
+            cand_ids = [int(c) for c in top if np.isfinite(ease_scores_full[c])]
+        else:
+            cand_ids, _scores = kindling_core.cooccurrence_retrieve(
+                st.cooc_data, st.cooc_indices, st.cooc_indptr,
+                owned_indices=owned.tolist(),
+                budget=self.retrieval_budget,
+                include_owned=False,
+            )
+            cand_ids = list(cand_ids)
         if not cand_ids:
             return []
-        cand_ids = list(cand_ids)
 
-        # ── 2. Two-gate base routing.
-        base_kind, base = self._compute_base(entity_id, owned, cand_ids)
+        # ── 2. Base scores. EASE base bypasses the cooc/persona routing;
+        # otherwise the two-gate persona routing applies.
+        if ease_scores_full is not None:
+            base_kind = "ease"
+            base = ease_scores_full[np.asarray(cand_ids, dtype=np.int64)]
+        else:
+            base_kind, base = self._compute_base(entity_id, owned, cand_ids)
 
         # ── 3. Layered scoring.
         layer_specs = self._build_layer_specs(entity_id, owned, cand_ids)
@@ -665,10 +1124,13 @@ class EngineV2:
         composite = np.asarray(composite)
 
         # ── 4. Top-N (skip repeat module — not yet ported).
+        # The positivity filter encodes cooc semantics (score 0 = no
+        # co-occurrence evidence). EASE weights are signed, so a small
+        # negative composite can still be the best available candidate.
         order = np.argsort(-composite)[:n]
         out: list[RecommendationV2] = []
         for rank, idx in enumerate(order):
-            if composite[idx] <= 0.0:
+            if composite[idx] <= 0.0 and base_kind != "ease":
                 continue
             cid = cand_ids[idx]
             out.append(RecommendationV2(
@@ -1148,4 +1610,6 @@ class EngineV2:
             "use_als_setting": self.use_als,
             "persona_method_used": st.persona_method_used,
             "persona_method_setting": self.persona_method,
+            "base_scorer_used": st.base_scorer_used,
+            "base_scorer_setting": self.base_scorer,
         }

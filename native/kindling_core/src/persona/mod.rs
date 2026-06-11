@@ -11,9 +11,11 @@ use pyo3::prelude::*;
 
 pub mod index;
 pub mod fit_gate;
+pub mod coherence;
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     index::register(m)?;
     fit_gate::register(m)?;
+    coherence::register(m)?;
     Ok(())
 }

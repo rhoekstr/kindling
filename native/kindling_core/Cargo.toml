@@ -17,6 +17,9 @@ ndarray = { workspace = true }
 rayon = { workspace = true }
 rustc-hash = { workspace = true }
 petal-clustering = { workspace = true }
+# EASE base scorer: closed-form (XᵀX + λI)⁻¹. faer is pure-Rust +
+# rayon-parallel — no BLAS/LAPACK system dep, no ABI fragility.
+faer = "0.19"
 
 # v2-specific: enabled per-phase as the corresponding modules are built.
 # linfa = { workspace = true }              # Phase 1f (ALS — pure Rust)

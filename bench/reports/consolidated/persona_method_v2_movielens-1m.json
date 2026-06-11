@@ -1,0 +1,74 @@
+{
+  "loader": "movielens-1m",
+  "n_train": 900188,
+  "n_test": 100021,
+  "n_users_evaluated": 500,
+  "k": 10,
+  "variants": {
+    "A_no_personas": {
+      "kwargs": {
+        "persona_min_users": 10000000
+      },
+      "fit_seconds": 11.85950362496078,
+      "metrics": {
+        "ndcg_at_k": 0.2560655050162427,
+        "recall_at_k": 0.044237433402905466,
+        "mrr": 0.4199222222222222,
+        "hit_rate": 0.682,
+        "coverage": 0.034801522566612286
+      },
+      "latency": {
+        "p50_ms": 0.7260209531523287,
+        "p95_ms": 2.9971750045660883,
+        "p99_ms": 4.221167546929789
+      },
+      "n_personas": 0,
+      "persona_method_used": "none",
+      "signal_kind": "ratings"
+    },
+    "B_svd_hdbscan": {
+      "kwargs": {
+        "persona_method": "hdbscan_factors",
+        "use_als": "force_off"
+      },
+      "fit_seconds": 15.806483833002858,
+      "metrics": {
+        "ndcg_at_k": 0.2529461029102048,
+        "recall_at_k": 0.04424274229054978,
+        "mrr": 0.4180436507936508,
+        "hit_rate": 0.682,
+        "coverage": 0.043501903208265365
+      },
+      "latency": {
+        "p50_ms": 0.7506459951400757,
+        "p95_ms": 2.976831269916147,
+        "p99_ms": 4.4023520092014214
+      },
+      "n_personas": 3,
+      "persona_method_used": "hdbscan_factors",
+      "signal_kind": "forced_off"
+    },
+    "C_louvain": {
+      "kwargs": {
+        "persona_method": "louvain_graph"
+      },
+      "fit_seconds": 16.189733834005892,
+      "metrics": {
+        "ndcg_at_k": 0.25618243766648946,
+        "recall_at_k": 0.04426096281467018,
+        "mrr": 0.4198222222222222,
+        "hit_rate": 0.682,
+        "coverage": 0.034801522566612286
+      },
+      "latency": {
+        "p50_ms": 0.770791491959244,
+        "p95_ms": 2.875607687747099,
+        "p99_ms": 4.332183992955833
+      },
+      "n_personas": 1,
+      "persona_method_used": "louvain_graph",
+      "signal_kind": "ratings"
+    }
+  },
+  "timestamp": "2026-05-09T11:38:22"
+}

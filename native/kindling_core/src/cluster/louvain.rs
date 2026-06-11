@@ -91,6 +91,18 @@ impl Graph {
 /// Run Louvain on a weighted undirected CSR graph. Returns per-node
 /// community labels (dense `0..n_communities-1`, or `-1` if filtered as
 /// noise).
+///
+/// `resolution` (γ, Reichardt-Bornholdt 2006) scales the null-model
+/// term in modularity:
+///
+/// ```text
+///   Q_γ = (1/2m) Σ (A_ij − γ · k_i·k_j / 2m) δ(c_i, c_j)
+/// ```
+///
+/// γ = 1.0 recovers standard modularity. γ > 1 penalizes large
+/// communities harder, producing more numerous smaller ones (helps
+/// when standard Louvain merges too aggressively). γ < 1 promotes
+/// fewer larger communities. Practical range: 0.5 – 3.0.
 pub fn fit_louvain(
     data: &[f32],
     indices: &[i32],
@@ -98,6 +110,7 @@ pub fn fit_louvain(
     min_community_size: usize,
     max_passes: usize,
     modularity_tol: f64,
+    resolution: f64,
 ) -> LouvainResult {
     let n = indptr.len().saturating_sub(1);
     if n == 0 {
@@ -129,12 +142,12 @@ pub fn fit_louvain(
     // aggregated graph maps back to a set of original nodes.
     let mut super_to_originals: Vec<Vec<usize>> = (0..n).map(|i| vec![i]).collect();
     let mut current_graph = graph;
-    let mut last_modularity = compute_modularity(&current_graph, &(0..current_graph.n).map(|i| i as i32).collect::<Vec<_>>());
+    let mut last_modularity = compute_modularity(&current_graph, &(0..current_graph.n).map(|i| i as i32).collect::<Vec<_>>(), resolution);
     let mut passes = 0;
     while passes < max_passes {
         passes += 1;
-        let community = phase1_local_optimize(&current_graph);
-        let new_modularity = compute_modularity(&current_graph, &community);
+        let community = phase1_local_optimize(&current_graph, resolution);
+        let new_modularity = compute_modularity(&current_graph, &community, resolution);
         if new_modularity - last_modularity < modularity_tol {
             // Converged. Map current super-communities back to originals.
             let assignments = expand_to_originals(&community, &super_to_originals, n);
@@ -152,9 +165,9 @@ pub fn fit_louvain(
     finalize(assignments, last_modularity, passes, min_community_size)
 }
 
-/// Phase 1: greedy local modularity optimization. Returns per-node
-/// community label (in 0..k where k <= n).
-fn phase1_local_optimize(graph: &Graph) -> Vec<i32> {
+/// Phase 1: greedy local modularity optimization with resolution γ.
+/// Returns per-node community label (in 0..k where k <= n).
+fn phase1_local_optimize(graph: &Graph, resolution: f64) -> Vec<i32> {
     let n = graph.n;
     let mut community: Vec<i32> = (0..n).map(|i| i as i32).collect();
     // tot[c] = sum of degrees of nodes in community c (= 2 × internal weight + boundary weight)
@@ -190,13 +203,15 @@ fn phase1_local_optimize(graph: &Graph) -> Vec<i32> {
             let stay_weight = weight_to_c.get(&current_c).copied().unwrap_or(0.0);
             let mut best_c = current_c;
             // Gain of staying (i.e., joining current_c again).
-            let mut best_gain =
-                stay_weight * inv_two_m - graph.degree[i] * tot[current_c as usize] * inv_two_m_sq * 0.5;
+            // The null-model term is scaled by γ (resolution).
+            let mut best_gain = stay_weight * inv_two_m
+                - resolution * graph.degree[i] * tot[current_c as usize] * inv_two_m_sq * 0.5;
             for (c, k_i_c) in &weight_to_c {
                 if *c == current_c {
                     continue;
                 }
-                let gain = *k_i_c * inv_two_m - graph.degree[i] * tot[*c as usize] * inv_two_m_sq * 0.5;
+                let gain = *k_i_c * inv_two_m
+                    - resolution * graph.degree[i] * tot[*c as usize] * inv_two_m_sq * 0.5;
                 if gain > best_gain {
                     best_gain = gain;
                     best_c = *c;
@@ -312,8 +327,9 @@ fn expand_to_originals(
     out
 }
 
-/// Compute modularity Q = (1/2m) Σ_{i,j} (A_ij - k_i·k_j / 2m) δ(c_i, c_j)
-fn compute_modularity(graph: &Graph, community: &[i32]) -> f64 {
+/// Compute modularity with resolution γ:
+///   Q_γ = (1/2m) Σ_{i,j} (A_ij - γ·k_i·k_j / 2m) δ(c_i, c_j)
+fn compute_modularity(graph: &Graph, community: &[i32], resolution: f64) -> f64 {
     if graph.two_m <= 0.0 {
         return 0.0;
     }
@@ -333,7 +349,7 @@ fn compute_modularity(graph: &Graph, community: &[i32]) -> f64 {
     let mut q = 0.0;
     for (c, &iw) in in_weight.iter() {
         let t = *tot.get(c).unwrap_or(&0.0);
-        q += iw * inv_two_m - (t * inv_two_m) * (t * inv_two_m);
+        q += iw * inv_two_m - resolution * (t * inv_two_m) * (t * inv_two_m);
     }
     q
 }
@@ -393,6 +409,7 @@ fn finalize(
     min_community_size = 30,
     max_passes = 30,
     modularity_tol = 1e-6,
+    resolution = 1.0,
 ))]
 fn fit_louvain_py<'py>(
     py: Python<'py>,
@@ -402,6 +419,7 @@ fn fit_louvain_py<'py>(
     min_community_size: usize,
     max_passes: usize,
     modularity_tol: f64,
+    resolution: f64,
 ) -> PyResult<(Bound<'py, PyArray1<i64>>, usize, f64, usize, f64)> {
     let result = fit_louvain(
         data.as_slice()?,
@@ -410,6 +428,7 @@ fn fit_louvain_py<'py>(
         min_community_size,
         max_passes,
         modularity_tol,
+        resolution,
     );
     let assignments = PyArray1::<i64>::from_vec_bound(py, result.assignments);
     Ok((
@@ -470,7 +489,7 @@ mod tests {
             }
             indptr.push(indices.len() as i32);
         }
-        let result = fit_louvain(&data, &indices, &indptr, 1, 30, 1e-6);
+        let result = fit_louvain(&data, &indices, &indptr, 1, 30, 1e-6, 1.0);
         assert!(result.n_communities >= 2, "expected ≥2 communities, got {}", result.n_communities);
         assert!(result.final_modularity > 0.3, "expected high modularity for two-cluster graph, got {}", result.final_modularity);
         // Nodes 0-4 should be in the same community; same for 5-9.
@@ -491,7 +510,7 @@ mod tests {
         let data: Vec<f32> = Vec::new();
         let indices: Vec<i32> = Vec::new();
         let indptr: Vec<i32> = vec![0; 11];
-        let result = fit_louvain(&data, &indices, &indptr, 5, 30, 1e-6);
+        let result = fit_louvain(&data, &indices, &indptr, 5, 30, 1e-6, 1.0);
         assert_eq!(result.assignments.len(), 10);
         // Every node is noise (since each was its own community of size 1, below 5).
         for c in &result.assignments {
@@ -530,7 +549,7 @@ mod tests {
             }
             indptr.push(indices.len() as i32);
         }
-        let result = fit_louvain(&data, &indices, &indptr, 2, 30, 1e-6);
+        let result = fit_louvain(&data, &indices, &indptr, 2, 30, 1e-6, 1.0);
         // Node 5 is isolated → its own community of size 1 → noise.
         assert_eq!(result.assignments[5], -1, "isolated node should be noise");
         // Nodes 0-4 should be in one community.

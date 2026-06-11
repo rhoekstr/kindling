@@ -1,0 +1,296 @@
+{
+  "loader": "amazon-book",
+  "n_train": 2380730,
+  "n_test": 603378,
+  "n_users_evaluated": 500,
+  "k": 10,
+  "coherence_filter_percentile": 0.5,
+  "variants": {
+    "hdbscan_svd": {
+      "kwargs": {
+        "persona_method": "hdbscan_factors",
+        "use_als": "force_off"
+      },
+      "fit_seconds": 979.6298790840665,
+      "metrics": {
+        "ndcg_at_k": 0.025309139033425073,
+        "recall_at_k": 0.024743915814859015,
+        "mrr": 0.05596825396825396,
+        "hit_rate": 0.138,
+        "coverage": 0.01420321182545661
+      },
+      "latency": {
+        "p50_ms": 0.8919374668039382,
+        "p95_ms": 1.901481533423066,
+        "p99_ms": 3.196920038899406
+      },
+      "n_personas": 25,
+      "persona_method_used": "hdbscan_factors",
+      "coherence": {
+        "mean": 0.4504714996901973,
+        "median": 0.38105915431748405,
+        "p25": 0.24618798121060903,
+        "p75": 0.5513607543442041,
+        "min": 0.14198818251159392,
+        "max": 1.3671245493096433,
+        "n_personas_kept": 13,
+        "filter_threshold": 0.38105915431748405,
+        "filter_percentile": 0.5
+      },
+      "persona_vs_cooc_diff": {
+        "mean_jaccard_at_k": 0.31292894984845454,
+        "mean_kendall_tau": 0.4121774521774522,
+        "mean_rank_shift_unique": 88.39766852195422,
+        "fraction_identical": 0.01282051282051282,
+        "n_users_sampled": 390,
+        "n_personas_sampled": 13
+      }
+    },
+    "hdbscan_als": {
+      "kwargs": {
+        "persona_method": "hdbscan_factors",
+        "use_als": "force_on"
+      },
+      "fit_seconds": 1029.8541981249582,
+      "metrics": {
+        "ndcg_at_k": 0.025117363743926972,
+        "recall_at_k": 0.024322907411497674,
+        "mrr": 0.05629047619047619,
+        "hit_rate": 0.136,
+        "coverage": 0.01417046037620498
+      },
+      "latency": {
+        "p50_ms": 0.9341875556856394,
+        "p95_ms": 2.0480242907069623,
+        "p99_ms": 3.5028646991122496
+      },
+      "n_personas": 29,
+      "persona_method_used": "hdbscan_factors",
+      "coherence": {
+        "mean": 0.5139071810833509,
+        "median": 0.4101793770669826,
+        "p25": 0.28289197854613435,
+        "p75": 0.6191207616805952,
+        "min": 0.17320242151220652,
+        "max": 1.4144432237826103,
+        "n_personas_kept": 15,
+        "filter_threshold": 0.4101793770669826,
+        "filter_percentile": 0.5
+      },
+      "persona_vs_cooc_diff": {
+        "mean_jaccard_at_k": 0.3209725832016853,
+        "mean_kendall_tau": 0.2159259259259259,
+        "mean_rank_shift_unique": 91.22751587301588,
+        "fraction_identical": 0.0,
+        "n_users_sampled": 450,
+        "n_personas_sampled": 15
+      }
+    },
+    "louvain_raw": {
+      "kwargs": {
+        "persona_method": "louvain_graph",
+        "louvain_weight_transform": "raw",
+        "louvain_min_edge_percentile": 0.0
+      },
+      "fit_seconds": 952.8219858329976,
+      "metrics": {
+        "ndcg_at_k": 0.024854866667921045,
+        "recall_at_k": 0.024233163821754083,
+        "mrr": 0.05531825396825397,
+        "hit_rate": 0.138,
+        "coverage": 0.01388661448269086
+      },
+      "latency": {
+        "p50_ms": 0.9194585145451128,
+        "p95_ms": 1.9438378862105303,
+        "p99_ms": 3.2160445663612327
+      },
+      "n_personas": 5,
+      "persona_method_used": "louvain_graph",
+      "coherence": {
+        "mean": 0.16066793014412523,
+        "median": 0.12655027432307178,
+        "p25": 0.07436130352130743,
+        "p75": 0.20686109393288454,
+        "min": 0.06176525590666112,
+        "max": 0.3338017230367013,
+        "n_personas_kept": 3,
+        "filter_threshold": 0.12655027432307178,
+        "filter_percentile": 0.5
+      },
+      "persona_vs_cooc_diff": {
+        "mean_jaccard_at_k": 0.8027270974639396,
+        "mean_kendall_tau": 0.7779012345679012,
+        "mean_rank_shift_unique": 29.775,
+        "fraction_identical": 0.37777777777777777,
+        "n_users_sampled": 90,
+        "n_personas_sampled": 3
+      }
+    },
+    "louvain_log_prune": {
+      "kwargs": {
+        "persona_method": "louvain_graph",
+        "louvain_weight_transform": "log",
+        "louvain_min_edge_percentile": 0.05
+      },
+      "fit_seconds": 1171.9527851670282,
+      "metrics": {
+        "ndcg_at_k": 0.02416658886793753,
+        "recall_at_k": 0.02333008258926109,
+        "mrr": 0.054708730158730165,
+        "hit_rate": 0.14,
+        "coverage": 0.013777442985185427
+      },
+      "latency": {
+        "p50_ms": 1.978354004677385,
+        "p95_ms": 4.191508103394878,
+        "p99_ms": 6.624728038441382
+      },
+      "n_personas": 3,
+      "persona_method_used": "louvain_graph",
+      "coherence": {
+        "mean": 0.11424274484665642,
+        "median": 0.06662996306058011,
+        "p25": 0.06456016404093808,
+        "p75": 0.14011893475933662,
+        "min": 0.062490365021296033,
+        "max": 0.2136079064580931,
+        "n_personas_kept": 2,
+        "filter_threshold": 0.06662996306058011,
+        "filter_percentile": 0.5
+      },
+      "persona_vs_cooc_diff": {
+        "mean_jaccard_at_k": 0.7844086469086469,
+        "mean_kendall_tau": 0.8055026455026455,
+        "mean_rank_shift_unique": 26.4152380952381,
+        "fraction_identical": 0.4166666666666667,
+        "n_users_sampled": 60,
+        "n_personas_sampled": 2
+      }
+    },
+    "louvain_cosine": {
+      "kwargs": {
+        "persona_method": "louvain_graph",
+        "louvain_weight_transform": "cosine"
+      },
+      "fit_seconds": 952.0627033340279,
+      "metrics": {
+        "ndcg_at_k": 0.02528892570661143,
+        "recall_at_k": 0.02481094159953186,
+        "mrr": 0.05611825396825397,
+        "hit_rate": 0.142,
+        "coverage": 0.01396303453094466
+      },
+      "latency": {
+        "p50_ms": 0.926416483707726,
+        "p95_ms": 1.923730678390709,
+        "p99_ms": 3.2152945629786696
+      },
+      "n_personas": 4,
+      "persona_method_used": "louvain_graph",
+      "coherence": {
+        "mean": 0.1040032247603922,
+        "median": 0.08991997659829157,
+        "p25": 0.06825909257638574,
+        "p75": 0.12566410878229803,
+        "min": 0.06463807445842222,
+        "max": 0.17153487138656343,
+        "n_personas_kept": 2,
+        "filter_threshold": 0.08991997659829157,
+        "filter_percentile": 0.5
+      },
+      "persona_vs_cooc_diff": {
+        "mean_jaccard_at_k": 0.7376336626336627,
+        "mean_kendall_tau": 0.7284656084656085,
+        "mean_rank_shift_unique": 75.73104166666666,
+        "fraction_identical": 0.3333333333333333,
+        "n_users_sampled": 60,
+        "n_personas_sampled": 2
+      }
+    },
+    "louvain_gamma_2": {
+      "kwargs": {
+        "persona_method": "louvain_graph",
+        "louvain_resolution": 2.0
+      },
+      "fit_seconds": 1106.2937768750126,
+      "metrics": {
+        "ndcg_at_k": 0.024875515112484863,
+        "recall_at_k": 0.024453859792450055,
+        "mrr": 0.054898412698412696,
+        "hit_rate": 0.136,
+        "coverage": 0.01423596327470824
+      },
+      "latency": {
+        "p50_ms": 1.0796659626066685,
+        "p95_ms": 3.147053829161446,
+        "p99_ms": 4.962384453974659
+      },
+      "n_personas": 6,
+      "persona_method_used": "louvain_graph",
+      "coherence": {
+        "mean": 0.10447371194413702,
+        "median": 0.09922214515586289,
+        "p25": 0.07886510681788449,
+        "p75": 0.11839372944431387,
+        "min": 0.06646098113919559,
+        "max": 0.16507331530154487,
+        "n_personas_kept": 3,
+        "filter_threshold": 0.09922214515586289,
+        "filter_percentile": 0.5
+      },
+      "persona_vs_cooc_diff": {
+        "mean_jaccard_at_k": 0.615636237591862,
+        "mean_kendall_tau": 0.5782186948853616,
+        "mean_rank_shift_unique": 50.58369754294412,
+        "fraction_identical": 0.18888888888888888,
+        "n_users_sampled": 90,
+        "n_personas_sampled": 3
+      }
+    },
+    "dc_sbm": {
+      "kwargs": {
+        "persona_method": "dc_sbm",
+        "louvain_weight_transform": "raw",
+        "dc_sbm_warmstart_resolution": 2.0,
+        "dc_sbm_min_internal_fraction": 0.0,
+        "dc_sbm_max_passes": 12
+      },
+      "fit_seconds": 1115.8565062501002,
+      "metrics": {
+        "ndcg_at_k": 0.02495247512016173,
+        "recall_at_k": 0.024532431221021483,
+        "mrr": 0.055249206349206346,
+        "hit_rate": 0.134,
+        "coverage": 0.014148626076703894
+      },
+      "latency": {
+        "p50_ms": 1.1301874765194952,
+        "p95_ms": 3.2178124587517187,
+        "p99_ms": 5.097284936346111
+      },
+      "n_personas": 7,
+      "persona_method_used": "dc_sbm",
+      "coherence": {
+        "mean": 0.1140123150323938,
+        "median": 0.11809841000498048,
+        "p25": 0.08275474480007385,
+        "p75": 0.12817580356393965,
+        "min": 0.06816885440005023,
+        "max": 0.1899578440936989,
+        "n_personas_kept": 4,
+        "filter_threshold": 0.11809841000498048,
+        "filter_percentile": 0.5
+      },
+      "persona_vs_cooc_diff": {
+        "mean_jaccard_at_k": 0.7255196872843932,
+        "mean_kendall_tau": 0.7081481481481482,
+        "mean_rank_shift_unique": 20.02126984126984,
+        "fraction_identical": 0.25,
+        "n_users_sampled": 120,
+        "n_personas_sampled": 4
+      }
+    }
+  },
+  "timestamp": "2026-05-09T13:20:13"
+}

@@ -1,0 +1,29 @@
+{
+  "loader": "movielens-1m",
+  "n_users": 500,
+  "k": 10,
+  "fit_seconds": 10.810720875044353,
+  "retrieval_budget": 500,
+  "pop_floor": {
+    "ndcg_at_k": 0.24922965388076176,
+    "recall_at_k": 0.041524685200341624,
+    "mrr": 0.421631746031746,
+    "hit_rate": 0.666
+  },
+  "current_cooc": {
+    "ndcg_at_k": 0.2560655050162427,
+    "recall_at_k": 0.044237433402905466,
+    "mrr": 0.4199222222222222,
+    "hit_rate": 0.682
+  },
+  "oracle_pool": {
+    "ndcg_at_k": 0.8845008870199574,
+    "recall_at_k": 0.2938881998315851,
+    "mrr": 0.97,
+    "hit_rate": 0.97
+  },
+  "pool_recall_mean": 0.5596612578646512,
+  "pool_recall_median": 0.5555555555555556,
+  "pool_size_mean": 500.0,
+  "timestamp": "2026-06-10T20:38:41"
+}

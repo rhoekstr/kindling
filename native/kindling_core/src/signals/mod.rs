@@ -14,6 +14,7 @@ pub mod als;
 pub mod cooccurrence;
 pub mod cosine;
 pub mod directional_cooc;
+pub mod ease;
 pub mod graph_mf;
 pub mod interaction_network;
 pub mod lightgcn;
@@ -28,6 +29,7 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     cooccurrence::register(m)?;
     cosine::register(m)?;
     directional_cooc::register(m)?;
+    ease::register(m)?;
     graph_mf::register(m)?;
     interaction_network::register(m)?;
     lightgcn::register(m)?;
