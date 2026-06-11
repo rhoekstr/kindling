@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "n_sample": 200,
+  "n_keyworded_total": 3363,
+  "knn_k": 10,
+  "separation_d": 0.46954546135291947,
+  "neighbor_pair_mean_sim": 0.071524850553863,
+  "random_pair_mean_sim": 0.033259073402179096,
+  "substitution_p_at_k": 0.14950000000000002,
+  "substitution_chance": 0.05025125628140704,
+  "vocab_unique": 527,
+  "keywords_per_item_mean": 7.65,
+  "modal_keyword_share": 0.31,
+  "gates": {
+    "separation": false,
+    "non_degenerate": true,
+    "substitution": true
+  },
+  "verdict": "SKIP",
+  "timestamp": "2026-06-11T13:05:53",
+  "loader": "movielens-1m"
+}
