@@ -1432,11 +1432,26 @@ class EngineV2:
             profile["n_personas"] = int(n_personas_actual)
             profile["persona_method"] = persona_method
 
-        # ── Boost layers. Each gets its own cooc-shaped adjacency.
+        # ── Boost layers. Each gets its own cooc-shaped adjacency —
+        # i.e., a full DUPLICATE of the item-item CSR. On very large
+        # catalogs that duplication is multi-GB for layers that have
+        # never shown lift beyond the fused channels; gate them off.
+        # (24GB machine + 360k-item amazon-book: base cooc + temporal
+        # cooc + session structures together exceed physical RAM.)
+        boost_layers_size_ok = n_items <= 100_000
+        if not boost_layers_size_ok:
+            profile["boost_layers_skipped"] = (
+                f"catalog too large ({n_items} items > 100k): "
+                "duplicate adjacency builds gated off"
+            )
         boost_adj: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
         # temporal_cooccurrence is just cooc with hybrid_temporal kernel — only
         # built when timestamps present and not rating-burst.
-        if "temporal_cooccurrence" in plan["enabled_boost_layers"] and timestamps_col is not None:
+        if (
+            boost_layers_size_ok
+            and "temporal_cooccurrence" in plan["enabled_boost_layers"]
+            and timestamps_col is not None
+        ):
             td, ti, tp = kindling_core.build_cooccurrence(
                 user_idx, item_idx, weights,
                 n_users=n_users, n_items=n_items,
@@ -1451,7 +1466,11 @@ class EngineV2:
                 np.asarray(tp, dtype=np.int32),
             )
         # session_cooccurrence is built on session_id → item bipartite.
-        if "session_cooccurrence" in plan["enabled_boost_layers"] and "session_id" in interactions.columns:
+        if (
+            boost_layers_size_ok
+            and "session_cooccurrence" in plan["enabled_boost_layers"]
+            and "session_id" in interactions.columns
+        ):
             session_ids = pd.Index(interactions["session_id"].unique())
             session_to_idx = {s: i for i, s in enumerate(session_ids)}
             session_idx = (
