@@ -166,6 +166,7 @@ diagnostic before believing any architectural conclusion.
 | ml1m | **0.2931** | 0.4735 | 0.0612 | 0.756 | rating-weighted EASE |
 | amazon-beauty (λ=250) | **0.0343** | 0.0441 | 0.0463 | 0.098 | + user_cf channel |
 | steam (realistic tier) | **0.0660** | — | — | — | open-catalog, cold_slots=1, recency prior |
+| amazon-book-chrono | **0.0315** | 0.0426 | 0.0430 | 0.080 | +24.5% NDCG over academic split — timestamps activate trend/transitions; fit 27min/17.4GB peak (boost layers size-gated) |
 | amazon-book† | 0.0253 | 0.0563 | 0.0246 | 0.140 | academic split; channels no-op |
 
 † amazon-book (plain) is the LightGCN *academic* split locally: no
@@ -372,9 +373,11 @@ src/kindling/
 
 ## 7. Open fronts
 
-1. **amazon-book-chrono benchmark** — loader shipped, parse cached;
-   the benchmark run (600k users, 360k items — the largest cooc-path
-   fit) is pending. Boost layers auto-gate off at this scale.
+1. **amazon-book cold surface** — book-chrono's segment slice shows
+   31% of held-out items are train-cold (418 complete zeros), all
+   unrecoverable today because the loader ships no item metadata. The
+   2014 `meta_Books.json.gz` would unlock cold slots there — the
+   largest measured cold opportunity in the library.
 2. **Remaining oracle headroom** — ml1m oracle on the same pool is 0.88
    vs 0.2931 current. Closing more of it likely requires real sequence
    modeling (out of scope today) or richer user-state features.
