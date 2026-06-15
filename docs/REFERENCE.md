@@ -206,6 +206,19 @@ Dacrema et al. (2019) "tuned shallow baselines rival GNNs" result,
 reproduced on our own engine. Blocked/low-rank EASE at 91k (open front
 §7.4) would likely close the remaining gap.
 
+**Why our own LightGCN never matched the published 0.0411** (a question
+worth settling, not hand-waving): it's *undertrained, not broken*. The
+hand-rolled Rust LightGCN climbs monotonically with epochs and shows no
+plateau — d32/L2 gives Recall@20 0.0065 @30ep → 0.0086 @90ep (+32% for
+3× training); d64/L3 gives 0.0063 @50ep. It's on the early, slow part of
+LightGCN's known amazon-book curve (≈1000 epochs to converge). The
+blocker is purely compute: ~36s/epoch on CPU ⇒ ~10h to converge, with no
+GPU and an environment that kills >30-min jobs — so it was only ever
+measured lightly trained. The cooc base reaching 0.0369 in 86s is ~400×
+less compute for ~90% of the converged-GNN quality, which is the entire
+point. Harness: `bench/run_lightgcn_academic.py` (epoch sweep; config
+overridable via `LGCN_DIM`/`LGCN_LAYERS`/`LGCN_BATCH`/`LGCN_LR`).
+
 Progression on ml1m: 0.2561 (raw cooc) → ~0.269 (EASE) → 0.2841
 (+trend) → 0.2879 (+last-item) → 0.2931 (rating-weighted EASE).
 Beauty: 0.0290 → 0.0306 (+EASE+trend) → 0.0315 (+transitions) →
