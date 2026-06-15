@@ -381,6 +381,11 @@ class EngineV2:
         # the engine can only ever re-rank its training history (steam:
         # 13% of test events were structurally unreachable).
         open_catalog: bool = True,
+        # Hard cap on metadata-only catalog extension items. None = auto
+        # (memory-aware: spend the RAM headroom under 80% of physical
+        # memory, after reserving the estimated interaction-fit peak).
+        # Set an int to pin it regardless of RAM.
+        open_catalog_max_extension: int | None = None,
         # Reserved cold slots per recommendation list. 0 = pure-accuracy
         # ranking (default). 1 recommended for serving deployments that
         # value new-item discoverability: the last slot goes to the best
@@ -569,6 +574,7 @@ class EngineV2:
             )
         self.content_warmth_threshold = content_warmth_threshold
         self.open_catalog = bool(open_catalog)
+        self.open_catalog_max_extension = open_catalog_max_extension
         if cold_slots < 0:
             raise ValueError(f"cold_slots must be >= 0; got {cold_slots!r}")
         self.cold_slots = int(cold_slots)
@@ -838,6 +844,49 @@ class EngineV2:
         }
         return best
 
+    # Interaction-fit peak model: bytes ≈ A·n_obs + B·n_train_items,
+    # calibrated to the two largest fits measured (steam 14k items / 7M
+    # obs ≈ 3.4 GB; book-chrono 357k items / 8M obs ≈ 17.4 GB). The
+    # per-item term dominates because the cooc CSR + its build hashmap
+    # scale with the train catalog, not interaction count.
+    _PEAK_BYTES_PER_OBS = 400
+    _PEAK_BYTES_PER_TRAIN_ITEM = 39_800
+    # Each extension item costs catalog-vector slots (allocated per
+    # recommend over n_items_ext) + a retained metadata row. Generous;
+    # tuned so the book OOM (357k train + 200k ext) caps to a safe size.
+    _EXTENSION_BYTES_PER_ITEM = 30_000
+
+    def _open_catalog_extension_cap(self, n_obs: int, n_train_items: int) -> int:
+        """Max metadata-only extension items that fit under the RAM budget.
+
+        Reserves the estimated interaction-fit peak, then spends the
+        remaining headroom (under 80% of physical RAM) on the extension.
+        Returns 0 when the interaction fit alone already exceeds budget —
+        the engine then runs catalog-only rather than risking an OOM.
+        """
+        if self.open_catalog_max_extension is not None:
+            return max(0, int(self.open_catalog_max_extension))
+        try:
+            import psutil
+            total = psutil.virtual_memory().total
+        except Exception:
+            total = 8 * 1024**3  # conservative fallback when psutil absent
+        # Budget against 80% of PHYSICAL RAM, not currently-available:
+        # macOS swap absorbed the 17.4 GB catalog-only book fit even with
+        # ~11 GB free, so the jetsam wall sits near physical, not avail.
+        # 0.80×24 GB ≈ 20.6 GB lands between the 17.4 GB that survived and
+        # the ~23 GB (357k+200k ext) that died. The interaction fit is
+        # still ahead of this call → reserve its estimated peak first.
+        ceiling = 0.80 * total
+        interaction_peak = (
+            self._PEAK_BYTES_PER_OBS * n_obs
+            + self._PEAK_BYTES_PER_TRAIN_ITEM * n_train_items
+        )
+        headroom = ceiling - interaction_peak
+        if headroom <= 0:
+            return 0
+        return int(headroom / self._EXTENSION_BYTES_PER_ITEM)
+
     def fit(
         self,
         interactions: pd.DataFrame,
@@ -885,11 +934,35 @@ class EngineV2:
             extra = pd.Index(
                 item_metadata["item_id"].dropna().unique()
             ).difference(item_ids)
-            if len(extra):
+            # Memory-aware cap. Extension items cost catalog-length-vector
+            # slots + retained metadata rows but add NOTHING to the cooc
+            # CSR (interaction structures live in [0, n_items); cooc uses
+            # n_items, not n_items_ext). The fit's memory peak is driven by
+            # the interaction fit, which an uncapped extension can tip over
+            # (book: 357k train + naive 200k extension OOM'd a 24GB box).
+            # Estimate the interaction peak from a two-term model
+            # calibrated to the steam (14k items / 7M obs ≈ 3.4GB) and
+            # book-chrono (357k items / 8M obs ≈ 17.4GB) fits, then spend
+            # only the headroom under 80% of physical RAM on the extension.
+            n_keep = len(extra)
+            if n_keep:
+                cap = self._open_catalog_extension_cap(
+                    n_obs=len(user_idx), n_train_items=n_items
+                )
+                if n_keep > cap:
+                    profile["open_catalog_extension_capped"] = {
+                        "requested": int(n_keep), "kept": int(cap),
+                    }
+                    # Keep the first `cap` in metadata order — callers sort
+                    # metadata by importance (the book loader by salesRank).
+                    extra = extra[:cap]
+                    n_keep = cap
+            if n_keep:
                 item_ids = item_ids.append(pd.Index(extra))
                 for j, it in enumerate(extra):
                     item_to_idx[it] = n_items + j
                 n_items_ext = len(item_ids)
+            profile["n_extension_items"] = int(n_items_ext - n_items)
         timestamps_col = (
             interactions["timestamp"].to_numpy(dtype=np.float64)
             if "timestamp" in interactions.columns

@@ -22,13 +22,21 @@ eval_set = _build_eval_set(train, test, max_users=500, seed=0)
 tr_counts = train.groupby("item_id").size()
 log(f"eval set: {len(eval_set)} users")
 
+has_meta = split.items is not None
+if has_meta:
+    log(f"metadata: {len(split.items):,} items "
+        f"(catalog + salesRank-capped extension)")
 t0 = time.perf_counter()
-e = EngineV2(persona_min_users=10_000_000, retrieval_budget=500, random_state=0)
-e.fit(train)
+e = EngineV2(
+    persona_min_users=10_000_000, retrieval_budget=500, random_state=0,
+    cold_slots=1 if has_meta else 0,
+)
+e.fit(train, item_metadata=split.items)
 st = e._state
 p = st.profile
 log(f"fit {time.perf_counter()-t0:.0f}s  base={p.get('base_scorer_used')}  "
     f"trans={p.get('transition_channel_active')}  "
+    f"n_items={st.n_items:,} (extension {p.get('n_extension_items', 0):,})  "
     f"boost_skip={p.get('boost_layers_skipped', 'no')}")
 
 per = []
