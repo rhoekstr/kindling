@@ -1116,9 +1116,14 @@ class EngineV2:
         # ── Content channel (metadata-gated, opt-in). Generic schema-
         # inferring feature extraction; contribution is cold-gated per
         # item at blend time so warm ranking is never diluted.
+        # Built whenever EITHER the warm blend (content_alpha>0) OR the
+        # reserved cold slots (cold_slots>0) need it — cold slots rank
+        # their candidates by content similarity, so `cold_slots=1` with
+        # `content_alpha=0` must still build features (else the slot has
+        # no signal and silently no-ops).
         content_features = None
         content_coldness: np.ndarray | None = None
-        if self.content_alpha > 0.0 and item_metadata is not None:
+        if (self.content_alpha > 0.0 or self.cold_slots > 0) and item_metadata is not None:
             from kindling.item_features import ItemFeatureExtractor
 
             content_features = ItemFeatureExtractor().fit_transform(
