@@ -166,17 +166,45 @@ diagnostic before believing any architectural conclusion.
 | ml1m | **0.2931** | 0.4735 | 0.0612 | 0.756 | rating-weighted EASE |
 | amazon-beauty (λ=250) | **0.0343** | 0.0441 | 0.0463 | 0.098 | + user_cf channel |
 | steam (realistic tier) | **0.0660** | — | — | — | open-catalog, cold_slots=1, recency prior |
-| amazon-book-chrono | **0.0315** | 0.0426 | 0.0430 | 0.080 | +24.5% NDCG over academic split — timestamps activate trend/transitions; fit 27min/17.4GB peak (boost layers size-gated) |
+| amazon-book-chrono | **0.0318** | 0.0426 | 0.0443 | 0.080 | +24.5% NDCG over academic split — timestamps activate trend/transitions; cold_slots=1 + meta_Books; fit ~27min/17.9GB peak (extension auto-capped 200k→107k) |
 | amazon-book† | 0.0253 | 0.0563 | 0.0246 | 0.140 | academic split; channels no-op |
 
-† amazon-book (plain) is the LightGCN *academic* split locally: no
-timestamps, non-chronological, 91k items (above the EASE gate) — a
-different protocol family. Use `amazon-book-chrono` for the
-chronological version.
+† amazon-book (plain) now loads the McAuley 5-core JSONL if present
+(596k users / 357k items, random split). The LightGCN *academic*
+split (52k/91k, `train.txt`/`test.txt`) coexists in the cache; load it
+explicitly via `_load_academic_split` (see `bench/run_book_academic.py`)
+for the published-baseline comparison below.
 
 Steam segment slice (the realistic-tier scoreboard): warm-20+ recovery
 11.0%, cold-0 recovery 0% → **8.5%** via cold slots + content +
 release-recency — items the interaction stack cannot score at all.
+
+amazon-book-chrono cold slice: cold-0 recovery 0% → **0.5%** (2/418).
+Coverage-limited, not mechanism-limited: only 26% of warmth-0 held-out
+items are in the salesRank-top-107k extension (30% in metadata at all),
+and one reserved slot competes against a 106k-item cold pool. Book's
+unseen demand is long-tail-by-salesRank; steam (better coverage) is the
+mechanism's real showcase.
+
+### 3.4 vs published baselines — LightGCN academic amazon-book
+
+The most-cited RecSys benchmark (LightGCN-PyTorch split: 52,643 users /
+91,599 items / 2.38M train), full-catalog ranking, k=20, 5000 eval
+users. kindling runs its **weakest** config here — cooc base (91k >
+EASE gate), no trend/transitions (timestamp-less split):
+
+| model | Recall@20 | NDCG@20 |
+|---|---:|---:|
+| NGCF (graph NN) | 0.0344 | 0.0263 |
+| **kindling (cooc base)** | **0.0369** | **0.0285** |
+| Mult-VAE | 0.0407 | 0.0315 |
+| LightGCN (graph NN) | 0.0411 | 0.0315 |
+
+The stripped-down cooc base **beats NGCF** and reaches **~90% of
+LightGCN/Mult-VAE** with an 86-second CPU fit and zero training — the
+Dacrema et al. (2019) "tuned shallow baselines rival GNNs" result,
+reproduced on our own engine. Blocked/low-rank EASE at 91k (open front
+§7.4) would likely close the remaining gap.
 
 Progression on ml1m: 0.2561 (raw cooc) → ~0.269 (EASE) → 0.2841
 (+trend) → 0.2879 (+last-item) → 0.2931 (rating-weighted EASE).
@@ -326,6 +354,20 @@ exponential). Steam: cold-0 recovery 0% → 6.0% (content) → **8.5%**
 One slot of guaranteed cold exposure also mirrors how real systems
 bootstrap new-item feedback loops.
 
+Two operational lessons from the book run (each a real bug, each fixed):
+- **`cold_slots>0` needs content features even when `content_alpha=0`** —
+  the cold-slot ranker scores candidates by content similarity, so
+  feature-building is gated on `content_alpha>0 OR cold_slots>0`. The
+  earlier coupling made `cold_slots=1` a silent no-op (recovered 0/418).
+- **The open-catalog extension is memory-capped** (`_open_catalog_extension_cap`):
+  a naive 200k salesRank extension OOM'd a 24GB box (357k train +
+  200k ext ≈ 23GB). The cap reserves the estimated interaction-fit peak
+  (two-term model A·n_obs + B·n_train_items, calibrated to the steam
+  3.4GB and book 17.4GB fits) and spends only the headroom under 80% of
+  PHYSICAL RAM (swap absorbs the rest — `available` would mislead).
+  Book auto-caps 200k→107k (~18GB peak); small datasets unconstrained.
+  `open_catalog_max_extension` pins it explicitly.
+
 ## 5. Engine knobs (the ones that matter)
 
 | knob | default | touch when |
@@ -341,6 +383,7 @@ bootstrap new-item feedback loops.
 | `open_catalog` | True | metadata-only items become candidates |
 | `cold_slots` | 0 | reserve N of top-K for cold items (set 1 on churning catalogs) |
 | `cold_recency_beta` | 2.0 | release-recency prior in cold-slot ranking; 0 disables |
+| `open_catalog_max_extension` | None (RAM-auto) | pin the metadata-only extension size; auto caps it under 80% physical RAM |
 | `retrieval_budget` | 500 | oracle says little headroom from raising it alone |
 | `calibrate_base` | False | diagnostics only — see §4.4 |
 | `persona_*`, `use_als`, `use_graph_mf` | benched/auto | diagnostics; see §4.1–4.3 |
@@ -373,17 +416,20 @@ src/kindling/
 
 ## 7. Open fronts
 
-1. **amazon-book cold surface** — book-chrono's segment slice shows
-   31% of held-out items are train-cold (418 complete zeros), all
-   unrecoverable today because the loader ships no item metadata. The
-   2014 `meta_Books.json.gz` would unlock cold slots there — the
-   largest measured cold opportunity in the library.
+1. **Cold-extension coverage policy** — book cold slots now run (§4.8)
+   but recover only 0.5%: the salesRank-top-107k extension covers just
+   26% of the warmth-0 held-out demand. The bottleneck is the *extension
+   selection* (salesRank ≠ future cold demand), not the cold ranker.
+   A demand-aware or recency-aware extension policy would raise the
+   ceiling; steam (8.5%, better coverage) shows the ranker is sound.
 2. **Remaining oracle headroom** — ml1m oracle on the same pool is 0.88
    vs 0.2931 current. Closing more of it likely requires real sequence
    modeling (out of scope today) or richer user-state features.
 3. **EASE beyond the gate** — blocked/low-rank EASE variants could
-   extend the closed-form base past 20k items; book-scale catalogs are
-   now first-class via the cooc-fused path, so the payoff is real.
+   extend the closed-form base past 20k items. Now concretely motivated:
+   on the 91k-item LightGCN academic split the cooc base hits ~90% of
+   LightGCN (§3.4); EASE there would likely close the gap and is the
+   clearest path to beating the published GNN numbers outright.
 4. **Cold-user serving** — LLM user profiles tie the mean-embedding
    control on warm data (§4.7); their distinctive value (cross-domain
    bootstrap, no-history users) has no protocol yet.
