@@ -926,6 +926,7 @@ class EngineV2:
         # [0, n_items); only catalog-length vectors (trend, content,
         # blend output) span the extension.
         n_items_ext = n_items
+        extension_capped: dict | None = None
         if (
             self.open_catalog
             and item_metadata is not None
@@ -950,9 +951,8 @@ class EngineV2:
                     n_obs=len(user_idx), n_train_items=n_items
                 )
                 if n_keep > cap:
-                    profile["open_catalog_extension_capped"] = {
-                        "requested": int(n_keep), "kept": int(cap),
-                    }
+                    # `profile` doesn't exist yet — stash for write below.
+                    extension_capped = {"requested": int(n_keep), "kept": int(cap)}
                     # Keep the first `cap` in metadata order — callers sort
                     # metadata by importance (the book loader by salesRank).
                     extra = extra[:cap]
@@ -962,7 +962,6 @@ class EngineV2:
                 for j, it in enumerate(extra):
                     item_to_idx[it] = n_items + j
                 n_items_ext = len(item_ids)
-            profile["n_extension_items"] = int(n_items_ext - n_items)
         timestamps_col = (
             interactions["timestamp"].to_numpy(dtype=np.float64)
             if "timestamp" in interactions.columns
@@ -995,6 +994,10 @@ class EngineV2:
         # ── Profile + Plan decisions.
         profile = self._profile(interactions, weights, n_users, n_items)
         plan = self._plan(profile)
+        # Open-catalog bookkeeping (computed above, before `profile` existed).
+        profile["n_extension_items"] = int(n_items_ext - n_items)
+        if extension_capped is not None:
+            profile["open_catalog_extension_capped"] = extension_capped
 
         # ── Base cooc (raw, not popularity-corrected).
         cooc_data, cooc_indices, cooc_indptr = kindling_core.build_cooccurrence(
@@ -1141,11 +1144,15 @@ class EngineV2:
         if (
             self.cold_slots > 0 or self.cold_recency_beta > 0
         ) and item_metadata is not None:
-            ref_end = (
-                pd.to_datetime(float(np.max(timestamps_col)), unit="s")
-                if timestamps_col is not None and len(timestamps_col)
-                else None
-            )
+            # `errors="coerce"` + scalar→Series so an out-of-range epoch
+            # (bad/0/huge timestamp) yields NaT rather than raising.
+            ref_end = None
+            if timestamps_col is not None and len(timestamps_col):
+                _re = pd.to_datetime(
+                    pd.Series([float(np.max(timestamps_col))]),
+                    unit="s", errors="coerce",
+                ).iloc[0]
+                ref_end = None if pd.isna(_re) else _re
             for col_name in item_metadata.columns:
                 if col_name == "item_id":
                     continue
