@@ -47,6 +47,7 @@ import scipy.sparse as sp
 
 from kindling._native import CORE_AVAILABLE, kindling_core
 from kindling.explain import Explanation
+from kindling.graph.cooc_transform import apply_cooc_transform, resolve_cooc_transform
 from kindling.ingest.contract import canonicalize, validate_interactions
 from kindling.ingest.sessions import infer_sessions
 from kindling.path._sessions import sessions_from_interactions
@@ -331,6 +332,14 @@ class EngineV2:
         # the inverse under-regularizes the popular-item rows.
         ease_lambda: float | None = None,
         ease_max_items: int = 20_000,
+        # Weight transform for the cooc base scorer — applies ONLY on the
+        # cooc path (n_items > ease_max_items; <=20k uses EASE and is left
+        # untouched). Raw co-counts row-sum ≈ popularity on large catalogs;
+        # a popularity-normalized weight lifts amazon-book-academic +68%
+        # NDCG@20. "auto" → wilson (book winner + safest vs popular-item
+        # over-suppression). "raw" restores prior behavior. See
+        # graph/cooc_transform.py.
+        cooc_base_transform: str = "auto",
         # Trend signal: z-normalized item popularity within the most
         # recent `trend_window_fraction` of the training time span,
         # blended additively into the (z-normalized) EASE base:
@@ -542,6 +551,8 @@ class EngineV2:
         if ease_max_items < 1:
             raise ValueError(f"ease_max_items must be >= 1; got {ease_max_items!r}")
         self.ease_max_items = ease_max_items
+        resolve_cooc_transform(cooc_base_transform)  # validate at construction
+        self.cooc_base_transform = cooc_base_transform
         if trend_alpha < 0.0:
             raise ValueError(f"trend_alpha must be >= 0; got {trend_alpha!r}")
         self.trend_alpha = trend_alpha
@@ -1072,6 +1083,18 @@ class EngineV2:
             profile["ease_fit_seconds"] = time.perf_counter() - t_ease
             profile["ease_lambda"] = eff_lambda
         profile["base_scorer_used"] = base_scorer_used
+
+        # ── Cooc weight transform (cooc path only; EASE path keeps raw cooc
+        # so the <=20k datasets are byte-for-byte unchanged). Popularity-
+        # normalizes the co-counts so the base stops degenerating toward a
+        # popularity ranker on large catalogs.
+        if base_scorer_used == "cooc" and self.cooc_base_transform != "raw":
+            transform = resolve_cooc_transform(self.cooc_base_transform)
+            item_counts = np.bincount(item_idx, minlength=n_items).astype(np.float64)
+            cooc_data = apply_cooc_transform(
+                cooc_data, cooc_indices, cooc_indptr, item_counts, n_users, transform
+            )
+            profile["cooc_base_transform"] = transform
 
         # ── Trend signal (timestamp-gated). Item interaction counts in
         # the most recent window of the training span, z-normalized

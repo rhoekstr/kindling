@@ -14,6 +14,7 @@ This is timestamp-less, non-chronological — so kindling runs cooc base
 off). It is a pure item-item-CF comparison: how does the kindling cooc
 base stack up against graph-neural and VAE models on their home turf?
 """
+import os
 import time
 
 import numpy as np
@@ -42,9 +43,12 @@ eval_set = _build_eval_set(train, test, max_users=5000, seed=0)
 log(f"eval users: {len(eval_set)}")
 
 t0 = time.perf_counter()
-e = EngineV2(persona_min_users=10**9, retrieval_budget=max(500, K * 25), random_state=0)
+transform = os.environ.get("BOOK_TRANSFORM", "auto")
+e = EngineV2(persona_min_users=10**9, retrieval_budget=max(500, K * 25), random_state=0,
+             cooc_base_transform=transform)
 e.fit(train)
-log(f"fit {time.perf_counter()-t0:.0f}s  base={e._state.profile.get('base_scorer_used')}")
+log(f"fit {time.perf_counter()-t0:.0f}s  base={e._state.profile.get('base_scorer_used')}  "
+    f"transform={e._state.profile.get('cooc_base_transform', 'raw')}")
 
 per = []
 for n, (entity, rel) in enumerate(eval_set.items()):
