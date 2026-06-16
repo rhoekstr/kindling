@@ -1,0 +1,58 @@
+[
+  {
+    "dataset": "steam",
+    "meta_mode": "multihot",
+    "n_items": 14057,
+    "n_features": 13333,
+    "tiers": {
+      "1-2": {
+        "auc": 0.589,
+        "n_anchors": 290
+      },
+      "3-5": {
+        "auc": 0.592,
+        "n_anchors": 400
+      },
+      "6-10": {
+        "auc": 0.596,
+        "n_anchors": 400
+      },
+      "11-20": {
+        "auc": 0.599,
+        "n_anchors": 400
+      },
+      "21-50": {
+        "auc": 0.603,
+        "n_anchors": 400
+      }
+    }
+  },
+  {
+    "dataset": "amazon-book-chrono",
+    "meta_mode": "multihot",
+    "n_items": 357182,
+    "n_features": 6809,
+    "tiers": {
+      "1-2": {
+        "auc": 0.63,
+        "n_anchors": 400
+      },
+      "3-5": {
+        "auc": 0.6,
+        "n_anchors": 400
+      },
+      "6-10": {
+        "auc": 0.602,
+        "n_anchors": 400
+      },
+      "11-20": {
+        "auc": 0.597,
+        "n_anchors": 400
+      },
+      "21-50": {
+        "auc": 0.586,
+        "n_anchors": 400
+      }
+    }
+  }
+]

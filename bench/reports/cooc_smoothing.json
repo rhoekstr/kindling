@@ -1,0 +1,81 @@
+{
+  "protocol": "projection=none, global-chrono test_fraction=0.1, k=10",
+  "aggregations": [
+    "sum"
+  ],
+  "datasets": [
+    {
+      "dataset": "amazon-book-academic",
+      "n_items": 91599,
+      "n_users": 52643,
+      "cooc_edges": 330244254,
+      "rows": [
+        {
+          "smoother": "raw",
+          "agg": "sum",
+          "nnz": 330244254,
+          "build_s": 8.5,
+          "ndcg@10": 0.0286,
+          "recall@10": 0.0371,
+          "coverage": 0.0765,
+          "gini": 0.988,
+          "rec_low_1_4": 0.0,
+          "rec_mid_5_19": 0.0033,
+          "rec_warm_20+": 0.0421
+        },
+        {
+          "smoother": "cosine",
+          "agg": "sum",
+          "nnz": 330244254,
+          "build_s": 13.0,
+          "ndcg@10": 0.0445,
+          "recall@10": 0.055,
+          "coverage": 0.3036,
+          "gini": 0.8719,
+          "rec_low_1_4": 0.0074,
+          "rec_mid_5_19": 0.0253,
+          "rec_warm_20+": 0.0462
+        },
+        {
+          "smoother": "jaccard",
+          "agg": "sum",
+          "nnz": 330244254,
+          "build_s": 14.7,
+          "ndcg@10": 0.0471,
+          "recall@10": 0.0573,
+          "coverage": 0.3181,
+          "gini": 0.8561,
+          "rec_low_1_4": 0.0031,
+          "rec_mid_5_19": 0.0259,
+          "rec_warm_20+": 0.0494
+        },
+        {
+          "smoother": "wilson",
+          "agg": "sum",
+          "nnz": 330244254,
+          "build_s": 23.2,
+          "ndcg@10": 0.0482,
+          "recall@10": 0.0592,
+          "coverage": 0.2517,
+          "gini": 0.9021,
+          "rec_low_1_4": 0.001,
+          "rec_mid_5_19": 0.0197,
+          "rec_warm_20+": 0.0578
+        },
+        {
+          "smoother": "llr",
+          "agg": "sum",
+          "nnz": 330016878,
+          "build_s": 45.2,
+          "ndcg@10": 0.0409,
+          "recall@10": 0.0521,
+          "coverage": 0.1496,
+          "gini": 0.9603,
+          "rec_low_1_4": 0.0002,
+          "rec_mid_5_19": 0.0078,
+          "rec_warm_20+": 0.0567
+        }
+      ]
+    }
+  ]
+}

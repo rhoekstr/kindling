@@ -1,0 +1,85 @@
+{
+  "dataset": "movielens-1m",
+  "protocol": "global-chronological test_fraction=0.1, nearest_seen scoring",
+  "k": 10,
+  "n_eval_entities": 1180,
+  "graph": {
+    "n_items": 3678,
+    "nnz": 728057,
+    "connected_components": 1,
+    "k_neighbors": 200
+  },
+  "layout": {
+    "method": "fruchterman_reingold",
+    "iters": 300,
+    "seed": 0
+  },
+  "arms": [
+    {
+      "arm": "popularity",
+      "ndcg@10": 0.2539,
+      "recall@10": 0.0394,
+      "mrr": 0.4166,
+      "hit@10": 0.6712,
+      "coverage": 0.04,
+      "build_s": 0.0,
+      "eval_s": 0.0
+    },
+    {
+      "arm": "graph_knn_B1",
+      "ndcg@10": 0.2516,
+      "recall@10": 0.0395,
+      "mrr": 0.3969,
+      "hit@10": 0.6331,
+      "coverage": 0.0748,
+      "build_s": 0.6,
+      "eval_s": 0.2
+    },
+    {
+      "arm": "fpr_32d_nearest",
+      "ndcg@10": 0.156,
+      "recall@10": 0.0234,
+      "mrr": 0.281,
+      "hit@10": 0.5763,
+      "coverage": 0.1417,
+      "build_s": 30.7,
+      "eval_s": 3.1
+    },
+    {
+      "arm": "fpr_64d_nearest",
+      "ndcg@10": 0.1579,
+      "recall@10": 0.0227,
+      "mrr": 0.2874,
+      "hit@10": 0.5754,
+      "coverage": 0.1422,
+      "build_s": 31.6,
+      "eval_s": 3.2
+    },
+    {
+      "arm": "fpr_128d_nearest",
+      "ndcg@10": 0.1566,
+      "recall@10": 0.0224,
+      "mrr": 0.2841,
+      "hit@10": 0.572,
+      "coverage": 0.1422,
+      "build_s": 33.4,
+      "eval_s": 3.5
+    },
+    {
+      "arm": "fpr_128d_centroid",
+      "ndcg@10": 0.217,
+      "recall@10": 0.0316,
+      "mrr": 0.3463,
+      "hit@10": 0.5992,
+      "coverage": 0.1637,
+      "build_s": 33.4,
+      "eval_s": 0.7
+    }
+  ],
+  "verdict": {
+    "b1_ndcg": 0.2516,
+    "fpr_ndcg": 0.1566,
+    "ratio": 0.622,
+    "decision": "DEAD: FPR at 0.62x B1 \u2014 force projection loses on top-K accuracy."
+  }
+}
