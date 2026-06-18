@@ -1,0 +1,1200 @@
+{"item_id": 1, "keywords": ["animation", "children's", "comedy"]}
+{"item_id": 2, "keywords": ["adventure", "children's", "fantasy"]}
+{"item_id": 3, "keywords": ["comedy", "romance"]}
+{"item_id": 5, "keywords": ["comedy"]}
+{"item_id": 6, "keywords": ["action", "crime", "thriller"]}
+{"item_id": 7, "keywords": ["comedy", "romance"]}
+{"item_id": 10, "keywords": ["action", "adventure", "thriller"]}
+{"item_id": 11, "keywords": ["comedy", "drama", "romance"]}
+{"item_id": 16, "keywords": ["drama", "thriller"]}
+{"item_id": 17, "keywords": ["drama", "romance"]}
+{"item_id": 19, "keywords": ["comedy"]}
+{"item_id": 21, "keywords": ["action", "comedy", "drama"]}
+{"item_id": 22, "keywords": ["crime", "thriller", "mystery", "suspense", "police procedural", "forensic", "detective", "lawyer", "corruption"]}
+{"item_id": 24, "keywords": ["sci-fi", "space", "future", "alien", "robot", "hacker", "cyberpunk", "post-apocalyptic", "hacker"]}
+{"item_id": 25, "keywords": ["romance", "love", "betrayal", "revenge", "betrayal", "revenge", "betrayal", "revenge", "revenge"]}
+{"item_id": 29, "keywords": ["sci-fi", "space", "time-travel", "alien", "hacker", "post-apocalyptic", "hacker", "hacker", "hacker"]}
+{"item_id": 32, "keywords": ["sci-fi", "time-travel", "alien", "hacker", "post-apocalyptic", "hacker", "hacker", "hacker", "hacker"]}
+{"item_id": 34, "keywords": ["children", "comedy", "family", "heartwarming", "humor", "adventure", "friendship"]}
+{"item_id": 36, "keywords": ["drama", "coming-of-age", "coming-of-age", "coming-of-age", "coming-of-age", "coming-of-age", "coming-of-age", "coming-of-age", "coming-of-age"]}
+{"item_id": 39, "keywords": ["comedy", "romance", "coming-of-age", "coming-of-age", "coming-of-age", "coming-of-age", "coming-of-age", "coming-of-age"]}
+{"item_id": 44, "keywords": ["action", "horror", "suspense", "killer", "slasher", "horror", "horror", "horror", "horror"]}
+{"item_id": 45, "keywords": ["comedy", "drama", "coming-of-age", "coming-of-age", "coming-of-age", "coming-of-age", "coming-of-age", "coming-of-age"]}
+{"item_id": 47, "keywords": ["crime", "thriller", "mystery", "suspense", "police procedural", "detective", "lawyer", "corruption"]}
+{"item_id": 48, "keywords": ["animation", "children", "family", "heartwarming", "humor", "adventure", "friendship"]}
+{"item_id": 50, "keywords": ["crime", "thriller", "mystery", "suspense", "law", "detective", "crime", "usa", "1995"]}
+{"item_id": 52, "keywords": ["comedy", "romance", "humor", "satire", "satire", "humor", "1995"]}
+{"item_id": 58, "keywords": ["drama", "romance", "love", "emotional", "heartfelt", "romance", "1994"]}
+{"item_id": 60, "keywords": ["adventure", "fantasy", "imagination", "child", "magic", "fantasy", "1995"]}
+{"item_id": 62, "keywords": ["drama", "music", "emotional", "biography", "education", "harmony", "1995"]}
+{"item_id": 69, "keywords": ["comedy", "action", "suspense", "humor", "adventure", "1995"]}
+{"item_id": 70, "keywords": ["action", "horror", "comedy", "suspense", "dark", "thriller", "1996"]}
+{"item_id": 95, "keywords": ["action", "thriller", "suspense", "adventure", "danger", "1996"]}
+{"item_id": 104, "keywords": ["comedy", "humor", "satire", "humor", "1996"]}
+{"item_id": 105, "keywords": ["drama", "romance", "love", "emotional", "heartfelt", "1995"]}
+{"item_id": 110, "keywords": ["action", "war", "history", "emotional", "battle", "1995"]}
+{"item_id": 111, "keywords": ["drama", "thriller", "suspense", "dark", "night", "1996"]}
+{"item_id": 112, "keywords": ["action", "adventure", "crime", "1995", "gangster", "urban", "violent", "gangster-flick"]}
+{"item_id": 125, "keywords": ["comedy", "romantic", "dramedy", "1996", "blending", "humor", "light-hearted", "entertainment"]}
+{"item_id": 141, "keywords": ["comedy", "satirical", "1996", "absurd", "humor", "ironic", "satire", "dark comedy"]}
+{"item_id": 144, "keywords": ["comedy", "slapstick", "1995", "humor", "absurd", "silly", "humor-flick"]}
+{"item_id": 145, "keywords": ["action", "suspense", "1995", "gangster-flick", "violent", "gangster-flick", "gangster-flick"]}
+{"item_id": 150, "keywords": ["drama", "sci-fi", "1995", "space-travel", "thriller", "1995", "space-triller"]}
+{"item_id": 151, "keywords": ["war", "romance", "1995", "historical", "war-romance", "1995", "war-drama"]}
+{"item_id": 153, "keywords": ["action", "comedy", "1995", "superhero-flick", "gangster-flick", "gangster-flick", "gangster-flick"]}
+{"item_id": 158, "keywords": ["adventure", "children", "1995", "family-flick", "animated", "1995", "family-adventure"]}
+{"item_id": 160, "keywords": ["action", "suspense", "1995", "sci-fi-flick", "space-triller", "1995", "sci-fi-flick"]}
+{"item_id": 161, "keywords": ["war", "thriller", "1995", "historical", "war-drama", "1995", "war-flick"]}
+{"item_id": 162, "keywords": ["documentary", "1994", "experimental", "1994", "avant-garde", "1994", "non-traditional"]}
+{"item_id": 163, "keywords": ["action", "romance", "thriller", "1995", "desperado", "western", "spaghetti western", "gunfighter"]}
+{"item_id": 164, "keywords": ["crime", "film-noir", "mystery", "thriller", "1995", "detective", "suspense", "murder", "mystery"]}
+{"item_id": 165, "keywords": ["action", "thriller", "1995", "sequel", "die hard", "heist", "rescue", "vengeance", "action packed"]}
+{"item_id": 168, "keywords": ["action", "adventure", "drama", "romance", "1995", "knight", "sword fighting", "epic", "medieval"]}
+{"item_id": 170, "keywords": ["action", "crime", "thriller", "1995", "hacker", "computer", "cyber", "sci-fi"]}
+{"item_id": 172, "keywords": ["action", "sci-fi", "thriller", "1995", "hacker", "space", "future", "cyberpunk", "hacker survival"]}
+{"item_id": 173, "keywords": ["action", "sci-fi", "thriller", "1995", "judge dredd", "mutant cop", "city cop", "mutant cop survival"]}
+{"item_id": 180, "keywords": ["comedy", "1995", "teen", "slapstick", "humor", "satire", "teen comedy", "coming of age comedy"]}
+{"item_id": 185, "keywords": ["sci-fi", "thriller", "1995", "internet", "hacker", "digital", "surveillance", "hacker thriller", "techno thriller"]}
+{"item_id": 196, "keywords": ["horror", "sci-fi", "1995", "alien", "mutant", "post-apocalyptic", "horror survival", "horror dark future"]}
+{"item_id": 198, "keywords": ["action", "crime", "sci-fi", "1995", "time travel", "surveillance", "hacker thriller", "techno thriller"]}
+{"item_id": 208, "keywords": ["action", "adventure", "1995", "mutant", "post-apocalyptic", "survival", "desert", "underwater"]}
+{"item_id": 216, "keywords": ["comedy", "1995", "teen", "romance", "high school", "slapstick", "blending", "sequel", "reboot"]}
+{"item_id": 222, "keywords": ["drama", "1995", "coming-of-age", "friendship", "romance", "coming-of-age", "coming-of-age", "coming-of-age"]}
+{"item_id": 223, "keywords": ["comedy", "1994", "office", "slapstick", "blending", "sequel", "reboot"]}
+{"item_id": 224, "keywords": ["comedy", "1995", "romance", "coming-of-age", "blending", "sequel", "reboot"]}
+{"item_id": 230, "keywords": ["drama", "1994", "thriller", "mystery", "suspense", "coming-of-age", "coming-of-age"]}
+{"item_id": 231, "keywords": ["comedy", "1994", "slapstick", "blending", "sequel", "reboot"]}
+{"item_id": 232, "keywords": ["comedy", "1994", "drama", "blending", "sequel", "reboot"]}
+{"item_id": 235, "keywords": ["comedy", "1994", "blending", "sequel", "reboot"]}
+{"item_id": 236, "keywords": ["comedy", "1995", "romance", "blending", "sequel", "reboot"]}
+{"item_id": 237, "keywords": ["comedy", "1995", "romance", "blending", "sequel", "reboot"]}
+{"item_id": 246, "keywords": ["documentary", "1994", "basketball", "coming-of-age", "reality", "coming-of-age"]}
+{"item_id": 247, "keywords": ["drama", "1994", "fantasy", "romance", "suspense", "coming-of-age", "coming-of-age"]}
+{"item_id": 249, "keywords": ["music", "letter", "love", "19th century", "british", "romantic", "biography"]}
+{"item_id": 252, "keywords": ["humor", "love", "education", "19th century", "romantic", "comedy", "school"]}
+{"item_id": 253, "keywords": ["vampires", "19th century", "romance", "war", "blood", "dark"]}
+{"item_id": 260, "keywords": ["space", "military", "sci-fi", "adventure", "young", "heroes"]}
+{"item_id": 261, "keywords": ["family", "coming of age", "19th century", "romance", "drama"]}
+{"item_id": 265, "keywords": ["war", "western", "romance", "19th century", "king", "love"]}
+{"item_id": 266, "keywords": []}
+{"item_id": 272, "keywords": ["king", "madness", "19th century", "drama", "royalty"]}
+{"item_id": 288, "keywords": ["killers", "action", "thriller", "horror", "nature", "violence"]}
+{"item_id": 292, "keywords": ["outbreak", "action", "thriller", "horror", "nature", "humanity"]}
+{"item_id": 293, "keywords": ["protection", "action", "romance", "crime", "19th century"]}
+{"item_id": 296, "keywords": ["crime", "drama", "romance", "western", "1990s"]}
+{"item_id": 300, "keywords": ["quiz", "game", "entertainment", "1990s", "drama", "reality", "competition", "education"]}
+{"item_id": 303, "keywords": ["action", "western", "western", "adventure", "1990s", "western", "movie", "western"]}
+{"item_id": 306, "keywords": ["drama", "romance", "1990s", "color", "emotional", "art", "painting", "red"]}
+{"item_id": 314, "keywords": ["drama", "suspense", "1990s", "mystery", "ireland", "family", "secrets"]}
+{"item_id": 316, "keywords": ["sci-fi", "space", "1990s", "military", "adventure", "fiction", "fictional characters"]}
+{"item_id": 317, "keywords": ["children", "holiday", "1990s", "comedy", "magic", "christmas", "family"]}
+{"item_id": 318, "keywords": ["drama", "prison", "1990s", "redemption", "hope", "friendship", "imprisonment"]}
+{"item_id": 319, "keywords": ["thriller", "crime", "1990s", "murder", "darkness", "suspense", "london"]}
+{"item_id": 327, "keywords": ["action", "comedy", "music", "1990s", "space", "mutiny", "mutant", "space rock"]}
+{"item_id": 329, "keywords": ["sci-fi", "space", "1990s", "family", "time travel", "generations", "space station"]}
+{"item_id": 333, "keywords": ["comedy", "1990s", "teen", "irony", "satire", "fashion", "hip hop"]}
+{"item_id": 337, "keywords": ["drama", "coming of age", "1990s", "family", "happiness", "sadness", "happiness"]}
+{"item_id": 339, "keywords": ["comedy", "romance", "1990s", "light-hearted", "love", "musical", "romantic comedy", "happy ending"]}
+{"item_id": 342, "keywords": ["comedy", "romance", "1990s", "light-hearted", "love", "romantic comedy", "happy ending"]}
+{"item_id": 344, "keywords": ["comedy", "animal comedy", "1990s", "humor", "whimsical", "slapstick", "entertaining", "light-hearted"]}
+{"item_id": 345, "keywords": ["comedy", "drama", "1990s", "humor", "whimsical", "fantasy", "adventure", "light-hearted"]}
+{"item_id": 348, "keywords": ["comedy", "musical", "1990s", "humor", "slapstick", "entertaining", "light-hearted", "musical numbers"]}
+{"item_id": 349, "keywords": ["action", "thriller", "1990s", "suspense", "adventure", "emotional", "dark comedy", "high stakes"]}
+{"item_id": 350, "keywords": ["drama", "mystery", "thriller", "1990s", "suspense", "dark", "puzzle", "emotional"]}
+{"item_id": 351, "keywords": ["comedy", "drama", "1990s", "humor", "whimsical", "romantic", "adventure", "light-hearted"]}
+{"item_id": 353, "keywords": ["action", "romance", "1990s", "suspense", "adventure", "emotional", "dark comedy", "high stakes"]}
+{"item_id": 355, "keywords": ["children's", "comedy", "1990s", "whimsical", "family", "entertaining", "light-hearted"]}
+{"item_id": 356, "keywords": ["comedy", "war", "1990s", "humor", "heartwarming", "family", "entertaining"]}
+{"item_id": 357, "keywords": ["comedy", "romance", "1990s", "heartwarming", "family", "entertaining", "light-hearted"]}
+{"item_id": 361, "keywords": ["drama", "romance", "1990s", "movie", "emotional", "story-driven", "character-driven", "heartwarming"]}
+{"item_id": 364, "keywords": ["animation", "children", "musical", "1990s", "family", "colorful", "adventure", "imaginative"]}
+{"item_id": 366, "keywords": ["horror", "1990s", "suspense", "supernatural", "fear", "dark", "mysterious"]}
+{"item_id": 367, "keywords": ["comedy", "1990s", "whimsical", "light-hearted", "humor", "fantasy", "impossible"]}
+{"item_id": 368, "keywords": ["action", "1990s", "adventure", "thrilling", "fast-paced", "explosive", "outdoors"]}
+{"item_id": 370, "keywords": ["comedy", "1990s", "suspense", "action", "romantic", "fast-paced", "high-stakes", "humor"]}
+{"item_id": 372, "keywords": []}
+{"item_id": 376, "keywords": []}
+{"item_id": 377, "keywords": []}
+{"item_id": 379, "keywords": ["action", "1990s", "sci-fi", "time-travel", "thrilling", "fast-paced", "high-stakes", "adventure"]}
+{"item_id": 380, "keywords": ["action", "1990s", "comedy", "romance", "adventure", "humor", "family", "suspense"]}
+{"item_id": 382, "keywords": ["horror", "1990s", "supernatural", "fear", "dark", "mysterious", "surreal", "nightmare"]}
+{"item_id": 383, "keywords": ["western", "1990s", "crime", "gunfight", "outlaw", "lawman", "sheriff", "cowboy", "duel"]}
+{"item_id": 410, "keywords": ["comedy", "family", "1990s", "sitcom", "blues", "soul", "mama", "dad"]}
+{"item_id": 412, "keywords": ["drama", "1990s", "romance", "society", "moral", "innocence", "coming-of-age", "family"]}
+{"item_id": 420, "keywords": ["action", "comedy", "1990s", "police", "suspense", "heist", "suspense", "action-comedy"]}
+{"item_id": 426, "keywords": ["horror", "sci-fi", "1990s", "alien", "paranormal", "body-snatchers", "survival", "thriller"]}
+{"item_id": 428, "keywords": ["drama", "1990s", "family", "gangster", "protection racket", "ethnic", "rural", "city"]}
+{"item_id": 431, "keywords": ["crime", "drama", "1990s", "protection racketeering", "gangster", "family", "underworld"]}
+{"item_id": 432, "keywords": ["comedy", "western", "1990s", "cowboy", "road-trips", "humor", "family", "western"]}
+{"item_id": 434, "keywords": ["action", "adventure", "1990s", "heist", "police", "underworld", "corruption", "suspense"]}
+{"item_id": 435, "keywords": ["comedy", "sci-fi", "1990s", "alien", "absurd", "space", "humor"]}
+{"item_id": 440, "keywords": ["comedy", "romance", "1990s", "friendship", "coming-of-age", "college", "humor"]}
+{"item_id": 441, "keywords": ["comedy", "coming-of-age", "1990s", "high school", "rebel", "irony", "nostalgia", "slacker"]}
+{"item_id": 442, "keywords": ["action", "sci-fi", "mutant", "mutant hunting", "mutant resistance", "mutant resistance", "mutant resistance", "mutant resistance", "mutant resistance"]}
+{"item_id": 446, "keywords": ["drama", "romance", "teenage", "school", "china", "19th century", "emotional", "historical"]}
+{"item_id": 454, "keywords": ["drama", "thriller", "corruption", "police", "murder", "corruption", "corruption", "corruption", "corruption"]}
+{"item_id": 455, "keywords": ["action", "thriller", "rescue", "wildlife", "emotional", "family", "emotional", "emotional", "emotional"]}
+{"item_id": 457, "keywords": []}
+{"item_id": 466, "keywords": ["action", "comedy", "war", "humor", "humor", "humor", "humor", "humor"]}
+{"item_id": 468, "keywords": ["comedy", "romance", "love", "heist", "heist", "heist", "heist", "heist"]}
+{"item_id": 471, "keywords": ["comedy", "romance", "heist", "heist", "heist", "heist", "heist", "heist"]}
+{"item_id": 474, "keywords": ["action", "thriller", "law enforcement", "heist", "heist", "heist", "heist", "heist"]}
+{"item_id": 475, "keywords": []}
+{"item_id": 480, "keywords": ["action", "sci-fi", "dinosaur", "prehistoric", "horror", "horror", "horror", "horror"]}
+{"item_id": 481, "keywords": ["drama", "thriller", "heist", "heist", "heist", "heist", "heist", "heist"]}
+{"item_id": 485, "keywords": ["action", "comedy", "swordplay", "adventure", "1990s", "light-hearted", "humor", "clever dialogue"]}
+{"item_id": 492, "keywords": ["comedy", "mystery", "whodunit", "90s", "suspense", "dark humor", "twist ending"]}
+{"item_id": 493, "keywords": ["action", "crime", "gangster", "1990s", "violent", "narrative", "character-driven", "dark"]}
+{"item_id": 494, "keywords": ["action", "thriller", "suspense", "1990s", "fast-paced", "high stakes", "emotional turmoil"]}
+{"item_id": 497, "keywords": ["comedy", "romance", "literary", "1990s", "humor", "light-hearted", "musical elements"]}
+{"item_id": 500, "keywords": ["comedy", "family", "impostor", "1990s", "humor", "heartwarming", "emotional moments"]}
+{"item_id": 507, "keywords": ["action", "drama", "suspense", "1990s", "emotional", "high stakes", "character-driven"]}
+{"item_id": 508, "keywords": ["drama", "law", "emotional", "1990s", "realistic", "powerful", "social issues"]}
+{"item_id": 509, "keywords": ["drama", "romance", "music", "1990s", "emotional", "soul-searching", "personal growth"]}
+{"item_id": 514, "keywords": ["comedy", "slapstick", "humor", "1990s", "light-hearted", "absurd", "surreal"]}
+{"item_id": 515, "keywords": ["drama", "coming-of-age", "emotional", "1990s", "coming to terms", "personal growth"]}
+{"item_id": 517, "keywords": ["action", "mystery", "suspense", "1990s", "thrilling", "character-driven", "dark atmosphere"]}
+{"item_id": 520, "keywords": ["comedy", "medieval", "knight", "robin hood", "archery", "clemency", "merriment", "greenwood"]}
+{"item_id": 524, "keywords": ["drama", "coming of age", "family", "education", "resilience", "overcoming adversity", "personal growth", "emotional journey"]}
+{"item_id": 527, "keywords": ["war", "historical", "resilience", "humanity", "suffering", "redemption", "resilience", "humanity"]}
+{"item_id": 529, "keywords": ["drama", "puzzle", "strategy", "chess", "intellectual", "family", "emotional journey", "resilience"]}
+{"item_id": 531, "keywords": ["children's", "family", "adventure", "imagination", "growth", "emotional journey", "resilience"]}
+{"item_id": 532, "keywords": ["comedy", "crime", "horror", "family", "dark comedy", "survival", "fear", "humor"]}
+{"item_id": 534, "keywords": ["drama", "romance", "family", "coming of age", "resilience", "emotional journey", "redemption", "humanity"]}
+{"item_id": 535, "keywords": ["drama", "coming of age", "family", "resilience", "emotional journey", "redemption", "humanity"]}
+{"item_id": 538, "keywords": ["drama", "coming of age", "family", "resilience", "emotional journey", "redemption", "humanity"]}
+{"item_id": 539, "keywords": ["comedy", "romance", "suspense", "emotion", "humor", "heartache", "separation", "reunion"]}
+{"item_id": 541, "keywords": ["film-noir", "sci-fi", "dystopian", "future", "humanity", "survival", "moral dilemma", "cityscape"]}
+{"item_id": 543, "keywords": ["comedy", "romance", "thriller", "suspense", "humor", "unexpected love", "dark comedy", "secrets"]}
+{"item_id": 546, "keywords": ["platformer", "plush", "power-up", "mushroom kingdom", "jump", "pipes", "koopa", "power-up", "moon lander", "space"]}
+{"item_id": 551, "keywords": ["costume party", "skeletons", "witches", "halloween", "costume", "fun", "halloween", "witch", "costume"]}
+{"item_id": 552, "keywords": ["dueling swords", "three men", "sword fighting", "adventure", "jousting", "knight", "sword fight", "three musketeers", "sword"]}
+{"item_id": 553, "keywords": ["dueling cowboys", "old west", "gunfight", "sundown", "saloon", "cowboy hat", "saddle", "west"]}
+{"item_id": 555, "keywords": ["romance", "gunfight", "bank robbery", "romance", "gangster", "romance", "romance", "romance", "romance"]}
+{"item_id": 562, "keywords": ["coming of age", "teenage angst", "coming of age", "coming of age", "coming of age", "coming of age", "coming of age", "coming of age"]}
+{"item_id": 585, "keywords": ["family comedy", "brady", "brady", "brady", "brady", "brady", "brady", "brady"]}
+{"item_id": 586, "keywords": ["kidnapping", "holiday", "holiday", "holiday", "holiday", "holiday", "holiday", "holiday"]}
+{"item_id": 587, "keywords": ["ghostly presence", "halloween", "halloween", "halloween", "halloween", "halloween", "halloween", "halloween"]}
+{"item_id": 588, "keywords": ["genie", "magic lamp", "genie", "magic lamp", "genie", "magic lamp", "genie", "magic lamp"]}
+{"item_id": 589, "keywords": ["time travel", "robotic", "robotic", "robotic", "robotic", "robotic", "robotic", "robotic", "robotic"]}
+{"item_id": 590, "keywords": ["western frontier", "frontier town", "frontier town", "frontier town", "frontier town", "frontier town", "frontier town", "frontier town"]}
+{"item_id": 592, "keywords": ["batman", "1989", "action", "adventure", "crime", "drama", "superhero", "dark"]}
+{"item_id": 593, "keywords": ["silence", "lambs", "1991", "thriller", "mystery", "police", "psychological", "suspense"]}
+{"item_id": 594, "keywords": ["snow", "white", "1937", "animation", "children", "musical", "fairy tale", "family"]}
+{"item_id": 595, "keywords": ["beauty", "beast", "1991", "animation", "children", "musical", "fairy tale", "fantasy"]}
+{"item_id": 596, "keywords": ["pinocchio", "1940", "animation", "children", "adventure", "fairy tale", "imagination"]}
+{"item_id": 597, "keywords": ["pretty", "woman", "1990", "comedy", "romance", "heist", "reality tv", "dating", "socio-economic"]}
+{"item_id": 608, "keywords": ["fargo", "1996", "crime", "drama", "thriller", "western", "mystery", "family"]}
+{"item_id": 610, "keywords": ["heavy", "metal", "1981", "action", "adventure", "horror", "sci-fi", "metal", "heavy"]}
+{"item_id": 616, "keywords": ["aristocats", "1970", "animation", "children", "musical", "cat", "family"]}
+{"item_id": 628, "keywords": ["primal", "fear", "1996", "drama", "thriller", "law", "murder", "psychological", "suspense"]}
+{"item_id": 647, "keywords": ["courage", "under", "1996", "drama", "war", "action", "suspense", "military"]}
+{"item_id": 648, "keywords": ["mission", "impossible", "1996", "action", "adventure", "suspense", "spy", "thriller"]}
+{"item_id": 653, "keywords": ["action", "adventure", "fantasy", "epic", "medieval", "dragon", "sorcery", "magic", "heroes"]}
+{"item_id": 661, "keywords": ["animation", "children", "musical", "fantasy", "whimsy", "imagination", "improvisation", "humor"]}
+{"item_id": 663, "keywords": ["comedy", "slapstick", "humor", "improvisation", "absurdity", "humor", "improvisation", "improvisation"]}
+{"item_id": 671, "keywords": ["comedy", "sci-fi", "satire", "humor", "improvisation", "parody", "humor", "improvisation"]}
+{"item_id": 673, "keywords": ["adventure", "animation", "children", "comedy", "fantasy", "space", "teamwork", "extravaganza", "improvisation"]}
+{"item_id": 674, "keywords": ["adventure", "sci-fi", "space", "improtestation", "improtestation", "improtestation", "improtestation", "improtestation"]}
+{"item_id": 678, "keywords": ["drama", "thriller", "mystery", "suspense", "action", "darkness", "fear", "unknown"]}
+{"item_id": 707, "keywords": ["crime", "film-noir", "mystery", "suspense", "darkness", "fear", "unknown"]}
+{"item_id": 708, "keywords": ["comedy", "romance", "humor", "improvisation", "improvisation", "improvisation", "improvisation"]}
+{"item_id": 720, "keywords": ["animation", "humor", "improvisation", "improvisation", "improvisation", "improvisation", "improvisation", "improvisation"]}
+{"item_id": 724, "keywords": ["horror", "suspense", "darkness", "fear", "unknown", "shadows", "creatures", "nightmare"]}
+{"item_id": 733, "keywords": ["action", "adventure", "thriller", "suspense", "danger", "unknown", "shadows", "fear"]}
+{"item_id": 736, "keywords": ["action", "adventure", "romance", "thriller", "horror", "storm", "destruction", "survival", "sequel"]}
+{"item_id": 737, "keywords": ["action", "sci-fi", "space", "alien", "future", "war", "mecha", "cyberpunk"]}
+{"item_id": 741, "keywords": ["sci-fi", "animation", "mecha", "cyberpunk", "japanese", "sequel", "hacker", "cyber"]}
+{"item_id": 745, "keywords": ["animation", "comedy", "horror", "slasher", "slaughter", "slaughterhouse", "slaughterhouse", "slaughterhouse"]}
+{"item_id": 748, "keywords": ["action", "sci-fi", "war", "alien invasion", "post-apocalyptic", "survival", "destruction", "sequel"]}
+{"item_id": 750, "keywords": ["sci-fi", "war", "nuclear", "comedy", "satire", "sequel", "hacker", "hacker"]}
+{"item_id": 762, "keywords": ["comedy", "crime", "blatant", "irony", "satire", "striptease", "prostitute", "prostitution"]}
+{"item_id": 778, "keywords": ["drama", "coming-of-age", "coming-out", "coming-out", "coming-out", "coming-out", "coming-out"]}
+{"item_id": 780, "keywords": ["action", "sci-fi", "war", "alien invasion", "post-apocalyptic", "survival", "sequel"]}
+{"item_id": 783, "keywords": ["animation", "children's", "fantasy", "musical", "fairy tale", "horror", "sequel"]}
+{"item_id": 784, "keywords": ["comedy", "slapstick", "dark", "humor", "swordplay", "swordplay", "swordplay"]}
+{"item_id": 785, "keywords": ["comedy", "gangster", "humor", "blatant", "irony", "striptease", "prostitute", "prostitution"]}
+{"item_id": 786, "keywords": ["action", "thriller", "suspense", "murder", "police", "detective", "crime", "narrative", "1996"]}
+{"item_id": 788, "keywords": ["comedy", "fantasy", "romance", "space", "impossible", "imprisoned", "impossible", "1996"]}
+{"item_id": 799, "keywords": ["comedy", "horror", "supernatural", "paranormal", "frightening", "superstition", "1996"]}
+{"item_id": 800, "keywords": ["drama", "mystery", "western", "gunfight", "revenge", "outlaw", "1996"]}
+{"item_id": 802, "keywords": ["drama", "romance", "coming-of-age", "family", "coming-out", "coming-out", "1996"]}
+{"item_id": 805, "keywords": ["drama", "crime", "law-enforcement", "justice", "corruption", "corruption", "1996"]}
+{"item_id": 830, "keywords": ["comedy", "romance", "suspense", "murder", "police", "detective", "crime", "1996"]}
+{"item_id": 832, "keywords": ["comedy", "thriller", "suspense", "murder", "police", "detective", "crime", "1996"]}
+{"item_id": 838, "keywords": ["comedy", "drama", "romance", "coming-of-age", "family", "coming-out", "coming-out", "1996"]}
+{"item_id": 849, "keywords": ["action", "sci-fi", "space-travel", "extraterrestrial", "survival", "heist", "thriller", "1996"]}
+{"item_id": 852, "keywords": ["comedy", "romance", "cup-scorching", "marital", "humor", "impossible", "impossible", "1996"]}
+{"item_id": 858, "keywords": ["action", "crime", "family", "revenge", "betrayal", "power", "1996"]}
+{"item_id": 861, "keywords": ["action", "thriller", "police", "law", "crime", "suspense", "fast-paced", "adventure"]}
+{"item_id": 866, "keywords": ["crime", "drama", "romance", "mystery", "suspense", "emotional", "dark", "law-enforcement"]}
+{"item_id": 880, "keywords": ["sci-fi", "thriller", "survival", "island", "alien", "horror", "science", "exploration"]}
+{"item_id": 898, "keywords": ["comedy", "romance", "romance", "romance", "romance", "romance", "romance", "romance"]}
+{"item_id": 899, "keywords": ["musical", "romance", "romance", "romance", "romance", "romance", "romance", "romance"]}
+{"item_id": 900, "keywords": ["musical", "romance", "romance", "romance", "romance", "romance", "romance", "romance"]}
+{"item_id": 902, "keywords": ["drama", "romance", "romance", "romance", "romance", "romance", "romance", "romance"]}
+{"item_id": 903, "keywords": ["mystery", "thriller", "suspense", "fear", "darkness", "unknown", "suspense", "danger"]}
+{"item_id": 904, "keywords": ["mystery", "thriller", "suspense", "fear", "darkness", "unknown", "suspense", "danger"]}
+{"item_id": 905, "keywords": ["comedy", "romance", "romance", "romance", "romance", "romance", "romance", "romance"]}
+{"item_id": 908, "keywords": ["drama", "thriller", "suspense", "fear", "darkness", "unknown", "suspense", "danger"]}
+{"item_id": 909, "keywords": ["comedy", "drama", "comedy", "comedy", "comedy", "comedy", "comedy", "comedy"]}
+{"item_id": 910, "keywords": ["comedy", "crime", "1950s", "musicals", "new york city", "1959", "hustle", "blues"]}
+{"item_id": 911, "keywords": ["comedy", "mystery", "romance", "thriller", "1950s", "spy", "affair", "new york city"]}
+{"item_id": 912, "keywords": ["drama", "romance", "war", "1930s", "africa", "spies", "romance"]}
+{"item_id": 913, "keywords": ["film-noir", "mystery", "1930s", "spies", "romance", "paris"]}
+{"item_id": 914, "keywords": ["musical", "romance", "1950s", "new york city", "1950s", "singer", "singer-songwriter"]}
+{"item_id": 915, "keywords": ["comedy", "romance", "1950s", "new york city", "1950s", "sophisticated", "romantic"]}
+{"item_id": 916, "keywords": ["film-noir", "1950s", "new york city", "1950s", "star-studded cast", "star-studded cast", "star-studded cast"]}
+{"item_id": 919, "keywords": ["adventure", "children's", "1930s", "fantasy", "color", "music", "wizard"]}
+{"item_id": 920, "keywords": ["drama", "romance", "war", "1930s", "southern", "slavery", "emancipation"]}
+{"item_id": 921, "keywords": ["comedy", "romance", "1950s", "new york city", "1950s", "sophisticated", "romantic"]}
+{"item_id": 922, "keywords": ["film-noir", "1950s", "new york city", "1950s", "star-studded cast", "star-studded cast", "star-studded cast"]}
+{"item_id": 923, "keywords": ["drama", "1940s", "new york city", "1940s", "journalism", "power", "corruption"]}
+{"item_id": 924, "keywords": ["sci-fi", "space", "drama", "mystery", "thriller", "space-travel", "space-opera", "human-ape", "space-race"]}
+{"item_id": 926, "keywords": ["drama", "star-studded", "theatre", "melodrama", "star-crossed", "power-drama", "star-studded", "star-crossed"]}
+{"item_id": 928, "keywords": ["romance", "mystery", "thriller", "jealousy", "revenge", "dark-church", "dark-mood", "dark-music"]}
+{"item_id": 930, "keywords": ["film-noir", "romance", "thriller", "crime", "secrecy", "dark-night", "secrecy"]}
+{"item_id": 933, "keywords": ["comedy", "romance", "thriller", "heist", "cat-and-mouse", "chase", "double-cross"]}
+{"item_id": 934, "keywords": ["comedy", "family", "romance", "blessing", "blessing", "blessing", "blessing"]}
+{"item_id": 940, "keywords": ["action", "adventure", "knight-errant", "chase", "escape", "sword-slaying", "sword-slaying"]}
+{"item_id": 942, "keywords": ["crime", "mystery", "film-noir", "dark-night", "secrecy", "dark-mood", "dark-music"]}
+{"item_id": 950, "keywords": ["mystery", "detective", "suspense", "cat-and-mouse", "secrecy", "dark-night", "secrecy"]}
+{"item_id": 951, "keywords": ["comedy", "gangster", "romance", "fast-talking", "fast-talking", "fast-talking"]}
+{"item_id": 952, "keywords": ["adventure", "comedy", "exploration", "time-travel", "exploration", "time-travel", "exploration"]}
+{"item_id": 953, "keywords": ["drama", "time-travel", "fantasy", "dream-sequence", "dream-sequence", "dream-sequence"]}
+{"item_id": 954, "keywords": ["drama", "war", "1930s", "fiction", "political", "patriotism", "fictional president", "military"]}
+{"item_id": 955, "keywords": ["comedy", "1930s", "pregnancy", "pregnancy comedy", "pregnancy humor", "pregnancy farce", "pregnancy comedy", "pregnancy comedy"]}
+{"item_id": 968, "keywords": ["horror", "sci-fi", "1960s", "zombie", "vampire", "undead", "living dead", "nightmare", "horror-sci-fi hybrid"]}
+{"item_id": 969, "keywords": ["action", "adventure", "romance", "war", "1950s", "colonial africa", "exploration", "colonial era"]}
+{"item_id": 971, "keywords": ["drama", "1950s", "family", "conflict", "emotional", "family tension", "emotional turmoil", "family drama"]}
+{"item_id": 994, "keywords": ["drama", "1990s", "cultural", "family", "ethnic", "cultural identity", "family legacy", "family tension"]}
+{"item_id": 996, "keywords": ["action", "drama", "western", "1990s", "family feud", "family loyalty", "family tension", "family legacy"]}
+{"item_id": 999, "keywords": ["crime", "1990s", "organized", "corruption", "underworld", "conspiracy", "organized crime", "undercover"]}
+{"item_id": 1009, "keywords": ["adventure", "children's", "fantasy", "1970s", "supernatural", "magic", "superhuman abilities", "family adventure"]}
+{"item_id": 1012, "keywords": ["children's", "1950s", "coming of age", "family", "coming of age story", "coming of age drama", "coming of age adventure"]}
+{"item_id": 1017, "keywords": ["adventure", "children's", "1960s", "family", "survival", "outdoor adventure", "family adventure"]}
+{"item_id": 1019, "keywords": ["adventure", "children's", "1950s", "fantasy", "undersea", "sea adventure", "undersea fantasy"]}
+{"item_id": 1020, "keywords": ["comedy", "1990s", "slapstick", "humor", "cool", "running", "skateboarding", "music"]}
+{"item_id": 1022, "keywords": ["animation", "1950s", "fairy tale", "musical", "family", "dream", "enchanted"]}
+{"item_id": 1025, "keywords": ["animation", "1960s", "adventure", "fairy tale", "magic", "sword"]}
+{"item_id": 1027, "keywords": ["drama", "1990s", "historical", "action", "thief", "king"]}
+{"item_id": 1028, "keywords": ["children's", "1960s", "comedy", "magic", "music", "house"]}
+{"item_id": 1029, "keywords": ["children's", "1940s", "animation", "musical", "magic", "puppets"]}
+{"item_id": 1030, "keywords": ["adventure", "1970s", "fantasy", "music", "dragon", "friendship"]}
+{"item_id": 1031, "keywords": ["adventure", "1970s", "musical", "witch", "school", "magic"]}
+{"item_id": 1032, "keywords": ["animation", "1950s", "fairy tale", "music", "rabbit", "hound"]}
+{"item_id": 1033, "keywords": []}
+{"item_id": 1035, "keywords": ["musical", "1960s", "family", "music", "mountain", "school"]}
+{"item_id": 1036, "keywords": ["action", "1980s", "thriller", "action", "survival", "helicopter", "bomb"]}
+{"item_id": 1037, "keywords": ["action", "sci-fi", "thriller", "mower", "lawnmower", "clearing", "yard maintenance", "power tool", "lawn maintenance"]}
+{"item_id": 1041, "keywords": ["drama", "family", "conflict", "emotional", "family dynamics", "personal growth", "coming of age", "coming of age"]}
+{"item_id": 1042, "keywords": ["comedy", "music", "romance", "high school", "coming of age", "teen life", "coming of age", "high school life"]}
+{"item_id": 1047, "keywords": ["action", "suspense", "mystery", "thriller", "suspense", "suspense", "suspense", "suspense"]}
+{"item_id": 1049, "keywords": ["action", "suspense", "mystery", "suspense", "suspense", "suspense", "suspense"]}
+{"item_id": 1057, "keywords": ["comedy", "music", "romance", "high school", "coming of age", "teen life", "coming of age", "high school life"]}
+{"item_id": 1059, "keywords": ["drama", "romance", "teenage", "coming of age", "coming of age", "teen life", "coming of age", "teenage love"]}
+{"item_id": 1060, "keywords": ["comedy", "drama", "relationships", "coming of age", "coming of age", "coming of age", "coming of age", "coming of age"]}
+{"item_id": 1061, "keywords": ["crime", "drama", "coming of age", "coming of age", "coming of age", "coming of age", "coming of age", "coming of age"]}
+{"item_id": 1073, "keywords": ["adventure", "children's", "fantasy", "whimsy", "impossible", "impossible", "impossible", "impossible"]}
+{"item_id": 1077, "keywords": ["comedy", "sci-fi", "impossible", "impossible", "impossible", "impossible", "impossible", "impossible"]}
+{"item_id": 1078, "keywords": ["comedy", "war", "conflict", "humor", "humor", "humor", "humor", "humor"]}
+{"item_id": 1079, "keywords": ["comedy", "1980s", "blaxploitation", "slapstick", "horror", "suspense", "action", "romance", "heist"]}
+{"item_id": 1080, "keywords": ["comedy", "1970s", "absurdist", "silly", "parody", "satanic", "slapstick", "swordplay"]}
+{"item_id": 1081, "keywords": ["comedy", "musical", "1980s", "romance", "suspense", "swordplay", "sailing", "duke", "sword"]}
+{"item_id": 1084, "keywords": ["crime", "1960s", "war", "warner", "action", "drama", "romance", "western"]}
+{"item_id": 1086, "keywords": ["war", "1980s", "action", "suspense", "romance", "heist", "police", "murder"]}
+{"item_id": 1088, "keywords": ["musical", "1980s", "romance", "dance", "suspense", "heist", "prostitution", "police"]}
+{"item_id": 1089, "keywords": ["crime", "1990s", "suspense", "action", "thriller", "police", "murder"]}
+{"item_id": 1090, "keywords": ["war", "1980s", "drama", "action", "suspense", "romance", "heist", "police"]}
+{"item_id": 1091, "keywords": ["comedy", "1990s", "suspense", "action", "romance", "heist", "police"]}
+{"item_id": 1092, "keywords": ["mystery", "1990s", "suspense", "action", "thriller", "police", "murder"]}
+{"item_id": 1093, "keywords": ["drama", "1990s", "suspense", "action", "police", "murder"]}
+{"item_id": 1094, "keywords": ["war", "1990s", "suspense", "action", "police", "murder"]}
+{"item_id": 1095, "keywords": ["drama", "1990s", "comedy", "satire", "corruption", "business", "corpses", "corpses", "corpses"]}
+{"item_id": 1096, "keywords": ["drama", "1980s", "suspense", "murder", "suicide", "religion", "family", "abuse", "abuse", "abuse"]}
+{"item_id": 1097, "keywords": ["children's", "1980s", "space", "alien", "friendship", "extraterrestrial", "family", "science", "impossible"]}
+{"item_id": 1100, "keywords": ["action", "1990s", "romance", "cars", "racing", "seas", "storm", "sea", "storm"]}
+{"item_id": 1101, "keywords": ["action", "1980s", "seas", "planes", "secrets", "secrets", "secrets", "secrets"]}
+{"item_id": 1103, "keywords": ["drama", "1950s", "rebellion", "teenage", "family", "society", "protest", "protest", "protest"]}
+{"item_id": 1104, "keywords": ["drama", "1950s", "seas", "cities", "desperation", "seas", "desperation", "desperation"]}
+{"item_id": 1120, "keywords": ["drama", "1990s", "comedy", "humor", "family", "society", "corruption", "corruption", "corruption"]}
+{"item_id": 1124, "keywords": ["drama", "1980s", "comedy", "family", "society", "corruption", "corruption", "corruption"]}
+{"item_id": 1125, "keywords": ["comedy", "1970s", "family", "society", "corruption", "corruption", "corruption", "corruption"]}
+{"item_id": 1126, "keywords": ["comedy", "1990s", "fantasy", "gender", "non-traditional", "gender", "non-traditional", "non-traditional"]}
+{"item_id": 1127, "keywords": ["comedy", "1970s", "family", "society", "corruption", "corruption", "corruption", "corruption"]}
+{"item_id": 1129, "keywords": ["action", "escape", "new york", "sci-fi", "thriller", "post-apocalyptic", "survival", "cityscape", "alien invasion"]}
+{"item_id": 1135, "keywords": ["comedy", "spy", "romance", "suspense", "humor", "satire", "war", "espionage"]}
+{"item_id": 1136, "keywords": ["comedy", "adventure", "fantasy", "historical", "humor", "monk", "quest", "absurd", "british"]}
+{"item_id": 1147, "keywords": ["documentary", "boxing", "martial arts", "history", "biography", "human spirit", "underdog", "underground"]}
+{"item_id": 1148, "keywords": ["animation", "comedy", "fantasy", "adventure", "humor", "impossible", "impractical", "british"]}
+{"item_id": 1171, "keywords": ["comedy", "politics", "humor", "satire", "confrontation", "irony", "irresponsible candidate", "campaign trail"]}
+{"item_id": 1172, "keywords": ["comedy", "coming-of-age", "family", "nostalgia", "nostalgic cinema", "romance", "vintage"]}
+{"item_id": 1175, "keywords": ["comedy", "sci-fi", "space", "alien", "humor", "impossible heist", "space station", "extraterrestrial"]}
+{"item_id": 1179, "keywords": ["crime", "mystery", "drama", "suspense", "corruption", "protagonist", "detective", "dark comedy"]}
+{"item_id": 1183, "keywords": ["drama", "war", "romance", "suffering", "resilience", "humanity", "savior", "desperation"]}
+{"item_id": 1185, "keywords": ["drama", "improvised", "dance", "resilience", "humanity", "physical condition", "underdog", "compassion"]}
+{"item_id": 1186, "keywords": ["drama", "romance", "conflict", "suspense", "lies", "videotape", "emotional", "irony"]}
+{"item_id": 1188, "keywords": ["comedy", "romance", "dance", "music", "ballroom", "entertainment", "party", "dancefloor"]}
+{"item_id": 1189, "keywords": ["documentary", "war", "history", "conflict", "journalism", "warrior", "truth", "honor"]}
+{"item_id": 1193, "keywords": ["drama", "psychiatry", "insanity", "asylum", "rebellion", "society", "mind", "conflict"]}
+{"item_id": 1196, "keywords": ["action", "space", "sci-fi", "military", "emperor", "rebellion", "galaxy", "power", "family"]}
+{"item_id": 1197, "keywords": ["action", "adventure", "comedy", "romance", "princess", "brother", "sword", "dragon"]}
+{"item_id": 1198, "keywords": ["action", "exploration", "mystery", "archaeology", "map", "gem", "sword", "desert"]}
+{"item_id": 1199, "keywords": ["sci-fi", "space-travel", "alien", "dream", "memory", "time-travel", "parallel universe"]}
+{"item_id": 1200, "keywords": ["action", "space", "alien", "horror", "survival", "military", "extraterrestrial"]}
+{"item_id": 1201, "keywords": ["action", "western", "duel", "revenge", "gold", "outlaws", "desert", "sands"]}
+{"item_id": 1203, "keywords": ["drama", "law", "jury", "conflict", "morality", "justice", "society", "emotions"]}
+{"item_id": 1204, "keywords": ["drama", "law", "justice", "society", "emotions", "conflict", "morality", "lawyer"]}
+{"item_id": 1206, "keywords": ["sci-fi", "punk", "rebellion", "society", "time-travel", "memory", "dream"]}
+{"item_id": 1207, "keywords": []}
+{"item_id": 1208, "keywords": []}
+{"item_id": 1210, "keywords": []}
+{"item_id": 1212, "keywords": []}
+{"item_id": 1213, "keywords": []}
+{"item_id": 1214, "keywords": []}
+{"item_id": 1215, "keywords": []}
+{"item_id": 1217, "keywords": []}
+{"item_id": 1219, "keywords": []}
+{"item_id": 1220, "keywords": []}
+{"item_id": 1221, "keywords": []}
+{"item_id": 1222, "keywords": []}
+{"item_id": 1223, "keywords": ["animation", "comedy", "family", "holiday", "holiday", "holiday", "holiday", "holiday", "holiday"]}
+{"item_id": 1224, "keywords": ["war", "history", "king", "battle", "battle", "battle", "battle", "battle", "battle"]}
+{"item_id": 1225, "keywords": ["drama", "music", "opera", "music", "music", "music", "music", "music", "music"]}
+{"item_id": 1228, "keywords": ["drama", "boxing", "revenge", "revenge", "revenge", "revenge", "revenge", "revenge", "revenge"]}
+{"item_id": 1230, "keywords": ["comedy", "romance", "lovers", "lovers", "lovers", "lovers", "lovers", "lovers", "lovers"]}
+{"item_id": 1231, "keywords": ["drama", "space", "adventure", "space", "space", "space", "space", "space"]}
+{"item_id": 1233, "keywords": ["action", "war", "navy", "navy", "navy", "navy", "navy", "navy"]}
+{"item_id": 1234, "keywords": ["comedy", "crime", "detective", "detective", "detective", "detective", "detective", "detective"]}
+{"item_id": 1235, "keywords": ["comedy", "adventure", "time-travel", "time-travel", "time-travel", "time-travel", "time-travel", "time-travel"]}
+{"item_id": 1237, "keywords": ["drama", "medieval", "sorcery", "medieval", "medieval", "medieval", "medieval", "medieval", "medieval"]}
+{"item_id": 1238, "keywords": ["comedy", "small-town", "philanthropy", "small-town", "small-town", "small-town", "small-town", "small-town", "small-town"]}
+{"item_id": 1240, "keywords": ["action", "sci-fi", "robot", "sci-fi", "sci-fi", "sci-fi", "sci-fi", "sci-fi", "sci-fi"]}
+{"item_id": 1242, "keywords": ["action", "war", "drama", "1989", "military", "conflict", "patriotism"]}
+{"item_id": 1243, "keywords": ["comedy", "drama", "1990", "absurdist", "philosophical", "literature"]}
+{"item_id": 1244, "keywords": ["drama", "1990", "western", "cowboy", "outlaw", "western"]}
+{"item_id": 1245, "keywords": ["drama", "1990", "crime", "police", "mystery", "chicago"]}
+{"item_id": 1246, "keywords": ["drama", "1989", "school", "rebellion", "education", "youth"]}
+{"item_id": 1247, "keywords": ["drama", "1967", "romance", "college", "coming-of-age", "education"]}
+{"item_id": 1248, "keywords": ["crime", "film-noir", "1958", "mystery", "mexico", "corruption"]}
+{"item_id": 1249, "keywords": ["thriller", "1990", "spy", "espionage", "recruitment"]}
+{"item_id": 1250, "keywords": ["drama", "1957", "war", "imperialism", "colonialism", "resistance"]}
+{"item_id": 1252, "keywords": ["film-noir", "1974", "mystery", "china", "gangster", "detective"]}
+{"item_id": 1253, "keywords": ["drama", "1951", "sci-fi", "alien", "futuristic", "government"]}
+{"item_id": 1254, "keywords": ["adventure", "1948", "mexico", "gold", "explorer", "quest"]}
+{"item_id": 1256, "keywords": ["comedy", "war", "satire", "1930s", "sound", "mashup", "blues", "silliness"]}
+{"item_id": 1257, "keywords": ["irony", "ironic", "ironic", "1980s", "dark", "humor", "silliness"]}
+{"item_id": 1258, "keywords": ["psychological", "horror", "1980s", "suspense", "fear", "darkness", "suspense"]}
+{"item_id": 1259, "keywords": ["coming-of-age", "friendship", "adventure", "1980s", "humor", "drama"]}
+{"item_id": 1260, "keywords": ["crime", "1930s", "film-noir", "mystery", "darkness", "grittiness"]}
+{"item_id": 1261, "keywords": ["horror-comedy", "1980s", "slasher", "campus", "humor", "adventure"]}
+{"item_id": 1262, "keywords": ["escape", "1960s", "war", "action", "adventure", "courage"]}
+{"item_id": 1263, "keywords": ["war", "vietnam", "conflict", "1980s", "sadness", "brooding"]}
+{"item_id": 1264, "keywords": ["action", "1980s", "mystery", "romance", "thriller", "suspense"]}
+{"item_id": 1265, "keywords": ["time-travel", "comedy", "romance", "1990s", "repetitive", "humor"]}
+{"item_id": 1266, "keywords": ["western", "1990s", "revenge", "mystery", "outdoors", "solitude"]}
+{"item_id": 1267, "keywords": ["film-noir", "1960s", "espionage", "thriller", "betrayal", "morality"]}
+{"item_id": 1268, "keywords": ["drama", "1990s", "music", "party", "energy", "dance", "volume", "sound"]}
+{"item_id": 1269, "keywords": ["comedy", "1940s", "mystery", "thriller", "family", "horror", "dark", "humor"]}
+{"item_id": 1270, "keywords": ["drama", "1990s", "family", "coming-of-age", "southern", "heartbreak", "emotional", "growth"]}
+{"item_id": 1271, "keywords": ["sci-fi", "1980s", "time-travel", "action", "future", "revolution", "anarchy"]}
+{"item_id": 1272, "keywords": ["war", "1970s", "patriotic", "military", "honor", "leadership", "conflict", "sacrifice"]}
+{"item_id": 1274, "keywords": ["sci-fi", "1980s", "post-apocalyptic", "youth", "rebellion", "power", "corruption", "rebirth"]}
+{"item_id": 1275, "keywords": ["action", "1980s", "western", "revenge", "freedom", "justice", "honor", "blood"]}
+{"item_id": 1276, "keywords": ["comedy", "1960s", "protest", "cool", "non-conformity", "irony", "reliability", "coolness"]}
+{"item_id": 1277, "keywords": ["action", "1990s", "love", "honor", "language", "poetry", "betrayal", "sword"]}
+{"item_id": 1278, "keywords": ["drama", "1970s", "family", "tradition", "honor", "honesty", "honor", "honor"]}
+{"item_id": 1280, "keywords": ["drama", "1990s", "family", "honor", "honesty", "honor", "honor"]}
+{"item_id": 1282, "keywords": ["animation", "1940s", "fantasy", "music", "imagination", "dreams", "adventure", "education"]}
+{"item_id": 1283, "keywords": ["western", "1950s", "gunfight", "outlaw", "desert", "duel", "cowboy", "vigilante", "sheriff"]}
+{"item_id": 1284, "keywords": ["film-noir", "mystery", "1930s", "detective", "crime", "murder", "detective", "motive", "shadowy"]}
+{"item_id": 1285, "keywords": ["comedy", "teen", "school", "sassy", "ironic", "1980s", "school uniform", "schoolyard"]}
+{"item_id": 1286, "keywords": ["drama", "romance", "1980s", "teenage", "coming-of-age", "school", "friendship", "emotional"]}
+{"item_id": 1287, "keywords": ["action", "adventure", "1950s", "roman", "emperor", "slave", "rescue", "faith"]}
+{"item_id": 1288, "keywords": ["comedy", "mockumentary", "1980s", "music", "band", "mockumentary", "stage", "humor"]}
+{"item_id": 1291, "keywords": ["action", "adventure", "1980s", "explorer", "temple", "artifact", "daring", "perilous"]}
+{"item_id": 1292, "keywords": ["comedy", "war", "1970s", "veteran", "humor", "war zone", "sardonic", "military"]}
+{"item_id": 1293, "keywords": []}
+{"item_id": 1294, "keywords": []}
+{"item_id": 1295, "keywords": ["drama", "existentialism", "1980s", "family", "loneliness", "human condition", "philosophy"]}
+{"item_id": 1296, "keywords": ["drama", "romance", "1980s", "city living", "affectionate", "romantic", "suspense", "jealousy"]}
+{"item_id": 1297, "keywords": ["comedy", "1985", "tv", "sitcom", "improv", "standup", "humor", "parody", "celebrity"]}
+{"item_id": 1298, "keywords": ["drama", "musical", "war", "rock", "iconic", "psychedelic", "studio", "icon", "album"]}
+{"item_id": 1299, "keywords": ["drama", "war", "horror", "alien", "space", "extraterrestrial", "horror-sci-fi", "horror-sci-fi"]}
+{"item_id": 1300, "keywords": ["drama", "coming-of-age", "animal", "companion", "emotional", "human-animal", "companion"]}
+{"item_id": 1301, "keywords": ["sci-fi", "space-opera", "alien", "space-travel", "extraterrestrial", "space-opera", "space-travel"]}
+{"item_id": 1302, "keywords": ["drama", "fantasy", "dream", "field", "seemingly-innocent", "seemingly-innocent field", "seemingly-innocent field fantasy"]}
+{"item_id": 1303, "keywords": ["adventure", "western", "outlaw", "cowboy", "revolution", "rebellion", "outlaw outlaw"]}
+{"item_id": 1304, "keywords": ["action", "comedy", "western", "cowboy", "outlaw", "romance", "western comedy", "romance outlaw"]}
+{"item_id": 1307, "keywords": ["comedy", "romance", "dating", "friendship", "romantic comedy", "rom-com", "rom-com dating"]}
+{"item_id": 1320, "keywords": ["action", "horror", "sci-fi", "alien", "space-opera", "extraterrestrial", "horror-sci-fi", "alien invasion"]}
+{"item_id": 1321, "keywords": ["horror", "sci-fi", "alien", "horror-sci-fi", "extraterrestrial", "horror-sci-fi alien", "horror-sci-fi alien invasion"]}
+{"item_id": 1327, "keywords": ["horror", "sci-fi", "alien", "horror-sci-fi", "extraterrestrial", "horror-sci-fi alien invasion", "horror-sci-fi alien invasion new york city"]}
+{"item_id": 1333, "keywords": ["birds", "horror", "fiction", "1960s", "mystery", "supernatural", "fear", "darkness"]}
+{"item_id": 1334, "keywords": ["blob", "horror", "sci-fi", "alien", "unknown", "fear", "survival", "1980s"]}
+{"item_id": 1339, "keywords": ["bram_stoker", "dracula", "horror", "romance", "vampire", "medieval", "transformation", "bloodsuckers"]}
+{"item_id": 1342, "keywords": ["candyman", "horror", "slasher", "blessed", "curse", "blacksburg", "vaudeville", "paranormal", "fear"]}
+{"item_id": 1343, "keywords": ["cape_wear", "horror", "thriller", "lawyer", "revenge", "family", "florida", "storm"]}
+{"item_id": 1344, "keywords": ["cape_wear", "horror", "film-noir", "thriller", "lawyer", "revenge", "family", "florida"]}
+{"item_id": 1345, "keywords": ["carrie", "horror", "teen-slasher", "telekinesis", "school", "fear", "bloodsuckers"]}
+{"item_id": 1347, "keywords": ["nightmare_on_elm_street", "horror", "suspense", "dream", "night", "fear", "death"]}
+{"item_id": 1350, "keywords": ["omen", "horror", "prophecy", "religion", "sin", "redemption", "faith", "sin"]}
+{"item_id": 1356, "keywords": ["star_trek", "first_contact", "sci-fi", "space", "exploration", "future", "humor"]}
+{"item_id": 1357, "keywords": ["sling_blade", "drama", "western", "revenge", "family", "law", "texas"]}
+{"item_id": 1358, "keywords": ["sling_blade", "drama", "western", "revenge", "family", "law", "texas"]}
+{"item_id": 1367, "keywords": ["children's", "comedy", "puppies", "dalmatians", "dog", "family", "humor", "emotional"]}
+{"item_id": 1370, "keywords": ["action", "thriller", "heist", "suspense", "martial", "action packed", "suspense", "horror", "terror"]}
+{"item_id": 1371, "keywords": ["action", "adventure", "space", "exploration", "sci-fi", "space travel", "military", "space epic", "sci-fi adventure"]}
+{"item_id": 1372, "keywords": ["action", "adventure", "sci-fi", "exploration", "space", "military", "sci-fi epic", "space journey", "sci-fi adventure"]}
+{"item_id": 1373, "keywords": ["action", "adventure", "sci-fi", "exploration", "space", "military", "sci-fi epic", "space journey", "sci-fi adventure"]}
+{"item_id": 1374, "keywords": ["action", "adventure", "sci-fi", "exploration", "space", "military", "sci-fi epic", "space journey", "sci-fi adventure"]}
+{"item_id": 1375, "keywords": ["action", "adventure", "sci-fi", "exploration", "space", "military", "sci-fi epic", "space journey", "sci-fi adventure"]}
+{"item_id": 1376, "keywords": ["action", "adventure", "sci-fi", "exploration", "space", "military", "sci-fi epic", "space journey", "sci-fi adventure"]}
+{"item_id": 1377, "keywords": ["action", "adventure", "comedy", "crime", "mystery", "detective", "dark", "superhero", "gotham city"]}
+{"item_id": 1378, "keywords": ["action", "western", "comedy", "musical", "romance", "school", "grease", "funny", "high school"]}
+{"item_id": 1379, "keywords": []}
+{"item_id": 1380, "keywords": ["comedy", "musical", "romance", "school", "grease", "funny", "high school", "dance"]}
+{"item_id": 1381, "keywords": ["comedy", "musical", "romance", "1980s", "musical-comedy", "grease musical", "grease musical comedy", "grease musical musical", "grease musical musical comedy"]}
+{"item_id": 1385, "keywords": ["action", "1990s", "action-adventure", "action thriller", "action movie", "suspense", "explosions", "action sequences", "action packed"]}
+{"item_id": 1387, "keywords": ["action", "1970s", "horror action", "horror thriller", "suspense", "predator", "horror movie", "horror action movie", "horror action sequences"]}
+{"item_id": 1388, "keywords": ["action", "1970s", "horror sequel", "horror action sequel", "predator sequel", "horror sequel action", "horror sequel action sequences"]}
+{"item_id": 1391, "keywords": ["action", "1990s", "sci-fi action", "sci-fi horror", "sci-fi comedy", "war action", "space invasion", "alien invasion", "sci-fi war movie"]}
+{"item_id": 1393, "keywords": ["drama", "romance", "1990s", "feel-good", "feel-good romantic comedy", "romantic comedy drama", "romance comedy", "romance drama movie"]}
+{"item_id": 1394, "keywords": ["comedy", "1990s", "western comedy", "western comedy-drama", "cowboy comedy", "cowboy comedy-drama", "western comedy musical", "western comedy musical comedy"]}
+{"item_id": 1395, "keywords": ["crime", "1990s", "comedy-drama", "comedy noir", "comedy crime", "crime comedy", "crime comedy-drama", "comedy dark comedy"]}
+{"item_id": 1396, "keywords": ["crime", "1990s", "sci-fi noir", "sci-fi crime", "sci-fi dark comedy", "sci-fi noir comedy", "sci-fi dark comedy-drama", "sci-fi noir comedy dark"]}
+{"item_id": 1405, "keywords": ["animation", "1990s", "comedy animated", "animated comedy", "cartoon comedy", "cartoon comedy-drama", "cartoon comedy musical", "cartoon comedy musical comedy"]}
+{"item_id": 1407, "keywords": ["horror", "1990s", "slasher horror", "suspense horror", "suspense thriller", "suspense horror thriller", "suspense horror sequences"]}
+{"item_id": 1408, "keywords": ["action", "1990s", "war action", "western war", "western war sequences", "western war thriller", "western war sequences action"]}
+{"item_id": 1409, "keywords": ["comedy", "romance", "1996", "actor", "romantic comedy", "light-hearted", "humor", "love story"]}
+{"item_id": 1411, "keywords": ["drama", "1996", "shakespeare", "tragedy", "literature", "emotional", "complex characters"]}
+{"item_id": 1416, "keywords": ["drama", "1996", "music", "biography", "powerful", "emotional", "historical"]}
+{"item_id": 1422, "keywords": ["mystery", "1997", "suspense", "crime", "thriller", "dark", "puzzling"]}
+{"item_id": 1429, "keywords": ["action", "1996", "martial arts", "adventure", "fast-paced", "exhilarating"]}
+{"item_id": 1438, "keywords": ["action", "1997", "horror", "supernatural", "thriller", "suspense", "mountain setting"]}
+{"item_id": 1441, "keywords": ["comedy", "romance", "1993", "family", "heartwarming", "light-hearted", "humor"]}
+{"item_id": 1449, "keywords": ["comedy", "1996", "satire", "absurdity", "humor", "irony", "dark comedy"]}
+{"item_id": 1457, "keywords": ["comedy", "1997", "romance", "humor", "light-hearted", "love story", "humor"]}
+{"item_id": 1459, "keywords": ["mystery", "1997", "power", "corruption", "thriller", "dark", "suspense"]}
+{"item_id": 1466, "keywords": ["crime", "1997", "detective", "narrative", "realistic", "dark", "suspense"]}
+{"item_id": 1476, "keywords": ["comedy", "1997", "drama", "humor", "satirical", "dark comedy", "ironic"]}
+{"item_id": 1479, "keywords": ["saint", "action", "romance", "thriller", "1997", "religion", "faith", "spirituality"]}
+{"item_id": 1480, "keywords": ["action", "drama", "thriller", "1997", "nordic", "snow", "culture"]}
+{"item_id": 1485, "keywords": ["comedy", "slapstick", "absurd", "1997", "lie", "blunder", "humor"]}
+{"item_id": 1488, "keywords": ["comedy", "crime", "heist", "1997", "blunder", "humor", "police"]}
+{"item_id": 1499, "keywords": ["action", "sci-fi", "horror", "1997", "reptiles", "swimming", "exploration"]}
+{"item_id": 1500, "keywords": ["comedy", "crime", "police", "1997", "blunder", "humor", "police"]}
+{"item_id": 1513, "keywords": ["comedy", "romance", "high school", "1997", "reunion", "humor", "relationships"]}
+{"item_id": 1517, "keywords": ["comedy", "sci-fi", "spy", "1997", "double life", "humor", "mischief"]}
+{"item_id": 1518, "keywords": ["action", "thriller", "1997", "police", "heist", "suspense", "mystery"]}
+{"item_id": 1527, "keywords": ["action", "sci-fi", "magic", "1997", "end times", "prophecy", "sorcery"]}
+{"item_id": 1537, "keywords": ["comedy", "dance", "romance", "1996", "musical", "humor"]}
+{"item_id": 1544, "keywords": ["action", "sci-fi", "dinosaur", "1997", "lost world", "adventure", "survival"]}
+{"item_id": 1552, "keywords": ["action", "adventure", "thriller", "1990s", "horror", "alien", "space", "extraterrestrial"]}
+{"item_id": 1556, "keywords": ["action", "romance", "thriller", "1990s", "suspense", "helicopter", "high-speed", "seafaring"]}
+{"item_id": 1562, "keywords": ["action", "adventure", "crime", "1990s", "superhero", "gotham", "vigilante"]}
+{"item_id": 1566, "keywords": ["adventure", "animation", "children's", "1990s", "musical", "fantasy", "comedy"]}
+{"item_id": 1569, "keywords": ["comedy", "romance", "1990s", "friendship", "wedding", "blessing", "family", "emotional"]}
+{"item_id": 1573, "keywords": ["action", "sci-fi", "thriller", "1990s", "alien", "horror", "face-off", "police"]}
+{"item_id": 1580, "keywords": ["action", "adventure", "sci-fi", "1990s", "alien", "police", "undercover", "men in black"]}
+{"item_id": 1584, "keywords": []}
+{"item_id": 1586, "keywords": ["action", "war", "drama", "1990s", "military", "space", "alien invasion"]}
+{"item_id": 1587, "keywords": ["action", "adventure", "1980s", "epic", "sword-and-sorcery", "barbarian", "legendary"]}
+{"item_id": 1588, "keywords": ["children's", "comedy", "1990s", "jungle", "adventure", "whimsical", "imaginative"]}
+{"item_id": 1589, "keywords": ["crime", "drama", "1990s", "police", "mystery", "small-town", "corruption"]}
+{"item_id": 1590, "keywords": ["sci-fi", "action", "mystery", "thriller", "space", "alien", "black hole", "cosmic", "horizon"]}
+{"item_id": 1591, "keywords": ["action", "sci-fi", "horror", "mutant", "post-apocalyptic", "supernatural", "dark", "night", "nightmare"]}
+{"item_id": 1594, "keywords": ["war", "conflict", "humanity", "suffering", "struggle", "empathy", "soul", "warrior"]}
+{"item_id": 1597, "keywords": ["conspiracy", "secrecy", "romance", "suspense", "danger", "betrayal", "truth", "secrets"]}
+{"item_id": 1603, "keywords": ["alien invasion", "survival", "horror", "paranormal", "fear", "unknown", "night", "shadows"]}
+{"item_id": 1608, "keywords": ["helicopter", "rescue", "kidnapping", "terror", "race", "emergency", "high stakes", "crash"]}
+{"item_id": 1610, "keywords": ["secrecy", "war", "submarine", "strategy", "betrayal", "suspense", "underwater", "storm"]}
+{"item_id": 1614, "keywords": ["comedy", "slapstick", "humor", "banter", "confusion", "absurdity", "reality", "humans"]}
+{"item_id": 1616, "keywords": ["war", "conflict", "action", "suspense", "betrayal", "strategy", "danger", "betrayer"]}
+{"item_id": 1617, "keywords": ["mystery", "crime", "detective", "darkness", "corruption", "greed", "secrets", "city"]}
+{"item_id": 1619, "keywords": ["spiritual", "adventure", "culture", "conflict", "sacrifice", "loneliness", "desolation", "mountains"]}
+{"item_id": 1620, "keywords": ["crime", "law", "justice", "corruption", "power", "greed", "betrayal", "secrets"]}
+{"item_id": 1625, "keywords": ["game", "1997", "mystery", "thriller", "adventure", "video game", "interactive", "platformer"]}
+{"item_id": 1627, "keywords": ["action", "1997", "crime", "mystery", "suspense", "heist", "police procedural", "law enforcement"]}
+{"item_id": 1633, "keywords": ["drama", "1997", "family", "coming of age", "teen", "coming of age", "teen drama", "coming of age drama"]}
+{"item_id": 1635, "keywords": ["drama", "1997", "family", "coming of age", "teen", "coming of age drama", "coming of age drama", "coming of age drama", "coming of age drama"]}
+{"item_id": 1639, "keywords": ["drama", "1997", "family", "coming of age", "teen", "coming of age drama", "coming of age drama", "coming of age drama", "coming of age drama"]}
+{"item_id": 1641, "keywords": ["comedy", "1997", "slapstick", "humor", "satire", "absurdity", "dark comedy", "screwball comedy"]}
+{"item_id": 1643, "keywords": ["drama", "1997", "family", "coming of age", "teen", "coming of age drama", "coming of age drama", "coming of age drama", "coming of age drama"]}
+{"item_id": 1644, "keywords": ["horror", "1997", "suspense", "terror", "mystery", "thriller", "supernatural", "slasher", "psychological horror"]}
+{"item_id": 1645, "keywords": ["crime", "1997", "mystery", "thriller", "horror", "suspense", "supernatural", "slasher", "psychological horror"]}
+{"item_id": 1653, "keywords": ["drama", "1997", "family", "coming of age", "teen", "coming of age drama", "coming of age drama", "coming of age drama", "coming of age drama"]}
+{"item_id": 1663, "keywords": ["comedy", "1981", "slapstick", "humor", "satire", "absurdity", "dark comedy", "screwball comedy"]}
+{"item_id": 1672, "keywords": ["drama", "1997", "family", "coming of age", "teen", "coming of age drama", "coming of age drama", "coming of age drama", "coming of age drama"]}
+{"item_id": 1673, "keywords": ["drama", "1990s", "comedy", "romance", "teen", "coming-of-age", "teenager", "coming-of-age", "coming-out", "coming-out"]}
+{"item_id": 1674, "keywords": ["drama", "1980s", "romance", "suspense", "romantic", "suspense", "romantic", "suspense", "suspense", "suspense"]}
+{"item_id": 1676, "keywords": ["action", "1990s", "sci-fi", "military", "space", "military", "space", "military", "military", "military"]}
+{"item_id": 1678, "keywords": ["drama", "1990s", "romance", "family", "emotional", "emotional", "emotional", "emotional", "emotional"]}
+{"item_id": 1680, "keywords": ["drama", "1990s", "romance", "coming-out", "coming-out", "coming-out", "coming-out", "coming-out", "coming-out"]}
+{"item_id": 1682, "keywords": ["drama", "1990s", "comedy", "romance", "coming-out", "coming-out", "coming-out", "coming-out", "coming-out"]}
+{"item_id": 1687, "keywords": ["action", "1990s", "suspense", "suspense", "suspense", "suspense", "suspense", "suspense", "suspense"]}
+{"item_id": 1688, "keywords": ["animation", "1990s", "family", "musical", "children", "children", "children", "children", "children"]}
+{"item_id": 1689, "keywords": []}
+{"item_id": 1690, "keywords": ["comedy", "1990s", "mystery", "suspense", "suspense", "suspense", "suspense", "suspense", "suspense"]}
+{"item_id": 1693, "keywords": ["drama", "1990s", "coming-out", "coming-out", "coming-out", "coming-out", "coming-out", "coming-out", "coming-out"]}
+{"item_id": 1694, "keywords": ["drama", "1990s", "coming-out", "coming-out", "coming-out", "coming-out", "coming-out", "coming-out", "coming-out"]}
+{"item_id": 1701, "keywords": ["comedy", "drama", "1990s", "satire", "improvisation", "improvised", "stand-up", "late-night", "late-night comedy"]}
+{"item_id": 1702, "keywords": ["children's", "comedy", "1990s", "impossible", "rubber", "silly", "silly science", "silly science fiction"]}
+{"item_id": 1704, "keywords": ["drama", "1990s", "college", "improvised", "improvised comedy", "improvised stand-up", "improvised comedy", "improvised comedy", "improvised comedy"]}
+{"item_id": 1711, "keywords": ["comedy", "crime", "1990s", "coroner", "coroner stand-up", "coroner comedy", "coroner comedy", "coroner comedy", "coroner comedy"]}
+{"item_id": 1717, "keywords": ["horror", "1990s", "slasher", "scream", "scream comedy", "scream comedy", "scream comedy", "scream comedy", "scream comedy"]}
+{"item_id": 1719, "keywords": ["drama", "1990s", "teenage", "tragedy", "teenage tragedy", "teenage tragedy", "teenage tragedy", "teenage tragedy", "teenage tragedy"]}
+{"item_id": 1721, "keywords": ["drama", "1990s", "romance", "19th century", "19th century romance", "19th century romance", "19th century romance", "19th century romance", "19th century romance"]}
+{"item_id": 1722, "keywords": ["action", "1990s", "romance", "19th century", "19th century action", "19th century action", "19th century action", "19th century action", "19th century action"]}
+{"item_id": 1729, "keywords": ["crime", "1990s", "comedy", "improvised comedy", "improvised comedy", "improvised comedy", "improvised comedy", "improvised comedy", "improvised comedy"]}
+{"item_id": 1732, "keywords": ["comedy", "crime", "1990s", "improvised comedy", "improvised comedy", "improvised comedy", "improvised comedy", "improvised comedy", "improvised comedy"]}
+{"item_id": 1747, "keywords": ["comedy", "1990s", "improvised comedy", "improvised comedy", "improvised comedy", "improvised comedy", "improvised comedy", "improvised comedy", "improvised comedy"]}
+{"item_id": 1748, "keywords": ["film-noir", "1990s", "sci-fi", "thriller", "improvised comedy", "improvised comedy", "improvised comedy", "improvised comedy", "improvised comedy"]}
+{"item_id": 1754, "keywords": ["action", "mystery", "thriller", "1998", "dark", "suspense", "police", "heist", "law enforcement"]}
+{"item_id": 1769, "keywords": ["action", "thriller", "1998", "fast-paced", "suspense", "danger", "adventure", "sequel"]}
+{"item_id": 1777, "keywords": ["comedy", "romance", "1998", "light-hearted", "romantic", "entertainment", "musical", "comedy-drama"]}
+{"item_id": 1779, "keywords": ["adventure", "sci-fi", "thriller", "1998", "space", "extraterrestrial", "exploration", "mystery"]}
+{"item_id": 1784, "keywords": ["comedy", "drama", "1997", "humor", "emotional", "family", "coming-of-age", "satire"]}
+{"item_id": 1792, "keywords": ["action", "thriller", "1998", "law enforcement", "suspense", "danger", "sequel", "police procedural"]}
+{"item_id": 1801, "keywords": ["action", "drama", "1998", "adventure", "suspense", "romance", "sequel", "historical", "epic"]}
+{"item_id": 1805, "keywords": ["crime", "drama", "1998", "mystery", "thriller", "dark", "suspense", "action", "sequel"]}
+{"item_id": 1810, "keywords": ["drama", "1998", "emotional", "coming-of-age", "family", "satire", "art-house", "independent"]}
+{"item_id": 1831, "keywords": ["action", "sci-fi", "thriller", "1998", "space", "extraterrestrial", "exploration", "suspense"]}
+{"item_id": 1833, "keywords": ["action", "drama", "1998", "suspense", "thriller", "sequel", "law enforcement", "heist"]}
+{"item_id": 1834, "keywords": ["drama", "thriller", "1997", "suspense", "mystery", "sequel", "law enforcement", "police procedural"]}
+{"item_id": 1835, "keywords": ["romance", "1998", "city", "love", "emotional", "heartfelt", "passion", "affection"]}
+{"item_id": 1845, "keywords": ["comedy", "thriller", "1998", "humor", "suspense", "action", "mystery", "satire"]}
+{"item_id": 1873, "keywords": ["drama", "1998", "emotional", "human condition", "struggle", "suffering", "redemption", "society"]}
+{"item_id": 1876, "keywords": ["action", "sci-fi", "1998", "explosion", "alien", "post-apocalyptic", "survival", "horror", "adventure"]}
+{"item_id": 1882, "keywords": ["action", "sci-fi", "1998", "giant", "destruction", "nature", "power", "fear"]}
+{"item_id": 1883, "keywords": ["comedy", "1998", "irony", "satire", "dark humor", "political", "social commentary", "revolutionary", "rebellion"]}
+{"item_id": 1884, "keywords": ["comedy", "1998", "ironic", "satirical", "absurdity", "humor", "reality", "society"]}
+{"item_id": 1885, "keywords": ["comedy", "1998", "ironic", "satirical", "absurdity", "humor", "reality", "society"]}
+{"item_id": 1888, "keywords": ["comedy", "1998", "optimism", "happiness", "love", "romance", "heartwarming", "emotional"]}
+{"item_id": 1892, "keywords": ["mystery", "thriller", "1998", "crime", "suspense", "darkness", "fear", "secrecy"]}
+{"item_id": 1894, "keywords": ["adventure", "comedy", "1998", "romance", "humor", "emotional", "passion", "desire"]}
+{"item_id": 1895, "keywords": ["comedy", "1998", "romance", "humor", "emotional", "passion", "desire", "adventure"]}
+{"item_id": 1907, "keywords": ["animation", "children's", "family", "adventure", "emotional", "musical", "historical", "martial arts"]}
+{"item_id": 1909, "keywords": ["mystery", "sci-fi", "supernatural", "suspense", "police procedural", "time travel", "alien invasion", "government conspiracy"]}
+{"item_id": 1911, "keywords": ["comedy", "family", "animals", "impossible", "improvisation", "impossible"]}
+{"item_id": 1912, "keywords": ["action", "law enforcement", "romance", "heist", "desperation", "corruption", "outlaw"]}
+{"item_id": 1914, "keywords": ["drama", "coming of age", "family", "humor", "cultural", "societal expectations"]}
+{"item_id": 1916, "keywords": ["action", "comedy", "war", "survival", "humor", "historical", "friendship"]}
+{"item_id": 1917, "keywords": ["action", "sci-fi", "post-apocalyptic", "survival", "humor", "family", "courage"]}
+{"item_id": 1918, "keywords": ["action", "comedy", "crime", "suspense", "buddy cop", "humor", "family"]}
+{"item_id": 1920, "keywords": ["animation", "family", "fantasy", "war", "impossible", "improvisation", "humor"]}
+{"item_id": 1921, "keywords": ["sci-fi", "thriller", "space", "alien", "survival", "humor", "family"]}
+{"item_id": 1923, "keywords": ["comedy", "romance", "mystery", "humor", "school", "jealousy"]}
+{"item_id": 1924, "keywords": ["horror", "sci-fi", "alien invasion", "survival", "desperation", "improvised shelter", "surreal"]}
+{"item_id": 1927, "keywords": ["war", "fiction", "horror", "epic", "historical", "fictional", "war-time", "fictional", "war"]}
+{"item_id": 1944, "keywords": ["war", "drama", "romance", "military", "love", "war-time", "war", "fictional", "war"]}
+{"item_id": 1945, "keywords": ["crime", "drama", "protest", "prosecution", "protest", "protest", "protest", "protest"]}
+{"item_id": 1947, "keywords": ["musical", "romance", "protest", "protest", "protest", "protest", "protest"]}
+{"item_id": 1950, "keywords": ["drama", "mystery", "police", "crime", "protest", "protest", "protest", "protest"]}
+{"item_id": 1952, "keywords": ["drama", "fictional", "protest", "protest", "protest", "protest", "protest", "protest"]}
+{"item_id": 1953, "keywords": ["action", "crime", "drama", "fictional", "protest", "protest", "protest", "protest"]}
+{"item_id": 1954, "keywords": ["action", "drama", "fictional", "protest", "protest", "protest", "protest", "protest"]}
+{"item_id": 1955, "keywords": ["drama", "fictional", "protest", "protest", "protest", "protest", "protest", "protest"]}
+{"item_id": 1956, "keywords": ["drama", "fictional", "protest", "protest", "protest", "protest", "protest", "protest"]}
+{"item_id": 1957, "keywords": ["drama", "fictional", "protest", "protest", "protest", "protest", "protest", "protest"]}
+{"item_id": 1958, "keywords": ["comedy", "drama", "fictional", "protest", "protest", "protest", "protest", "protest"]}
+{"item_id": 1959, "keywords": ["drama", "romance", "historical", "africa", "exploration", "adventure", "colonial", "19th century", "colonial"]}
+{"item_id": 1960, "keywords": ["drama", "war", "history", "china", "emperor", "dynasty", "history", "emotional", "power"]}
+{"item_id": 1961, "keywords": ["drama", "family", "brotherhood", "sibling", "supportive", "emotional", "coming of age", "brother"]}
+{"item_id": 1962, "keywords": ["drama", "race", "coming of age", "coming of age", "supportive", "emotional", "coming of age", "brother"]}
+{"item_id": 1963, "keywords": ["comedy", "adventure", "time-travel", "sci-fi", "alien invasion", "time-travel", "sci-fi", "alien invasion"]}
+{"item_id": 1964, "keywords": ["drama", "mystery", "detective", "crime", "suspense", "thriller", "mystery", "suspense"]}
+{"item_id": 1965, "keywords": ["comedy", "sci-fi", "punk rock", "alien invasion", "punk rock", "alien invasion", "punk rock", "alien invasion"]}
+{"item_id": 1967, "keywords": ["adventure", "fantasy", "children", "family", "fantasy", "family", "fantasy", "family"]}
+{"item_id": 1968, "keywords": ["comedy", "drama", "coming of age", "coming of age", "emotional", "coming of age", "coming of age", "family"]}
+{"item_id": 1969, "keywords": ["horror", "suspense", "slasher", "nightmare", "nightmare", "nightmare", "nightmare", "slasher"]}
+{"item_id": 1970, "keywords": ["horror", "suspense", "slasher", "nightmare", "nightmare", "nightmare", "slasher", "slasher"]}
+{"item_id": 1974, "keywords": []}
+{"item_id": 1982, "keywords": ["horror", "suspense", "supernatural", "nightmare", "fear", "terror", "ghoulish", "macabre", "spectral"]}
+{"item_id": 1994, "keywords": ["horror", "thriller", "paranormal", "supernatural", "fear", "terror", "ghoulish", "spectral"]}
+{"item_id": 1997, "keywords": ["horror", "supernatural", "fear", "terror", "ghoulish", "spectral", "demons", "exorcism"]}
+{"item_id": 2000, "keywords": ["action", "comedy", "crime", "drama", "suspense", "humor", "adventure", "sci-fi"]}
+{"item_id": 2001, "keywords": ["action", "comedy", "crime", "drama", "suspense", "humor", "adventure", "sci-fi"]}
+{"item_id": 2002, "keywords": ["comedy", "horror", "supernatural", "fear", "terror", "ghoulish", "spectral", "monster"]}
+{"item_id": 2003, "keywords": ["comedy", "horror", "supernatural", "fear", "terror", "ghoulish", "spectral", "children"]}
+{"item_id": 2004, "keywords": []}
+{"item_id": 2005, "keywords": ["adventure", "children's", "fantasy", "supernatural", "fear", "terror", "ghoulish", "seaside"]}
+{"item_id": 2006, "keywords": ["action", "adventure", "romance", "swordplay", "vigilante", "clemency", "noble", "epic"]}
+{"item_id": 2009, "keywords": ["sci-fi", "thriller", "dystopian", "survival", "fear", "terror", "post-apocalyptic", "alien"]}
+{"item_id": 2010, "keywords": ["sci-fi", "suspense", "dystopian", "future", "city", "machinery", "metropolis", "dream"]}
+{"item_id": 2011, "keywords": ["back to the future", "sci-fi", "comedy", "time travel", "1980s", "family", "hilarious", "future"]}
+{"item_id": 2012, "keywords": ["back to the future", "sci-fi", "comedy", "western", "time travel", "1980s", "family", "hilarious", "final"]}
+{"item_id": 2013, "keywords": ["poseidon adventure", "action", "disaster", "adventure", "1970s", "thrilling", "rescue", "family"]}
+{"item_id": 2015, "keywords": ["absent minded professor", "children's", "comedy", "fantasy", "1960s", "whimsical", "imaginative", "light-hearted"]}
+{"item_id": 2018, "keywords": ["bambi", "animation", "children's", "animals", "nature", "1950s", "heartwarming", "family"]}
+{"item_id": 2019, "keywords": ["seven samurai", "action", "drama", "western", "1950s", "adventure", "heroes", "courage"]}
+{"item_id": 2020, "keywords": ["dangerous liaisons", "drama", "romance", "1980s", "emotional", "complex characters", "dark", "suspense"]}
+{"item_id": 2021, "keywords": ["dune", "fantasy", "sci-fi", "space", "1980s", "epic", "adventure", "alien"]}
+{"item_id": 2022, "keywords": ["last temptation of christ", "drama", "religion", "1980s", "moral", "conflict", "faith", "emotional"]}
+{"item_id": 2023, "keywords": ["godfather part iii", "action", "crime", "drama", "1990s", "family", "power", "betrayal", "revenge"]}
+{"item_id": 2028, "keywords": ["saving private ryan", "action", "war", "1990s", "patriotic", "horror", "suspense", "rescue"]}
+{"item_id": 2034, "keywords": ["black hole", "sci-fi", "space", "1980s", "horror", "alien", "survival", "fear"]}
+{"item_id": 2046, "keywords": ["adventure", "children's", "sci-fi", "space", "exploration", "flight", "navigator", "space-travel", "future"]}
+{"item_id": 2053, "keywords": ["children's", "comedy", "sci-fi", "explosion", "blow-up", "humor", "family", "space", "satellite"]}
+{"item_id": 2054, "keywords": ["adventure", "children's", "comedy", "fantasy", "sci-fi", "shrinkage", "family", "explore", "miniature"]}
+{"item_id": 2058, "keywords": ["action", "thriller", "negotiation", "confrontation", "power", "strategy", "conflict", "suspense"]}
+{"item_id": 2059, "keywords": ["children's", "drama", "family", "comedy", "conflict", "trap", "entertainment", "horror"]}
+{"item_id": 2064, "keywords": ["comedy", "documentary", "society", "culture", "music", "humor", "observation", "societal", "reality"]}
+{"item_id": 2065, "keywords": ["children's", "drama", "family", "comedy", "romance", "improvisation", "impossible", "impossible feats"]}
+{"item_id": 2067, "keywords": ["drama", "romance", "war", "history", "love", "suffering", "resilience", "humanity"]}
+{"item_id": 2070, "keywords": ["drama", "conflict", "emotional", "human", "struggle", "redemption", "sorrow", "redemption"]}
+{"item_id": 2072, "keywords": ["comedy", "everyday life", "humor", "suburban", "family", "happiness", "relaxation", "laughter"]}
+{"item_id": 2076, "keywords": ["drama", "mystery", "darkness", "suspense", "unknown", "fear", "emotion", "surreal"]}
+{"item_id": 2078, "keywords": ["animation", "children's", "adventure", "fantasy", "music", "humor", "impossible", "improvisation"]}
+{"item_id": 2080, "keywords": ["animation", "children's", "comedy", "musical", "romance", "1950s", "musical-adventure", "romantic-comedy"]}
+{"item_id": 2081, "keywords": ["animation", "children's", "comedy", "musical", "romance", "1980s", "underwater-adventure", "sea-themed"]}
+{"item_id": 2082, "keywords": ["children's", "comedy", "family-fun", "hilarious-adventures", "dog-adventures", "1980s"]}
+{"item_id": 2085, "keywords": ["animation", "children's", "adventure", "musical", "fantasy", "seaside-adventure"]}
+{"item_id": 2087, "keywords": ["animation", "children's", "fantasy", "musical", "london", "air-travel-adventure"]}
+{"item_id": 2088, "keywords": ["adventure", "comedy", "musical", "seafaring-adventure", "blues", "working-class"]}
+{"item_id": 2093, "keywords": ["adventure", "children's", "fantasy", "sci-fi", "space-travel-adventure", "parallel-world-adventure"]}
+{"item_id": 2094, "keywords": ["action", "adventure", "sci-fi", "space-travel-adventure", "explosive-adventures", "space-travel-adventure"]}
+{"item_id": 2096, "keywords": ["animation", "children's", "musical", "fairy-tale-adventure", "undersea-adventure", "sea-adventure"]}
+{"item_id": 2100, "keywords": ["comedy", "fantasy", "romance", "underwater-adventure", "sea-adventure", "splash-adventure"]}
+{"item_id": 2105, "keywords": ["action", "adventure", "sci-fi", "space-travel-adventure", "blues", "space-travel-adventure"]}
+{"item_id": 2108, "keywords": ["comedy", "romance", "l.a.", "urban-adventure", "blues", "space-travel-adventure"]}
+{"item_id": 2109, "keywords": ["comedy", "1979", "humor", "slapstick", "absurd", "ironic", "satirical", "dark humor", "satire"]}
+{"item_id": 2110, "keywords": ["comedy", "1982", "humor", "satire", "absurd", "dark humor", "satire", "ironic", "sardonic"]}
+{"item_id": 2111, "keywords": ["comedy", "1983", "humor", "absurd", "sardonic", "ironic", "satire", "dark humor", "satire"]}
+{"item_id": 2112, "keywords": ["crime", "1991", "mystery", "suspense", "dark", "noir", "police procedural", "law enforcement", "corruption"]}
+{"item_id": 2115, "keywords": ["action", "1984", "adventure", "exploration", "fantasy", "historical", "epic", "perilous", "adventure"]}
+{"item_id": 2116, "keywords": ["adventure", "1978", "fantasy", "epic", "medieval", "fantastical", "imaginary", "mythical", "epic"]}
+{"item_id": 2117, "keywords": ["drama", "1984", "sci-fi", "dystopian", "political", "social commentary", "prophecy", "surveillance", "totalitarian"]}
+{"item_id": 2118, "keywords": ["horror", "1983", "thriller", "suspense", "terror", "supernatural", "mystery", "darkness"]}
+{"item_id": 2124, "keywords": ["comedy", "1991", "family", "quirky", "absurd", "sardonic", "ironic", "satire", "dark humor"]}
+{"item_id": 2125, "keywords": ["drama", "1998", "romance", "fantasy", "fairy tale", "adventure", "epic", "suspense", "mythical"]}
+{"item_id": 2126, "keywords": ["action", "1998", "crime", "mystery", "thriller", "suspense", "action", "adventure"]}
+{"item_id": 2130, "keywords": ["crime", "1980", "drama", "romance", "mystery", "suspense", "police procedural", "law enforcement", "corruption"]}
+{"item_id": 2132, "keywords": ["drama", "1960s", "british", "family", "conflict", "emotional", "power dynamics", "social issues"]}
+{"item_id": 2133, "keywords": ["adventure", "comedy", "1980s", "teen", "horror", "slasher", "hilarious", "family", "suspense"]}
+{"item_id": 2134, "keywords": ["comedy", "1980s", "science fiction", "slapstick", "absurd", "family", "horror", "silly"]}
+{"item_id": 2137, "keywords": ["animation", "1970s", "children's", "family", "animals", "emotional", "coming of age", "friendship"]}
+{"item_id": 2138, "keywords": ["animation", "1970s", "children's", "animals", "fantasy", "adventure", "emotional", "survival", "friendship"]}
+{"item_id": 2139, "keywords": ["animation", "1980s", "children's", "fantasy", "mystery", "emotional", "coming of age", "friendship"]}
+{"item_id": 2140, "keywords": ["children's", "1980s", "fantasy", "sci-fi", "alien", "evil", "dark", "mystical"]}
+{"item_id": 2141, "keywords": ["animation", "1980s", "children's", "comedy", "animals", "family", "hilarious", "coming of age", "friendship"]}
+{"item_id": 2143, "keywords": ["adventure", "fantasy", "1980s", "romance", "epic", "quest", "magic", "heroes"]}
+{"item_id": 2144, "keywords": ["comedy", "1980s", "coming of age", "family", "slapstick", "hilarious", "teen angst", "romance"]}
+{"item_id": 2145, "keywords": ["comedy", "1980s", "coming of age", "family", "slapstick", "romance", "hilarious", "teen angst"]}
+{"item_id": 2146, "keywords": ["drama", "1980s", "coming of age", "family", "romance", "heartwarming", "coming of age", "family life"]}
+{"item_id": 2150, "keywords": ["comedy", "religion", "spirituality", "superstition", "absurdity", "humor", "blasphemy", "irony", "sacredness", "irony"]}
+{"item_id": 2153, "keywords": ["action", "superheroes", "teamwork", "power", "conflict", "suspense", "cinematic", "epic", "blockbuster"]}
+{"item_id": 2160, "keywords": ["horror", "supernatural", "witchcraft", "darkness", "fear", "mystery", "childhood", "imagination", "dark fantasy"]}
+{"item_id": 2161, "keywords": ["fantasy", "adventure", "impossible", "magic", "imagination", "childhood", "whimsy", "impossible", "fantastical"]}
+{"item_id": 2167, "keywords": ["action", "swordplay", "vampires", "horror", "supernatural", "darkness", "fear", "suspense", "fantasy"]}
+{"item_id": 2174, "keywords": ["comedy", "fantasy", "supernatural", "witches", "haunted", "dark", "humor", "impossible", "parody"]}
+{"item_id": 2186, "keywords": ["film-noir", "mystery", "thriller", "darkness", "suspense", "morality", "betrayal", "irony"]}
+{"item_id": 2193, "keywords": ["action", "fantasy", "magic", "adventure", "impossible", "imagination", "childhood", "whimsy"]}
+{"item_id": 2194, "keywords": ["action", "crime", "drama", "law", "justice", "corruption", "suspense", "darkness"]}
+{"item_id": 2231, "keywords": ["crime", "drama", "action", "revenge", "betrayal", "suspense", "darkness", "impossible"]}
+{"item_id": 2243, "keywords": ["comedy", "drama", "romance", "journalism", "society", "humanity", "empathy", "irony"]}
+{"item_id": 2245, "keywords": ["comedy", "drama", "suspense", "morality", "betrayal", "darkness", "impossible", "irony"]}
+{"item_id": 2247, "keywords": ["married", "mob", "comedy", "1980s", "romance", "satire", "fiction", "marital", "law"]}
+{"item_id": 2248, "keywords": ["say", "anything", "comedy", "drama", "romance", "1980s", "coming-of-age", "teen", "love"]}
+{"item_id": 2253, "keywords": ["toys", "action", "comedy", "fantasy", "1990s", "family", "adventure", "imagination", "humor"]}
+{"item_id": 2262, "keywords": ["last night", "comedy", "drama", "romance", "1980s", "romantic", "humor", "misunderstanding"]}
+{"item_id": 2268, "keywords": ["few good men", "crime", "drama", "1990s", "law", "justice", "corruption", "prosecution"]}
+{"item_id": 2273, "keywords": ["rush hour", "action", "thriller", "1990s", "heist", "suspense", "police", "chase"]}
+{"item_id": 2278, "keywords": ["ronin", "action", "crime", "thriller", "1990s", "ninja", "revenge", "assassination"]}
+{"item_id": 2282, "keywords": ["pecker", "comedy", "drama", "1990s", "sexual", "humor", "obstinate", "bladder"]}
+{"item_id": 2287, "keywords": ["them!", "sci-fi", "thriller", "1950s", "war", "alien", "horror", "mutants"]}
+{"item_id": 2288, "keywords": ["thing", "action", "horror", "sci-fi", "thriller", "1980s", "alien invasion", "horror", "survival"]}
+{"item_id": 2289, "keywords": ["player", "comedy", "drama", "1990s", "gangster", "action", "humor", "family", "revenge"]}
+{"item_id": 2291, "keywords": ["edward scissorhands", "drama", "romance", "1990s", "fantasy", "outsider", "kindness", "imagination"]}
+{"item_id": 2294, "keywords": ["animation", "children", "family", "fantasy", "humor", "impression", "moral", "multicultural", "original"]}
+{"item_id": 2297, "keywords": ["drama", "emotional", "faith", "heaven", "humanity", "spirituality", "supernatural", "transcendence"]}
+{"item_id": 2300, "keywords": ["absurd", "anarchy", "black comedy", "chaos", "comedy", "counterculture", "horror", "irony", "parody"]}
+{"item_id": 2301, "keywords": ["absurd", "anarchy", "black comedy", "chaos", "comedy", "counterculture", "horror", "irony", "parody"]}
+{"item_id": 2302, "keywords": ["absurd", "anarchy", "black comedy", "chaos", "comedy", "counterculture", "horror", "irony", "parody"]}
+{"item_id": 2303, "keywords": ["coming of age", "coming out", "family", "humor", "irony", "music", "musical", "romance"]}
+{"item_id": 2311, "keywords": ["alien invasion", "alternate reality", "dystopia", "future", "humanity", "mutant", "post-apocalyptic", "time travel"]}
+{"item_id": 2312, "keywords": ["alien invasion", "alternate reality", "dystopia", "future", "humanity", "mutant", "post-apocalyptic", "time travel"]}
+{"item_id": 2313, "keywords": ["abuse", "abortion", "coming of age", "coming out", "family", "humor", "irony", "music", "mutuality"]}
+{"item_id": 2318, "keywords": ["absurd", "anarchy", "black comedy", "chaos", "comedy", "counterculture", "horror", "irony", "parody"]}
+{"item_id": 2321, "keywords": ["abuse", "abortion", "coming of age", "coming out", "family", "humor", "irony", "music", "mutuality"]}
+{"item_id": 2322, "keywords": ["abuse", "abortion", "coming of age", "coming out", "family", "humor", "irony", "music", "mutuality"]}
+{"item_id": 2324, "keywords": ["comedy", "drama", "family", "human condition", "joy", "resilience", "sacrifice", "vitality", "vivacity"]}
+{"item_id": 2329, "keywords": ["drama", "family", "history", "patriotism", "resilience", "sacrifice", "vitality", "vivacity"]}
+{"item_id": 2333, "keywords": ["drama", "family", "resilience", "sacrifice", "vitality", "vivacity", "war", "resilience"]}
+{"item_id": 2334, "keywords": ["action", "thriller", "conflict", "resilience", "sacrifice", "vitality", "vivacity", "war"]}
+{"item_id": 2335, "keywords": ["comedy", "humor", "humility", "joy", "resilience", "sacrifice", "vitality", "vivacity"]}
+{"item_id": 2336, "keywords": ["drama", "family", "resilience", "sacrifice", "vitality", "vivacity", "war", "resilience"]}
+{"item_id": 2338, "keywords": ["horror", "mystery", "thriller", "conflict", "resilience", "sacrifice", "vitality", "vivacity"]}
+{"item_id": 2340, "keywords": ["romance", "sacrifice", "vitality", "resilience", "soulmates", "joy", "vitality", "vivacity"]}
+{"item_id": 2346, "keywords": ["sci-fi", "thriller", "conflict", "resilience", "sacrifice", "vitality", "survival", "resilience"]}
+{"item_id": 2348, "keywords": ["drama", "family", "resilience", "sacrifice", "vitality", "resilience", "war", "resilience"]}
+{"item_id": 2352, "keywords": ["comedy", "drama", "resilience", "sacrifice", "vitality", "resilience", "family", "joy"]}
+{"item_id": 2353, "keywords": ["action", "thriller", "conflict", "resilience", "sacrifice", "vitality", "resilience", "war"]}
+{"item_id": 2355, "keywords": ["animation", "children's", "comedy"]}
+{"item_id": 2359, "keywords": ["comedy"]}
+{"item_id": 2363, "keywords": ["action", "sci-fi"]}
+{"item_id": 2366, "keywords": ["action", "adventure", "horror"]}
+{"item_id": 2367, "keywords": ["comedy"]}
+{"item_id": 2369, "keywords": []}
+{"item_id": 2371, "keywords": ["comedy"]}
+{"item_id": 2375, "keywords": ["comedy"]}
+{"item_id": 2376, "keywords": ["action"]}
+{"item_id": 2378, "keywords": ["comedy"]}
+{"item_id": 2384, "keywords": ["children's", "comedy"]}
+{"item_id": 2389, "keywords": ["crime", "horror", "thriller"]}
+{"item_id": 2390, "keywords": ["comedy", "1998", "romantic", "musical", "voice", "melodrama", "improvisation", "improvised", "impro"]}
+{"item_id": 2391, "keywords": ["crime", "thriller", "1998", "police", "mystery", "detective", "suspense", "action", "heist"]}
+{"item_id": 2393, "keywords": ["action", "sci-fi", "1998", "space", "exploration", "alien", "military", "space-travel", "hacker"]}
+{"item_id": 2394, "keywords": ["animation", "musical", "1998", "fantasy", "egyptian", "magic", "sorcery", "epic", "adventure"]}
+{"item_id": 2395, "keywords": ["comedy", "1998", "slapstick", "absurd", "humor", "irony", "satire", "ironic", "silliness"]}
+{"item_id": 2396, "keywords": ["comedy", "1998", "romance", "bard", "love", "poetry", "bardic", "romantic", "improvised"]}
+{"item_id": 2398, "keywords": ["drama", "1947", "magic", "christmas", "family", "holiday", "christmas", "faith", "faith-based"]}
+{"item_id": 2401, "keywords": ["western", "1985", "cowboy", "outlaw", "revenge", "sheriff", "outdoor", "desert"]}
+{"item_id": 2402, "keywords": ["action", "war", "1985", "soldier", "rescue", "battlefield", "explosive", "explosions"]}
+{"item_id": 2403, "keywords": ["action", "1982", "survival", "hunter", "revenge", "outlaw", "desert", "solitude"]}
+{"item_id": 2404, "keywords": ["action", "1988", "warrior", "revenge", "outlaw", "desert", "solitude", "post-apocalyptic"]}
+{"item_id": 2405, "keywords": ["action", "1985", "adventure", "heist", "romance", "comedy", "humor", "suspense"]}
+{"item_id": 2406, "keywords": ["romance", "action", "adventure", "comedy", "historical", "medieval", "fantasy", "epic", "swordplay"]}
+{"item_id": 2407, "keywords": ["sci-fi", "comedy", "space", "future", "horror", "alien", "robot", "lab"]}
+{"item_id": 2408, "keywords": ["sci-fi", "comedy", "space", "future", "horror", "alien", "robot", "lab"]}
+{"item_id": 2409, "keywords": ["action", "drama", "sports", "coming-of-age", "underdog", "family", "competition"]}
+{"item_id": 2410, "keywords": ["action", "drama", "sports", "coming-of-age", "underdog", "family", "competition"]}
+{"item_id": 2411, "keywords": ["action", "drama", "sports", "coming-of-age", "underdog", "family", "competition"]}
+{"item_id": 2412, "keywords": ["action", "drama", "sports", "coming-of-age", "underdog", "family", "competition"]}
+{"item_id": 2413, "keywords": ["comedy", "mystery", "whodunit", "puzzle", "suspense", "detective", "impossible"]}
+{"item_id": 2414, "keywords": ["action", "adventure", "mystery", "detective", "london", "19th century", "education"]}
+{"item_id": 2416, "keywords": ["comedy", "school", "education", "humor", "awkwardness", "teenage", "school life"]}
+{"item_id": 2420, "keywords": ["drama", "action", "martial arts", "family", "coming-of-age", "resilience", "perseverance"]}
+{"item_id": 2421, "keywords": ["action", "adventure", "martial arts", "family", "coming-of-age", "resilience", "perseverance"]}
+{"item_id": 2422, "keywords": ["martial arts", "school", "kid", "action", "drama", "school", "teacher", "student"]}
+{"item_id": 2423, "keywords": ["holiday", "comedy", "holiday", "school", "teacher", "student"]}
+{"item_id": 2424, "keywords": ["corps", "school", "horror", "sci-fi", "teacher", "student"]}
+{"item_id": 2427, "keywords": ["thin", "thin", "thin", "thin", "thin", "thin", "thin", "thin", "thin"]}
+{"item_id": 2428, "keywords": ["corps", "school", "horror", "sci-fi", "teacher", "student"]}
+{"item_id": 2431, "keywords": ["patch", "patch", "patch", "patch", "patch", "patch", "patch", "patch", "patch"]}
+{"item_id": 2433, "keywords": ["law", "law", "law", "law", "law", "law", "law", "law", "law"]}
+{"item_id": 2447, "keywords": ["varsity", "varsity", "varsity", "varsity", "varsity", "varsity", "varsity", "varsity", "varsity"]}
+{"item_id": 2450, "keywords": ["duck", "duck", "duck", "duck", "duck", "duck", "duck", "duck", "duck"]}
+{"item_id": 2454, "keywords": ["fly", "fly", "fly", "fly", "fly", "fly", "fly", "fly", "fly"]}
+{"item_id": 2455, "keywords": ["fly", "fly", "fly", "fly", "fly", "fly", "fly", "fly", "fly"]}
+{"item_id": 2456, "keywords": ["fly", "fly", "fly", "fly", "fly", "fly", "fly", "fly", "fly"]}
+{"item_id": 2457, "keywords": ["action", "comedy", "1986"]}
+{"item_id": 2463, "keywords": ["comedy", "1986"]}
+{"item_id": 2467, "keywords": ["mystery", "1986"]}
+{"item_id": 2468, "keywords": ["action", "comedy", "romance", "thriller", "1986"]}
+{"item_id": 2469, "keywords": ["comedy", "romance", "1986"]}
+{"item_id": 2470, "keywords": ["adventure", "comedy", "1986"]}
+{"item_id": 2471, "keywords": ["adventure", "comedy", "1988"]}
+{"item_id": 2474, "keywords": ["drama", "1986"]}
+{"item_id": 2476, "keywords": ["action", "war", "comedy", "1986"]}
+{"item_id": 2478, "keywords": ["comedy", "western", "1986"]}
+{"item_id": 2485, "keywords": ["comedy", "romance", "1999"]}
+{"item_id": 2490, "keywords": ["action", "thriller", "1999"]}
+{"item_id": 2496, "keywords": ["comedy", "romance", "1999", "blues", "nostalgia", "retro", "musical", "time-travel", "family"]}
+{"item_id": 2501, "keywords": ["drama", "1999", "family", "achievement", "resilience", "space", "education", "dream"]}
+{"item_id": 2502, "keywords": ["comedy", "romance", "1999", "satire", "office", "banter", "quips", "banter", "satire"]}
+{"item_id": 2505, "keywords": ["thriller", "1999", "survival", "terror", "horror", "suspense", "action", "surreal"]}
+{"item_id": 2513, "keywords": ["horror", "1989", "supernatural", "fear", "nightmare", "family", "horror", "fear"]}
+{"item_id": 2517, "keywords": ["comedy", "1982", "horror", "slasher", "horror", "horror", "horror", "horror"]}
+{"item_id": 2518, "keywords": []}
+{"item_id": 2524, "keywords": ["action", "1974", "disaster", "rescue", "resilience", "humanity", "catastrophe", "emergency"]}
+{"item_id": 2527, "keywords": ["action", "1973", "western", "space", "western", "western", "western", "western"]}
+{"item_id": 2528, "keywords": ["action", "1976", "space", "adventure", "space", "space", "space", "space"]}
+{"item_id": 2529, "keywords": ["action", "1968", "ape", "human", "ape", "ape", "ape", "ape"]}
+{"item_id": 2530, "keywords": ["action", "1970", "ape", "human", "ape", "ape", "ape", "ape"]}
+{"item_id": 2531, "keywords": ["battle", "ape", "planet", "action", "sci-fi", "ape-men", "ape-race", "ape-society"]}
+{"item_id": 2532, "keywords": ["conquest", "ape", "planet", "action", "sci-fi", "ape-men", "ape-society", "ape-war"]}
+{"item_id": 2533, "keywords": ["escape", "ape", "planet", "action", "sci-fi", "ape-men", "ape-society", "ape-horror"]}
+{"item_id": 2539, "keywords": []}
+{"item_id": 2541, "keywords": ["analyze", "comedy", "1999", "sophistication", "satire", "sexual", "power", "corruption"]}
+{"item_id": 2542, "keywords": ["lock", "stock", "two", "smoking", "blending", "comedy", "crime", "thriller"]}
+{"item_id": 2565, "keywords": ["king", "music", "1956", "musical", "soprano", "romance", "culture", "dance"]}
+{"item_id": 2567, "keywords": ["edtv", "comedy", "1999", "satire", "television", "pop-culture", "family", "teenagers"]}
+{"item_id": 2571, "keywords": ["matrix", "action", "sci-fi", "thriller", "reality", "rebellion", "human", "machine"]}
+{"item_id": 2572, "keywords": ["teenage", "romance", "comedy", "1999", "love", "conflict", "family", "teenagers"]}
+{"item_id": 2580, "keywords": ["go", "1999", "crime", "gangster", "underworld", "betrayal", "revenge", "betrayal"]}
+{"item_id": 2581, "keywords": ["never", "1999", "comedy", "romance", "time-travel", "sorority", "secrets", "reunion"]}
+{"item_id": 2598, "keywords": ["comedy", "1999", "blending", "humor", "working-class", "socio-economic", "melodrama", "melancholy", "melancholy", "melancholy"]}
+{"item_id": 2599, "keywords": ["comedy", "1999", "blending", "humor", "socio-political", "melodrama", "melancholy", "melancholy", "melancholy"]}
+{"item_id": 2600, "keywords": ["action", "sci-fi", "thriller", "1999", "blending", "humor", "melodrama", "melancholy", "melancholy"]}
+{"item_id": 2605, "keywords": ["crime", "thriller", "1999", "blending", "suspense", "melodrama", "melancholy", "melancholy", "melancholy"]}
+{"item_id": 2613, "keywords": ["action", "horror", "sci-fi", "1984", "blending", "suspense", "melodrama", "melancholy", "melancholy"]}
+{"item_id": 2616, "keywords": ["action", "crime", "1990", "blending", "suspense", "melodrama", "melancholy", "melancholy", "melancholy"]}
+{"item_id": 2617, "keywords": ["action", "adventure", "horror", "thriller", "1999", "blending", "suspense", "melodrama", "melancholy"]}
+{"item_id": 2622, "keywords": ["comedy", "fantasy", "1999", "blending", "suspense", "melodrama", "melancholy", "melancholy"]}
+{"item_id": 2628, "keywords": ["action", "adventure", "fantasy", "sci-fi", "1999", "blending", "suspense", "melodrama", "melancholy"]}
+{"item_id": 2640, "keywords": ["action", "adventure", "sci-fi", "1978", "blending", "melodrama", "melancholy", "melancholy"]}
+{"item_id": 2641, "keywords": ["action", "adventure", "sci-fi", "1980", "blending", "melodrama", "melancholy", "melancholy"]}
+{"item_id": 2642, "keywords": ["action", "adventure", "sci-fi", "1983", "blending", "melodrama", "melancholy", "melancholy"]}
+{"item_id": 2643, "keywords": ["superman", "action", "space", "power", "fiction", "1980s", "comic", "villain"]}
+{"item_id": 2648, "keywords": ["frankenstein", "horror", "vampire", "monster", "19th century", "gothic", "science"]}
+{"item_id": 2657, "keywords": ["horror", "comedy", "musical", "sci-fi", "campus", "alien", "transformation"]}
+{"item_id": 2662, "keywords": ["sci-fi", "war", "alien invasion", "body snatchers", "1950s", "horror", "mutants"]}
+{"item_id": 2664, "keywords": []}
+{"item_id": 2668, "keywords": ["horror", "sci-fi", "alien", "mutants", "earth invasion", "1950s", "post-apocalyptic"]}
+{"item_id": 2671, "keywords": ["comedy", "romance", "london", "neon", "1950s", "blues", "street"]}
+{"item_id": 2672, "keywords": ["sci-fi", "thriller", "virtual reality", "1980s", "hacker", "mystery"]}
+{"item_id": 2676, "keywords": ["drama", "thriller", "hunting", "1999", "horror", "mutants"]}
+{"item_id": 2683, "keywords": ["comedy", "spy", "shagging", "1999", "parody", "clever", "slapstick"]}
+{"item_id": 2686, "keywords": ["drama", "mystery", "1998", "france", "red", "violin"]}
+{"item_id": 2687, "keywords": ["animation", "adventure", "1930s", "safari", "clever", "humor"]}
+{"item_id": 2688, "keywords": ["drama", "thriller", "military", "family", "suspense", "emotional", "power", "patriarchy"]}
+{"item_id": 2690, "keywords": ["comedy", "marriage", "society", "humor", "satire", "modern", "relationships", "gender", "gender roles"]}
+{"item_id": 2692, "keywords": ["action", "heist", "romance", "fast-paced", "adventure", "romantic", "impossible mission", "improvisation"]}
+{"item_id": 2694, "keywords": ["comedy", "family", "dad", "dad comedy", "humor", "suspense", "family dynamics", "coming of age"]}
+{"item_id": 2699, "keywords": ["action", "horror", "sci-fi", "comedy", "fear", "survival", "spider", "horror comedy"]}
+{"item_id": 2700, "keywords": ["animation", "satire", "society", "humor", "western", "satire", "modern", "irony", "pop culture"]}
+{"item_id": 2701, "keywords": ["action", "western", "sci-fi", "space", "cowboy", "outlaws", "frontier", "adventure"]}
+{"item_id": 2702, "keywords": ["drama", "society", "crime", "irony", "satire", "1990s", "media", "satire", "western"]}
+{"item_id": 2706, "keywords": ["comedy", "food", "bladder", "suspense", "humor", "coming of age", "family", "coming of age comedy"]}
+{"item_id": 2707, "keywords": ["suspense", "horror", "road", "family", "survival", "horror", "western"]}
+{"item_id": 2710, "keywords": ["horror", "found footage", "immediacy", "fear", "impostor", "surveillance", "urban legend", "improvised"]}
+{"item_id": 2712, "keywords": ["drama", "secrecy", "power", "corruption", "modern", "sex", "confrontation", "moral dilemma"]}
+{"item_id": 2713, "keywords": ["horror", "thriller", "lake placid", "1999", "suspense", "water", "fear", "creatures"]}
+{"item_id": 2716, "keywords": ["comedy", "horror", "ghostbusters", "1984", "slaughter", "slasher", "spooky", "haunted", "ghosts"]}
+{"item_id": 2717, "keywords": ["comedy", "horror", "ghostbusters ii", "1989", "slaughter", "slasher", "spooky", "ghosts"]}
+{"item_id": 2718, "keywords": ["comedy", "romance", "drama", "1999", "humor", "romantic", "banter", "slapstick"]}
+{"item_id": 2719, "keywords": ["horror", "thriller", "haunting", "1999", "fear", "supernatural", "paranormal", "ghosts"]}
+{"item_id": 2720, "keywords": ["action", "adventure", "children's", "comedy", "1999", "gadgets", "sabotage", "humor", "villain"]}
+{"item_id": 2722, "keywords": ["action", "sci-fi", "thriller", "1999", "underwater", "predator", "horror", "sequel", "fear"]}
+{"item_id": 2723, "keywords": ["action", "adventure", "comedy", "1999", "slapstick", "swordplay", "martial", "humor"]}
+{"item_id": 2724, "keywords": ["comedy", "romance", "drama", "1999", "banter", "slapstick", "romantic", "villain"]}
+{"item_id": 2728, "keywords": ["drama", "history", "war", "1960", "epic", "martial", "honor"]}
+{"item_id": 2734, "keywords": ["drama", "action", "sci-fi", "1986", "space", "alien", "humanity", "survival"]}
+{"item_id": 2735, "keywords": ["action", "sci-fi", "comedy", "1986", "space", "alien", "humor", "sequel"]}
+{"item_id": 2739, "keywords": ["blues", "neo-noir", "blues rock", "punk rock", "avant-garde", "conflict", "social issues", "race relations", "sexual liberation"]}
+{"item_id": 2746, "keywords": ["camp", "horror comedy", "musical comedy", "grotesque", "satire", "1980s campiness", "pop culture", "childlike innocence"]}
+{"item_id": 2747, "keywords": ["slasher comedy", "campy horror", "1960s campiness", "grotesque", "satire", "childlike innocence", "horror elements"]}
+{"item_id": 2750, "keywords": ["nostalgic comedy", "dramedy", "ironic comedy", "socio-political comedy", "ironic musical numbers", "ironic musical numbers", "ironic musical numbers"]}
+{"item_id": 2759, "keywords": ["dark comedy", "supernatural comedy", "slightly off-kilter comedy", "slightly off-kilter comedy", "slightly off-kilter comedy", "slightly off-kilter comedy", "slightly off-kilter comedy"]}
+{"item_id": 2761, "keywords": ["children's comedy", "cartoon comedy", "whimsical comedy", "whimsical comedy", "whimsical comedy", "whimsical comedy", "whimsical comedy"]}
+{"item_id": 2762, "keywords": ["supernatural thriller", "suspense thriller", "suspense thriller", "suspense thriller", "suspense thriller", "suspense thriller", "suspense thriller"]}
+{"item_id": 2763, "keywords": ["action thriller", "suspense action", "suspense action", "suspense action", "suspense action", "suspense action", "suspense action"]}
+{"item_id": 2764, "keywords": ["crime thriller", "suspense thriller", "suspense thriller", "suspense thriller", "suspense thriller", "suspense thriller", "suspense thriller"]}
+{"item_id": 2770, "keywords": ["comedy musical", "suspense comedy", "suspense comedy", "suspense comedy", "suspense comedy", "suspense comedy", "suspense comedy"]}
+{"item_id": 2779, "keywords": ["comedy musical", "suspense comedy", "suspense comedy", "suspense comedy", "suspense comedy", "suspense comedy", "suspense comedy"]}
+{"item_id": 2788, "keywords": ["comedy musical", "suspense comedy", "suspense comedy", "suspense comedy", "suspense comedy", "suspense comedy", "suspense comedy"]}
+{"item_id": 2791, "keywords": ["comedy", "1980", "airplane", "soundtrack"]}
+{"item_id": 2792, "keywords": ["comedy", "1982", "airplane sequel", "soundtrack"]}
+{"item_id": 2793, "keywords": ["comedy", "horror", "1997", "werewolf", "paris"]}
+{"item_id": 2794, "keywords": ["comedy", "1985", "vacation", "france"]}
+{"item_id": 2795, "keywords": ["comedy", "1983", "vacation", "family"]}
+{"item_id": 2797, "keywords": ["comedy", "1988", "big", "fantasy", "superhero"]}
+{"item_id": 2802, "keywords": ["action", "1988", "romance", "thriller", "tequila"]}
+{"item_id": 2803, "keywords": ["thriller", "1993", "legal", "mystery"]}
+{"item_id": 2804, "keywords": ["comedy", "1983", "christmas", "family"]}
+{"item_id": 2805, "keywords": ["comedy", "1999", "romance", "mickey"]}
+{"item_id": 2808, "keywords": ["action", "1992", "sci-fi", "soldier"]}
+{"item_id": 2815, "keywords": ["action", "1986", "war", "aviation"]}
+{"item_id": 2819, "keywords": ["thriller", "action", "suspense", "mystery", "horror", "survival", "confrontation", "outdoor", "desert"]}
+{"item_id": 2822, "keywords": ["adventure", "romance", "western", "spiritual", "indigenous", "nature", "secrets", "spirituality", "sacred"]}
+{"item_id": 2826, "keywords": ["action", "sci-fi", "horror", "swordplay", "epic", "sorcery", "fantasy", "warrior", "alien"]}
+{"item_id": 2827, "keywords": ["sci-fi", "horror", "space", "alien", "survival", "secrets", "extraterrestrial", "mystery"]}
+{"item_id": 2840, "keywords": ["thriller", "supernatural", "satanic", "sin", "temptation", "redemption", "faith", "sin city"]}
+{"item_id": 2841, "keywords": ["thriller", "horror", "secrecy", "confrontation", "survival", "outdoor", "desert", "suspense"]}
+{"item_id": 2857, "keywords": ["animation", "musical", "fantasy", "underwater", "family", "harmony", "imagination", "color", "sailing"]}
+{"item_id": 2858, "keywords": ["comedy", "horror", "slasher", "nightmare", "paranoia", "survival", "fear", "darkness"]}
+{"item_id": 2861, "keywords": ["comedy", "drama", "sport", "family", "coming of age", "reunion", "emotional", "coming home"]}
+{"item_id": 2863, "keywords": ["comedy", "musical", "satires", "silliness", "humor", "music", "improvisation", "celebrity", "celebrations"]}
+{"item_id": 2867, "keywords": []}
+{"item_id": 2871, "keywords": ["adventure", "thriller", "survival", "outdoor", "desert", "suspense", "danger", "rescue", "perseverance"]}
+{"item_id": 2872, "keywords": ["action", "drama", "fantasy", "romance", "medieval", "king", "legend", "sword", "kingarth"]}
+{"item_id": 2875, "keywords": ["drama", "mystery", "romance", "england", "village", "secret", "love", "jealousy", "betrayal"]}
+{"item_id": 2881, "keywords": ["action", "thriller", "heist", "revenge", "cop", "double-cross", "nightmare", "suspense", "danger"]}
+{"item_id": 2883, "keywords": ["comedy", "romance", "family", "misunderstanding", "humor", "heartwarming", "unexpected", "quirky characters"]}
+{"item_id": 2889, "keywords": ["comedy", "adventure", "survival", "humor", "misadventure", "unexpected characters", "humorous situations", "light-hearted"]}
+{"item_id": 2890, "keywords": ["drama", "war", "conflict", "suspense", "emotional", "historical", "battlefield", "humanity", "suffering"]}
+{"item_id": 2901, "keywords": ["horror", "sci-fi", "alien invasion", "post-apocalyptic", "survival", "fear", "unknown", "paranoia", "surveillance"]}
+{"item_id": 2908, "keywords": ["drama", "coming-of-age", "society", "gender", "identity", "repression", "conflict", "emotional growth"]}
+{"item_id": 2912, "keywords": ["action", "crime", "drama", "london", "underworld", "betrayal", "revenge", "law", "corruption"]}
+{"item_id": 2915, "keywords": ["comedy", "romance", "misadventure", "humor", "heartwarming", "unexpected", "quirky characters", "humor"]}
+{"item_id": 2916, "keywords": ["action", "sci-fi", "adventure", "alien planet", "survival", "fear", "unknown", "surveillance", "heist"]}
+{"item_id": 2917, "keywords": ["crime", "thriller", "romance", "london", "undercover", "revenge", "secrets", "suspense", "emotion"]}
+{"item_id": 2918, "keywords": ["comedy", "1986", "family", "school", "holiday", "funny", "ferris", "ferris bueller"]}
+{"item_id": 2919, "keywords": ["drama", "romance", "1982", "suspense", "action", "emotional", "romantic", "dangerous", "year"]}
+{"item_id": 2921, "keywords": ["western", "1972", "cowboy", "outdoor", "desert", "vigilante", "revenge", "frontier"]}
+{"item_id": 2926, "keywords": ["comedy", "drama", "1988", "musical", "dance", "high school", "separating", "funny", "hairspray"]}
+{"item_id": 2941, "keywords": ["musical", "1958", "war", "romance", "seas", "pacific", "sailors", "love", "battle"]}
+{"item_id": 2942, "keywords": ["drama", "romance", "1983", "dance", "music", "blues", "suspense", "emotional", "flashdance"]}
+{"item_id": 2944, "keywords": ["action", "war", "1967", "spy", "danger", "seas", "undercover", "mission", "goldfinger"]}
+{"item_id": 2946, "keywords": ["comedy", "musical", "1965", "music", "humor", "suspense", "romance", "help", "beatles"]}
+{"item_id": 2947, "keywords": ["action", "war", "1964", "spy", "adventure", "seas", "undercover", "mission", "goldfinger"]}
+{"item_id": 2948, "keywords": ["action", "war", "1963", "spy", "seas", "undercover", "mission", "goldfinger", "bond"]}
+{"item_id": 2949, "keywords": ["action", "war", "1962", "spy", "seas", "undercover", "mission", "goldfinger", "bond"]}
+{"item_id": 2950, "keywords": ["adventure", "1980", "seas", "desert", "island", "seclusion", "romance", "survival"]}
+{"item_id": 2951, "keywords": ["action", "western", "gunfight", "cowboy", "outlaw", "gold rush", "sierra", "duke", "west"]}
+{"item_id": 2953, "keywords": ["children", "comedy", "holiday", "misadventure", "family", "holiday", "holiday", "holiday"]}
+{"item_id": 2959, "keywords": ["drama", "reality", "conflict", "identity", "rebellion", "society", "mind", "mind"]}
+{"item_id": 2961, "keywords": ["comedy", "drama", "family", "reality", "society", "mind", "reality", "society"]}
+{"item_id": 2966, "keywords": ["drama", "reality", "conflict", "identity", "rebellion", "society", "mind", "reality"]}
+{"item_id": 2968, "keywords": ["adventure", "fantasy", "sci-fi", "time-travel", "magic", "quest", "fantasy", "alien"]}
+{"item_id": 2971, "keywords": ["musical", "drama", "dance", "music", "celebration", "party", "celebration", "party"]}
+{"item_id": 2973, "keywords": ["comedy", "crime", "morality", "law", "ethics", "punishment", "justice", "law"]}
+{"item_id": 2976, "keywords": ["drama", "horror", "mystery", "death", "suspense", "darkness", "fear", "night"]}
+{"item_id": 2985, "keywords": ["action", "crime", "sci-fi", "dystopia", "police", "corruption", "robot", "city"]}
+{"item_id": 2986, "keywords": ["action", "crime", "sci-fi", "dystopia", "police", "corruption", "robot", "city"]}
+{"item_id": 2987, "keywords": ["adventure", "animation", "film-noir", "detective", "mystery", "city", "film", "detective"]}
+{"item_id": 2989, "keywords": ["action", "1981", "spy", "classified", "secrecy", "confidential", "surveillance", "espionage", "classified"]}
+{"item_id": 2990, "keywords": ["action", "1989", "revenge", "killer", "murder", "assassination", "suspense", "gunfight", "retribution"]}
+{"item_id": 2991, "keywords": ["action", "1973", "spy", "revenge", "murder", "assassination", "espionage", "classified", "secrecy"]}
+{"item_id": 2993, "keywords": ["action", "1965", "spy", "revenge", "murder", "assassination", "espionage", "classified", "secrecy"]}
+{"item_id": 2995, "keywords": ["horror", "1999", "terror", "fear", "suspense", "supernatural", "paranormal", "terrorism"]}
+{"item_id": 2997, "keywords": ["comedy", "1999", "absurd", "humor", "irony", "satire", "weird", "unusual"]}
+{"item_id": 3000, "keywords": ["action", "1997", "fantasy", "sorcery", "monsters", "nature", "spirituality", "shamanism", "japanese cinema"]}
+{"item_id": 3005, "keywords": ["thriller", "1999", "mystery", "suspense", "detective", "forensic", "cat-and-mouse", "cat-and-mouse game"]}
+{"item_id": 3006, "keywords": ["drama", "1999", "corporate", "power", "corruption", "moral dilemma", "emotional", "psychological"]}
+{"item_id": 3007, "keywords": ["documentary", "1999", "realism", "observational", "non-fiction", "cinematic", "direct cinema", "truth"]}
+{"item_id": 3016, "keywords": ["horror", "1982", "slasher", "suspense", "shock", "terror", "horror flick", "nightmare"]}
+{"item_id": 3019, "keywords": ["crime", "1989", "drama", "romance", "coming-of-age", "coming-of-age comedy", "dark comedy"]}
+{"item_id": 3020, "keywords": ["action", "drama", "1990s", "suspense", "heist", "police", "law enforcement", "arrest"]}
+{"item_id": 3033, "keywords": ["comedy", "sci-fi", "space", "alien", "space travel", "sci-fi comedy", "1980s"]}
+{"item_id": 3034, "keywords": ["animation", "children", "adventure", "fairy tale", "medieval", "king", "sword"]}
+{"item_id": 3035, "keywords": ["comedy", "drama", "war", "navy", "seas", "sailing", "navy life"]}
+{"item_id": 3037, "keywords": ["comedy", "drama", "western", "cowboy", "outlaw", "saddle", "revolver"]}
+{"item_id": 3039, "keywords": ["comedy", "suspense", "heist", "money laundering", "blackmail", "thief"]}
+{"item_id": 3040, "keywords": ["comedy", "slapstick", "food", "banh mi", "vietnamese", "satiated", "overindulgence"]}
+{"item_id": 3044, "keywords": ["mystery", "romance", "thriller", "time travel", "amnesia", "revenge", "sorcery"]}
+{"item_id": 3052, "keywords": ["comedy", "absurd", "blasphemy", "sex", "fertility", "fertility cult", "irony"]}
+{"item_id": 3053, "keywords": ["drama", "war", "history", "faith", "patriotism", "martyrdom", "suffering"]}
+{"item_id": 3060, "keywords": ["comedy", "drama", "romance", "commitment", "friendship", "entertainment", "entertainers"]}
+{"item_id": 3061, "keywords": ["comedy", "drama", "holiday", "romance", "entertainment", "entertainers", "holiday spirit"]}
+{"item_id": 3062, "keywords": ["action", "war", "drama", "historical", "suspense", "emotional", "patriotic", "war-time", "cinematic"]}
+{"item_id": 3067, "keywords": ["comedy", "drama", "female", "emotional", "absurd", "satirical", "romantic", "social", "1980s"]}
+{"item_id": 3068, "keywords": ["drama", "legal", "moral", "ethical", "judgment", "redemption", "conflict", "suspense", "power"]}
+{"item_id": 3070, "keywords": ["sci-fi", "comedy", "adventure", "space", "humor", "impossible", "time-travel", "alien", "1980s"]}
+{"item_id": 3071, "keywords": ["drama", "education", "resilience", "overcoming", "empathy", "humanity", "struggle", "emotional"]}
+{"item_id": 3072, "keywords": []}
+{"item_id": 3081, "keywords": ["horror", "romance", "supernatural", "dark", "mystery", "fear", "19th century", "ghost"]}
+{"item_id": 3082, "keywords": ["action", "thriller", "suspense", "romance", "sequel", "sci-fi", "heist", "space", "danger"]}
+{"item_id": 3083, "keywords": ["comedy", "family", "cultural", "humor", "emotional", "storytelling", "humanity", "1990s"]}
+{"item_id": 3087, "keywords": ["comedy", "superstition", "humor", "blues", "spirituality", "humor", "19th century", "slavery"]}
+{"item_id": 3088, "keywords": ["comedy", "romance", "education", "coming-of-age", "family", "humor", "1950s", "school"]}
+{"item_id": 3095, "keywords": ["drama", "social", "coming-of-age", "family", "coming down from power", "emotional", "historical", "1930s"]}
+{"item_id": 3098, "keywords": ["drama", "suspense", "dystopian", "politics", "revolution", "1984", "big brother", "surveillance", "totalitarian"]}
+{"item_id": 3099, "keywords": ["comedy", "romance", "blonde", "cleavage", "sweatshirt", "blonde joke", "70s rock", "pop culture"]}
+{"item_id": 3100, "keywords": ["family", "emotional", "resilience", "loss", "coming of age", "teenage", "coming of age", "coming of age", "coming of age"]}
+{"item_id": 3101, "keywords": ["thriller", "suspense", "romance", "secrecy", "danger", "dark", "suspense", "secrecy"]}
+{"item_id": 3102, "keywords": ["thriller", "suspense", "action", "heist", "danger", "secrecy", "dark", "suspense", "secrecy"]}
+{"item_id": 3104, "keywords": ["action", "adventure", "comedy", "heist", "suspense", "danger", "secrecy", "dark"]}
+{"item_id": 3105, "keywords": ["drama", "emotional", "resilience", "loss", "coming of age", "teenage", "coming of age", "coming of age"]}
+{"item_id": 3107, "keywords": ["action", "drama", "emotional", "resilience", "loss", "coming of age", "teenage", "coming of age"]}
+{"item_id": 3108, "keywords": ["comedy", "drama", "romance", "emotional", "resilience", "loss", "coming of age", "teenage"]}
+{"item_id": 3113, "keywords": ["action", "thriller", "suspense", "secrecy", "danger", "dark", "suspense", "secrecy"]}
+{"item_id": 3114, "keywords": ["animation", "children's", "comedy", "family", "adventure", "suspense", "secrecy", "dark"]}
+{"item_id": 3129, "keywords": ["comedy", "drama", "romance", "emotional", "resilience", "loss", "coming of age", "teenage"]}
+{"item_id": 3146, "keywords": ["comedy", "1999", "male", "gigolo", "romance", "humor", "satire", "entertainment", "lifestyle"]}
+{"item_id": 3147, "keywords": ["drama", "thriller", "1999", "mystery", "suspense", "crime", "emotional", "dark", "psychological"]}
+{"item_id": 3148, "keywords": ["drama", "1999", "family", "emotional", "coming-of-age", "coming-out", "coming-apart", "coming-together", "coming-home"]}
+{"item_id": 3152, "keywords": ["drama", "1971", "coming-of-age", "coming-apart", "coming-together", "coming-home", "coming-out", "coming-apart", "coming-together"]}
+{"item_id": 3153, "keywords": ["action", "adventure", "fantasy", "1958", "epic", "sword-and-sorcery", "magic", "monsters"]}
+{"item_id": 3155, "keywords": ["drama", "1999", "romance", "coming-together", "coming-apart", "coming-home", "coming-out", "coming-apart", "coming-together"]}
+{"item_id": 3156, "keywords": ["comedy", "drama", "sci-fi", "1999", "robots", "time-travel", "future", "dystopia", "human-android"]}
+{"item_id": 3157, "keywords": ["children's", "comedy", "1999", "animals", "humor", "family", "adventure", "impossible", "impossible-adventure"]}
+{"item_id": 3159, "keywords": ["animation", "children's", "1999", "music", "fantasy", "adventure", "impossible-adventure", "impossible-adventure"]}
+{"item_id": 3160, "keywords": ["drama", "1999", "coming-of-age", "coming-apart", "coming-together", "coming-home", "coming-out", "coming-apart", "coming-together"]}
+{"item_id": 3163, "keywords": ["drama", "1999", "coming-of-age", "coming-apart", "coming-together", "coming-home", "coming-out", "coming-apart", "coming-together"]}
+{"item_id": 3168, "keywords": ["adventure", "drama", "1969", "counterculture", "rebellion", "freedom", "non-conformity", "hippie", "travel"]}
+{"item_id": 3169, "keywords": ["drama", "1980s", "fiction", "space", "alien", "human", "emotional", "space travel", "conflict"]}
+{"item_id": 3173, "keywords": ["drama", "1990s", "emotional", "family", "coming of age", "coming of age", "coming of age", "coming of age", "coming of age"]}
+{"item_id": 3174, "keywords": ["comedy", "drama", "1990s", "humor", "suspense", "mystery", "thriller", "action", "adventure"]}
+{"item_id": 3175, "keywords": ["adventure", "comedy", "1990s", "space travel", "alien life", "humor", "suspense", "space", "extraterrestrial"]}
+{"item_id": 3176, "keywords": ["drama", "1990s", "mystery", "thriller", "action", "suspense", "conflict", "revenge", "revenge"]}
+{"item_id": 3178, "keywords": ["drama", "1990s", "emotional", "family", "coming of age", "coming of age", "coming of age", "coming of age"]}
+{"item_id": 3185, "keywords": ["drama", "1990s", "emotional", "family", "coming of age", "coming of age", "coming of age", "coming of age"]}
+{"item_id": 3186, "keywords": ["drama", "1990s", "emotional", "family", "coming of age", "coming of age", "coming of age", "coming of age"]}
+{"item_id": 3189, "keywords": []}
+{"item_id": 3196, "keywords": ["comedy", "1990s", "humor", "family", "coming of age", "coming of age", "coming of age", "coming of age"]}
+{"item_id": 3197, "keywords": ["action", "1990s", "suspense", "heist", "thriller", "suspense", "suspense", "suspense"]}
+{"item_id": 3198, "keywords": ["drama", "1970s", "fiction", "space", "alien", "human", "emotional", "space travel", "conflict"]}
+{"item_id": 3201, "keywords": ["drama", "1970s", "musical", "emotional", "family", "coming-of-age", "teenage", "school"]}
+{"item_id": 3203, "keywords": ["thriller", "1980s", "suspense", "mystery", "seaworthy", "storm", "suspenseful", "high-sea"]}
+{"item_id": 3208, "keywords": ["action", "comedy", "1990s", "slapstick", "humor", "swordplay", "heist", "action-comedy"]}
+{"item_id": 3210, "keywords": ["comedy", "1980s", "high school", "humor", "teenage", "irony", "satire", "ironic"]}
+{"item_id": 3219, "keywords": ["thriller", "1990s", "suspense", "seaside", "mystery", "family", "suspenseful", "high-sea"]}
+{"item_id": 3238, "keywords": ["thriller", "1990s", "suspense", "seaside", "mystery", "family", "suspenseful", "high-sea"]}
+{"item_id": 3243, "keywords": ["comedy", "1990s", "suspense", "surreal", "humor", "absurd", "slapstick", "alien"]}
+{"item_id": 3244, "keywords": ["comedy", "1970s", "romance", "suspense", "humor", "irony", "satire", "ironic"]}
+{"item_id": 3246, "keywords": ["drama", "1990s", "biography", "social issues", "emotional", "historical", "powerful", "intellectual"]}
+{"item_id": 3247, "keywords": ["thriller", "1990s", "suspense", "family", "suspenseful", "seaside", "mystery"]}
+{"item_id": 3249, "keywords": ["thriller", "1990s", "suspense", "family", "suspenseful", "seaside", "mystery"]}
+{"item_id": 3250, "keywords": ["drama", "1990s", "coming-of-age", "emotional", "family", "survival", "horror", "suspense"]}
+{"item_id": 3251, "keywords": ["agnus of god", "1985", "drama", "mystery"]}
+{"item_id": 3252, "keywords": ["scent of a woman", "1992", "drama"]}
+{"item_id": 3253, "keywords": ["wayne's world", "1992", "comedy"]}
+{"item_id": 3254, "keywords": ["wayne's world 2", "1993", "comedy"]}
+{"item_id": 3255, "keywords": ["league of their own", "1992", "comedy", "drama"]}
+{"item_id": 3256, "keywords": ["patriot games", "1992", "action", "thriller"]}
+{"item_id": 3257, "keywords": ["bodyguard", "1992", "action", "drama", "romance", "thriller"]}
+{"item_id": 3258, "keywords": ["death becomes her", "1992", "comedy"]}
+{"item_id": 3259, "keywords": ["far and away", "1992", "drama", "romance"]}
+{"item_id": 3260, "keywords": ["howards end", "1992", "drama"]}
+{"item_id": 3261, "keywords": ["singles", "1992", "comedy", "drama", "romance"]}
+{"item_id": 3263, "keywords": ["white men can't jump", "1992", "comedy"]}
+{"item_id": 3264, "keywords": ["vampire slayer", "comedy", "horror", "sci-fi", "action", "teen", "slasher", "saturday night special"]}
+{"item_id": 3265, "keywords": ["lashou", "action", "crime", "police", "detective", "nigel stanfield", "blaxploitation", "1990s"]}
+{"item_id": 3267, "keywords": ["mexican", "action", "thriller", "gangster", "murder", "salsa", "gangsta", "1990s"]}
+{"item_id": 3269, "keywords": ["time-travel", "youth", "love", "space", "alien", "sci-fi", "romance", "sci-fi adventure"]}
+{"item_id": 3271, "keywords": ["lone", "farm", "dreams", "betrayal", "friendship", "coming of age", "war", "warrior"]}
+{"item_id": 3273, "keywords": ["scream", "slasher", "horror", "mystery", "thriller", "teenage", "vampire", "1990s"]}
+{"item_id": 3274, "keywords": ["single", "female", "action", "predator", "survival", "self-defense", "action", "1990s"]}
+{"item_id": 3285, "keywords": ["beach", "family", "coming of age", "coming of age", "coming of age", "coming of age", "coming of age", "coming of age"]}
+{"item_id": 3298, "keywords": ["corporate", "conspiracy", "murder", "action", "suspense", "thriller", "business", "1990s"]}
+{"item_id": 3300, "keywords": ["darkness", "space", "alien", "horror", "sci-fi", "action", "space adventure", "sci-fi survival"]}
+{"item_id": 3301, "keywords": ["gangster", "comedy", "crime", "police", "detective", "blaxploitation", "1990s"]}
+{"item_id": 3307, "keywords": ["city", "lights", "romance", "comedy", "drama", "coming of age", "coming of age", "coming of age"]}
+{"item_id": 3308, "keywords": ["comedy", "drama", "1980s", "satire", "family", "bird", "flamingo", "kid"]}
+{"item_id": 3316, "keywords": ["action", "thriller", "1990s", "holiday", "hunting", "reindeer", "snow", "conflict"]}
+{"item_id": 3317, "keywords": ["comedy", "drama", "1990s", "coming-of-age", "school", "teenage", "wunderkind"]}
+{"item_id": 3328, "keywords": ["crime", "drama", "1990s", "samurai", "cop", "mystery", "gun", "sword"]}
+{"item_id": 3334, "keywords": ["crime", "drama", "1940s", "gangster", "protection", "racket", "city", "underworld"]}
+{"item_id": 3354, "keywords": ["sci-fi", "space", "1990s", "mars", "mission", "exploration", "alien", "horror"]}
+{"item_id": 3355, "keywords": ["thriller", "mystery", "1990s", "portal", "magic", "amulet", "secrets"]}
+{"item_id": 3358, "keywords": ["comedy", "romance", "1990s", "time-travel", "parallel universes", "heist", "heist", "alternate reality"]}
+{"item_id": 3359, "keywords": ["coming-of-age", "drama", "1970s", "college", "reputation", "reputation", "resistance"]}
+{"item_id": 3360, "keywords": ["coming-of-age", "drama", "1980s", "high school", "sports", "family", "community"]}
+{"item_id": 3361, "keywords": ["comedy", "sport", "1980s", "baseball", "hockey", "teamwork", "family", "coming-of-age"]}
+{"item_id": 3362, "keywords": ["comedy", "crime", "1970s", "cop", "heist", "undercover", "cop", "undercover"]}
+{"item_id": 3363, "keywords": ["comedy", "drama", "1970s", "american cinema", "teen", "nostalgia", "family", "teenagers"]}
+{"item_id": 3366, "keywords": ["action", "adventure", "war", "1960s", "spy", "thriller", "heroes", "outdoors"]}
+{"item_id": 3384, "keywords": ["action", "heist", "1970s", "crime", "thriller", "police", "city"]}
+{"item_id": 3386, "keywords": ["drama", "mystery", "historical", "suspense", "conspiracy", "1970s", "politics"]}
+{"item_id": 3388, "keywords": ["comedy", "family", "1970s", "horror", "slasher", "hucksters"]}
+{"item_id": 3396, "keywords": ["children's", "comedy", "1970s", "muppets", "family", "impossible"]}
+{"item_id": 3397, "keywords": ["children's", "comedy", "1980s", "muppets", "family", "adventure"]}
+{"item_id": 3398, "keywords": ["children's", "comedy", "1980s", "muppets", "family", "impossible"]}
+{"item_id": 3408, "keywords": ["drama", "biography", "1990s", "legal", "environment", "family"]}
+{"item_id": 3409, "keywords": ["drama", "horror", "1990s", "superstition", "premonition", "action"]}
+{"item_id": 3418, "keywords": ["action", "drama", "1990s", "women", "friendship", "freedom", "outdoors"]}
+{"item_id": 3421, "keywords": ["comedy", "college", "1970s", "slapstick", "party", "freedom"]}
+{"item_id": 3424, "keywords": ["comedy", "drama", "1989", "human rights", "moral dilemma", "emotional", "ironic", "satirical", "social commentary"]}
+{"item_id": 3429, "keywords": ["animation", "comedy", "90s", "satires", "family", "humor", "cartoonish", "light-hearted"]}
+{"item_id": 3435, "keywords": ["crime", "film-noir", "1940s", "mystery", "dark", "suspense", "protagonist-driven", "morally ambiguous"]}
+{"item_id": 3438, "keywords": ["action", "children's", "90s", "mutants", "humor", "adventure", "fantasy"]}
+{"item_id": 3439, "keywords": ["action", "children's", "90s", "mutants", "humor", "adventure", "fantasy"]}
+{"item_id": 3441, "keywords": ["action", "war", "80s", "military", "patriotism", "conflict", "emotional", "suspense"]}
+{"item_id": 3448, "keywords": ["comedy", "war", "80s", "journalism", "sarcasm", "satirical", "military life"]}
+{"item_id": 3450, "keywords": ["comedy", "romance", "90s", "elderly", "humor", "suspense", "family", "mischievous"]}
+{"item_id": 3451, "keywords": ["comedy", "drama", "60s", "social issues", "satire", "family", "mischievous"]}
+{"item_id": 3452, "keywords": ["action", "romance", "2000s", "suspense", "adventure", "emotional", "sci-fi", "mutants"]}
+{"item_id": 3461, "keywords": ["adventure", "drama", "60s", "survival", "suspense", "school", "teenage"]}
+{"item_id": 3462, "keywords": ["comedy", "suspense", "1930s", "industrial", "satires", "family", "mischievous"]}
+{"item_id": 3467, "keywords": ["drama", "western", "1960s", "space", "alien", "family", "outdoor", "desert"]}
+{"item_id": 3468, "keywords": ["drama", "1950s", "law", "corruption", "justice", "moral dilemma", "empathy", "redemption"]}
+{"item_id": 3469, "keywords": []}
+{"item_id": 3471, "keywords": ["drama", "1970s", "space", "alien", "friendship", "fear", "impossible", "imagination"]}
+{"item_id": 3476, "keywords": ["horror", "mystery", "1990s", "paranormal", "unknown", "fear", "suspense", "mind"]}
+{"item_id": 3477, "keywords": ["comedy", "drama", "1990s", "music", "independent", "dream", "impossible"]}
+{"item_id": 3478, "keywords": ["thriller", "1990s", "murder", "suspense", "fear", "solitude", "desert"]}
+{"item_id": 3479, "keywords": ["adventure", "fantasy", "1980s", "magic", "sword", "love", "quest"]}
+{"item_id": 3481, "keywords": ["comedy", "2000s", "music", "romance", "irony", "modern", "ironic"]}
+{"item_id": 3484, "keywords": ["thriller", "2000s", "murder", "suspense", "fear", "solitude", "desert"]}
+{"item_id": 3489, "keywords": ["adventure", "fantasy", "1990s", "magic", "hook", "sea", "pirate"]}
+{"item_id": 3494, "keywords": ["adventure", "1960s", "western", "family", "friendship", "redemption", "outdoor", "desert"]}
+{"item_id": 3498, "keywords": ["drama", "midnight", "transportation", "emotional", "conflict", "night", "journey", "emotional", "desperation"]}
+{"item_id": 3499, "keywords": ["horror", "suspense", "fear", "psychological", "darkness", "nightmare", "suffering", "survival", "terror"]}
+{"item_id": 3501, "keywords": ["comedy", "romance", "misadventure", "humor", "unexpected", "romantic", "misfortune", "humor", "miscommunication"]}
+{"item_id": 3504, "keywords": ["comedy", "drama", "office", "humor", "conflict", "entertainment", "satire", "confrontation", "humor"]}
+{"item_id": 3505, "keywords": ["thriller", "suspense", "action", "danger", "conflict", "emotional", "high stakes", "suspense", "conflict"]}
+{"item_id": 3507, "keywords": ["comedy", "humor", "conflict", "banter", "humor", "irony", "comedy", "confusion", "banter"]}
+{"item_id": 3508, "keywords": ["western", "adventure", "outlaw", "revenge", "frontier", "cowboy", "outlaw", "justice", "western"]}
+{"item_id": 3510, "keywords": ["drama", "science", "mystery", "time-travel", "suspense", "emotion", "future", "science fiction", "time-travel"]}
+{"item_id": 3512, "keywords": ["drama", "romance", "suspense", "emotional", "secrets", "time-travel", "suspense", "emotion", "secrets"]}
+{"item_id": 3513, "keywords": ["drama", "suspense", "conflict", "emotional", "decision", "suspense", "emotional", "conflict", "suspense"]}
+{"item_id": 3524, "keywords": ["comedy", "romance", "adventure", "humor", "conflict", "entertainment", "satire", "humor"]}
+{"item_id": 3525, "keywords": ["comedy", "romance", "misadventure", "humor", "conflict", "entertainment", "satire", "humor"]}
+{"item_id": 3526, "keywords": ["parenthood", "1989", "comedy", "drama", "family", "coming-of-age", "emotional", "heartwarming"]}
+{"item_id": 3527, "keywords": ["predator", "1987", "action", "sci-fi", "thriller", "alien", "horror", "suspense", "horror-sci-fi", "sci-fi-thriller"]}
+{"item_id": 3528, "keywords": ["the prince of tides", "1991", "drama", "romance", "emotional", "coming-of-age", "family", "coming-out", "coming-out-drama"]}
+{"item_id": 3534, "keywords": ["28 days", "2000", "comedy", "slapstick", "absurd", "humor", "light-hearted", "humor-comedy", "slapstick-comedy"]}
+{"item_id": 3535, "keywords": ["american psycho", "2000", "comedy", "horror", "thriller", "dark comedy", "suspense", "horror-comedy", "horror-thriller"]}
+{"item_id": 3536, "keywords": ["keeping the faith", "2000", "comedy", "romance", "light-hearted", "humor", "feel-good", "rom-com-drama", "rom-com-comedy"]}
+{"item_id": 3543, "keywords": ["diner", "1982", "comedy", "drama", "coming-of-age", "nostalgia", "family", "coming-of-age-drama", "coming-of-age-comedy"]}
+{"item_id": 3545, "keywords": ["cabaret", "1972", "musical", "war", "conflict", "war-time", "war-drama", "war-time-musical"]}
+{"item_id": 3548, "keywords": ["auntie mame", "1958", "comedy", "drama", "family", "heart-warming", "coming-of-age", "coming-of-age-drama"]}
+{"item_id": 3549, "keywords": ["guys and dolls", "1955", "musical", "romance", "1950s", "musical-drama", "musical-romance", "1955 musical"]}
+{"item_id": 3551, "keywords": ["marathon man", "1976", "thriller", "suspense", "action", "horror", "suspense-thriller", "horror-thriller"]}
+{"item_id": 3552, "keywords": ["caddyshack", "1980", "comedy", "slapstick", "absurd", "humor", "dark comedy", "slapstick-comedy"]}
+{"item_id": 3555, "keywords": ["action", "thriller", "sci-fi", "space", "alien", "extraterrestrial", "explosion", "survival", "space mission"]}
+{"item_id": 3565, "keywords": ["comedy", "drama", "romance", "heartbreak", "misunderstanding", "humor", "family", "adventure"]}
+{"item_id": 3566, "keywords": ["comedy", "drama", "suspense", "mystery", "humor", "heist", "romance", "misadventure"]}
+{"item_id": 3576, "keywords": ["action", "horror", "sci-fi", "space", "alien", "extraterrestrial", "survival", "explosion", "post-apocalyptic"]}
+{"item_id": 3578, "keywords": ["action", "drama", "historical", "war", "swordplay", "epic", "savior", "rescue"]}
+{"item_id": 3591, "keywords": ["comedy", "drama", "family", "absurd", "humor", "misplaced", "parenting", "blunderbuss"]}
+{"item_id": 3593, "keywords": ["action", "sci-fi", "alien invasion", "survival", "extraterrestrial", "space mission", "rescue", "war"]}
+{"item_id": 3608, "keywords": ["comedy", "adventure", "fantasy", "impossible", "humor", "improvisation", "childlike", "impossible"]}
+{"item_id": 3614, "keywords": ["comedy", "romance", "adventure", "misadventure", "humor", "misunderstanding", "unexpected", "romance"]}
+{"item_id": 3615, "keywords": ["animation", "children's", "adventure", "impossible", "humor", "improvisation", "childlike", "impossible"]}
+{"item_id": 3617, "keywords": ["comedy", "adventure", "impossible", "humor", "misunderstanding", "romance", "improvised", "family"]}
+{"item_id": 3618, "keywords": ["comedy", "heist", "misadventure", "humor", "impossible", "improvisation", "childlike", "impossible"]}
+{"item_id": 3623, "keywords": ["action", "thriller", "mission", "impossible", "suspense", "stunt", "heist", "sci-fi", "space"]}
+{"item_id": 3624, "keywords": ["action", "exhilarating", "adventure", "thrills", "sudden", "danger", "high-stakes", "china", "heist"]}
+{"item_id": 3629, "keywords": ["comedy", "slapstick", "humor", "banter", "old west", "cowboys", "sideshadowing", "gold rush", "1925"]}
+{"item_id": 3633, "keywords": ["action", "suspense", "spy", "secrecy", "mission", "double-cross", "espionage", "cold war", "1969"]}
+{"item_id": 3635, "keywords": ["action", "spy", "secrets", "double-cross", "espionage", "romance", "heist", "gold coast", "1977"]}
+{"item_id": 3638, "keywords": ["action", "suspense", "space", "extraterrestrial", "space mission", "lunar", "sci-fi", "heist", "moon"]}
+{"item_id": 3639, "keywords": ["action", "spy", "secrets", "double-cross", "espionage", "romance", "heist", "gold coast", "1974"]}
+{"item_id": 3649, "keywords": ["drama", "romance", "action", "spy", "secrets", "double-cross", "espionage", "gold coast", "1979"]}
+{"item_id": 3654, "keywords": ["action", "war", "spy", "secrets", "double-cross", "espionage", "gold coast", "1961"]}
+{"item_id": 3668, "keywords": ["drama", "romance", "action", "spy", "secrets", "double-cross", "gold coast", "1968"]}
+{"item_id": 3671, "keywords": ["comedy", "western", "cowboy", "humor", "sideshadowing", "gold coast", "1974"]}
+{"item_id": 3675, "keywords": ["musical", "holiday", "christmas", "old west", "gold coast", "1954"]}
+{"item_id": 3681, "keywords": ["western", "1965", "cowboy", "outlaw", "desert", "duel", "money", "greed", "revenge"]}
+{"item_id": 3683, "keywords": ["film-noir", "1984", "murder", "detective", "darkness", "corruption", "revenge", "betrayal", "city"]}
+{"item_id": 3684, "keywords": ["thriller", "1989", "family", "mystery", "heist", "suspense", "revenge", "family", "murder"]}
+{"item_id": 3685, "keywords": ["comedy", "1985", "family", "business", "humor", "romance", "drama", "family", "business"]}
+{"item_id": 3686, "keywords": ["thriller", "1990", "suspense", "heist", "revenge", "family", "murder", "sci-fi", "horror"]}
+{"item_id": 3688, "keywords": ["comedy", "1981", "slapstick", "humor", "family", "suspense", "cowboy", "western", "cow"]}
+{"item_id": 3697, "keywords": ["action", "1990", "alien", "horror", "sci-fi", "space", "predator", "horror", "action"]}
+{"item_id": 3698, "keywords": ["action", "1987", "sci-fi", "space", "adventure", "alien", "horror", "predator", "space"]}
+{"item_id": 3699, "keywords": ["adventure", "1984", "space", "romance", "sci-fi", "alien", "space", "friendship", "exploration"]}
+{"item_id": 3700, "keywords": ["sci-fi", "1984", "alien", "space", "friendship", "exploration", "humanity", "alien", "friendship"]}
+{"item_id": 3701, "keywords": ["crime", "1988", "sci-fi", "alien", "society", "alien", "humanity", "alien", "society"]}
+{"item_id": 3702, "keywords": ["action", "1979", "sci-fi", "desert", "horror", "alien", "horror", "action", "desert"]}
+{"item_id": 3703, "keywords": ["action", "sci-fi", "post-apocalyptic", "car chases", "desert", "outlaw", "vigilante", "fuel tank", "mutants"]}
+{"item_id": 3704, "keywords": ["action", "sci-fi", "desert", "outlaw", "vigilante", "mutants", "desolation", "mad max", "warlord"]}
+{"item_id": 3705, "keywords": ["action", "adventure", "romance", "thriller", "helicopter", "cityscape", "imprisoned", "rescue", "resurrection"]}
+{"item_id": 3706, "keywords": ["film-noir", "mystery", "thriller", "police", "corruption", "dark alleys", "seedy underbelly", "detective"]}
+{"item_id": 3708, "keywords": ["horror", "thriller", "fire", "mutants", "rescue", "desolation", "mutant resistance", "apocalyptic"]}
+{"item_id": 3712, "keywords": ["comedy", "satire", "impostor", "police department", "corrupt cop", "sardonic", "policeman", "sardonic police department"]}
+{"item_id": 3717, "keywords": ["action", "heist", "suspense", "car theft", "race", "time pressure", "destruction", "sneaky driver"]}
+{"item_id": 3723, "keywords": ["drama", "shakespeare", "melancholy", "solitude", "revenge", "corruption", "power", "kingdom"]}
+{"item_id": 3730, "keywords": ["mystery", "lawyer", "corruption", "justice", "corrupt cop", "undercover", "corrupt department", "corruption"]}
+{"item_id": 3733, "keywords": ["crime", "lawyer", "corruption", "law", "undercover", "corrupt department", "corruption", "lawyer"]}
+{"item_id": 3735, "keywords": ["crime", "police", "corruption", "undercover", "lawyer", "corrupt department", "corruption", "lawyer"]}
+{"item_id": 3740, "keywords": ["action", "comedy", "superstition", "chinese culture", "corrupt cop", "sardonic", "policeman", "sardonic police department"]}
+{"item_id": 3744, "keywords": ["action", "crime", "sci-fi", "space", "space opera", "military", "space adventure", "extraterrestrial", "alien invasion"]}
+{"item_id": 3745, "keywords": ["adventure", "animation", "sci-fi", "space", "family", "alien planet", "robot", "exploration", "future", "hacker"]}
+{"item_id": 3751, "keywords": ["animation", "children", "comedy", "family", "funny", "mischievous", "goofy", "hilarious", "childish"]}
+{"item_id": 3752, "keywords": ["comedy", "romantic", "family", "humor", "silly", "goofy", "humor", "family", "comical"]}
+{"item_id": 3753, "keywords": ["action", "war", "military", "patriotism", "conflict", "battlefield", "suspense", "emotional", "drama"]}
+{"item_id": 3755, "keywords": ["action", "thriller", "suspense", "survival", "horror", "storm", "seas", "catastrophe", "disaster"]}
+{"item_id": 3760, "keywords": ["comedy", "slapstick", "humor", "road trip", "funny incidents", "misadventures", "humor", "family", "reunion"]}
+{"item_id": 3763, "keywords": ["action", "suspense", "horror", "survival", "alien invasion", "extraterrestrial", "horror", "sci-fi", "fear"]}
+{"item_id": 3764, "keywords": ["action", "suspense", "horror", "alien invasion", "extraterrestrial", "sci-fi", "fear", "survival"]}
+{"item_id": 3770, "keywords": ["sci-fi", "space adventure", "extraterrestrial", "alien invasion", "horror", "survival", "horror", "suspense"]}
+{"item_id": 3785, "keywords": ["comedy", "horror", "slapstick", "parody", "suspense", "horror", "survival", "horror", "parody"]}
+{"item_id": 3791, "keywords": ["drama", "coming of age", "romance", "family", "emotional", "coming home", "self-discovery", "coming of age", "emotional journey"]}
+{"item_id": 3793, "keywords": ["superhero", "mutants", "mutant x-men", "mutants x-men school", "mutants xavier institute", "x-men", "mutants xavier school"]}
+{"item_id": 3798, "keywords": ["mystery", "suspense", "thriller", "murder", "killer", "suspicious", "mystery thriller", "suspense thriller"]}
+{"item_id": 3802, "keywords": ["action", "sci-fi", "hacker", "computer", "hacking", "sci-fi action", "sci-fi thriller"]}
+{"item_id": 3809, "keywords": ["comedy", "absurd", "humor", "suspension of disbelief", "absurd comedy", "suspicious circumstances", "absurd situation comedy"]}
+{"item_id": 3811, "keywords": ["war", "drama", "suspense", "war crimes", "war time", "war time drama", "war time atmosphere"]}
+{"item_id": 3812, "keywords": []}
+{"item_id": 3826, "keywords": ["horror", "sci-fi", "suspense", "alien invasion", "post-apocalyptic", "horror-sci-fi", "sci-fi horror"]}
+{"item_id": 3827, "keywords": ["comedy", "absurd", "humor", "suspension of disbelief", "absurd comedy", "suspicious circumstances", "absurd situation comedy"]}
+{"item_id": 3836, "keywords": ["action", "sci-fi", "space", "military", "humor", "absurd situation comedy", "absurd action comedy", "absurd situation comedy"]}
+{"item_id": 3841, "keywords": ["action", "sci-fi", "space", "military", "humor", "absurd situation comedy", "absurd action comedy", "absurd situation comedy"]}
+{"item_id": 3844, "keywords": ["drama", "women", "family", "friendship", "women's issues", "women's lives", "women's experiences"]}
+{"item_id": 3863, "keywords": ["sci-fi", "thriller", "alien", "extraterrestrial", "space mission", "sci-fi thriller", "sci-fi adventure", "sci-fi suspense"]}
+{"item_id": 3868, "keywords": ["comedy", "1980s", "police", "action", "slapstick", "parody", "sequel", "naked", "squad"]}
+{"item_id": 3869, "keywords": ["comedy", "1990s", "police", "sequel", "slapstick", "parody", "naked", "squad"]}
+{"item_id": 3871, "keywords": ["drama", "1950s", "western", "cowboy", "outlaw", "revenge", "family", "western"]}
+{"item_id": 3873, "keywords": ["comedy", "1960s", "western", "cowboy", "outlaw", "humor", "road trip", "western"]}
+{"item_id": 3893, "keywords": ["comedy", "2000s", "thriller", "horror", "comedy", "suspense", "police", "sequel"]}
+{"item_id": 3897, "keywords": ["comedy", "2000s", "drama", "coming-of-age", "music", "high school", "comedy", "western"]}
+{"item_id": 3911, "keywords": ["comedy", "2000s", "musical", "impostor", "celebrity", "humor", "western", "sequel"]}
+{"item_id": 3916, "keywords": ["drama", "2000s", "school", "football", "overcoming adversity", "family", "coming-of-age"]}
+{"item_id": 3917, "keywords": ["horror", "1980s", "suspense", "paranormal", "slasher", "dark", "fear"]}
+{"item_id": 3927, "keywords": ["sci-fi", "1960s", "space", "exploration", "teamwork", "survival", "adventure"]}
+{"item_id": 3948, "keywords": ["comedy", "2000s", "family", "romance", "blundering", "humor", "police"]}
+{"item_id": 3952, "keywords": ["drama", "2000s", "race", "justice", "coming-of-age", "action", "thriller"]}

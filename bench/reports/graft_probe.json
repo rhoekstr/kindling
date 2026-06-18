@@ -1,0 +1,26 @@
+[
+  {
+    "dataset": "amazon-book-chrono",
+    "meta_mode": "dense",
+    "n_items": 357182,
+    "n_warm_with_meta": 4000,
+    "metadata_coverage": 1.0,
+    "n_features": 384,
+    "n_pairs": 80000,
+    "frac_pairs_sim_gt0": 1.0,
+    "median_sim": 1.0,
+    "targets": {
+      "cosine_weight": {
+        "spearman": 0.011,
+        "r2_linear": -0.0,
+        "r2_binned": -0.0
+      },
+      "raw_cocount": {
+        "spearman": 0.047,
+        "r2_linear": 0.0,
+        "r2_binned": 0.0
+      }
+    },
+    "alive": false
+  }
+]

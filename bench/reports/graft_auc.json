@@ -1,0 +1,30 @@
+[
+  {
+    "dataset": "steam",
+    "meta_mode": "dense",
+    "n_items": 14057,
+    "n_features": 384,
+    "tiers": {
+      "1-2": {
+        "auc": 0.595,
+        "n_anchors": 290
+      },
+      "3-5": {
+        "auc": 0.599,
+        "n_anchors": 400
+      },
+      "6-10": {
+        "auc": 0.596,
+        "n_anchors": 400
+      },
+      "11-20": {
+        "auc": 0.587,
+        "n_anchors": 400
+      },
+      "21-50": {
+        "auc": 0.598,
+        "n_anchors": 400
+      }
+    }
+  }
+]
