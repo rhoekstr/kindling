@@ -1,0 +1,47 @@
+[
+  {
+    "dataset": "movielens-1m",
+    "meta_mode": "multihot",
+    "map": "ridge",
+    "n_warm": 3373,
+    "meta_dim": 64,
+    "transfer_r2": 0.0835,
+    "neighbor_recovery@10": 0.2455
+  },
+  {
+    "dataset": "movielens-1m",
+    "meta_mode": "dense",
+    "map": "ridge",
+    "n_warm": 3373,
+    "meta_dim": 384,
+    "transfer_r2": 0.0551,
+    "neighbor_recovery@10": 0.107
+  },
+  {
+    "dataset": "movielens-1m",
+    "meta_mode": "kw_multihot",
+    "map": "ridge",
+    "n_warm": 3373,
+    "meta_dim": 64,
+    "transfer_r2": 0.0371,
+    "neighbor_recovery@10": 0.1573
+  },
+  {
+    "dataset": "movielens-1m",
+    "meta_mode": "kw_dense",
+    "map": "ridge",
+    "n_warm": 3373,
+    "meta_dim": 384,
+    "transfer_r2": -0.001,
+    "neighbor_recovery@10": 0.01
+  },
+  {
+    "dataset": "movielens-1m",
+    "meta_mode": "niche_dense",
+    "map": "ridge",
+    "n_warm": 3373,
+    "meta_dim": 384,
+    "transfer_r2": -0.001,
+    "neighbor_recovery@10": 0.01
+  }
+]

@@ -39,8 +39,14 @@ K = 20
 TIERS = {"1-2": (1, 3), "3-5": (3, 6), "6-10": (6, 11), "11-20": (11, 21), "21+": (21, 10**9)}
 
 
-def build(name, meta_mode):
+def build(name, meta_mode, subsample=None):
     train, test, items = load(name)
+    if subsample and train["entity_id"].nunique() > subsample:
+        rng = np.random.default_rng(0)
+        keep = set(rng.choice(train["entity_id"].unique(), subsample, replace=False).tolist())
+        train = train[train["entity_id"].isin(keep)]
+        test = test[test["entity_id"].isin(keep)]
+        print(f"  subsampled to {subsample} users -> {train['item_id'].nunique()} items")
     item_ids = pd.Index(train["item_id"].unique())
     item_to_idx = {it: i for i, it in enumerate(item_ids)}
     n_items = len(item_ids)
@@ -159,24 +165,34 @@ def main():
     meta_mode = os.environ.get("FPR_META", "multihot")
     topk = int(os.environ.get("GRAFT_TOPK", "20"))
     cap = float(os.environ.get("GRAFT_CAP", "1.0"))
-    thresholds = [int(x) for x in os.environ.get("GRAFT_THRESHOLDS", "3,10,20").split(",")]
+    subsample = int(os.environ.get("GRAFT_SUBSAMPLE", "0")) or None
+    pctiles = os.environ.get("GRAFT_PCTILE", "")
+    abs_thresholds = [int(x) for x in os.environ.get("GRAFT_THRESHOLDS", "3,10,20").split(",")]
     out = []
     for name in datasets:
         print(f"\n########## {name} ##########")
-        g = build(name, meta_mode)
+        g = build(name, meta_mode, subsample)
+        d = g["d"]
+        if pctiles:
+            # distributional threshold: density-relative occurrence percentiles.
+            bands = [(f"p{p}(<={int(np.percentile(d[d >= 1], float(p)))})",
+                      int(np.percentile(d[d >= 1], float(p)))) for p in pctiles.split(",")]
+        else:
+            bands = [(f"T{t}", t) for t in abs_thresholds]
         rng = np.random.default_rng(0)
         base = evaluate(g, g["Cobs"])
         print(f"  {'no_graft':22s} ndcg={base['ndcg']:.4f} cov={base['coverage']:.3f} | "
               + " ".join(f"{t}={base['rec_' + t]}" for t in TIERS))
         rows = [{"arm": "no_graft", **base}]
-        for T in thresholds:
+        for label, T in bands:
             for mode in ("naive", "calibrated"):
                 Cg = graft(g, T, mode, topk, cap, rng)
                 r = evaluate(g, Cg)
-                rows.append({"arm": f"{mode}_T{T}", **r})
-                print(f"  {mode + '_T' + str(T):22s} ndcg={r['ndcg']:.4f} cov={r['coverage']:.3f} | "
+                rows.append({"arm": f"{mode}_{label}", "threshold": T, **r})
+                print(f"  {mode + '_' + label:22s} ndcg={r['ndcg']:.4f} cov={r['coverage']:.3f} | "
                       + " ".join(f"{t}={r['rec_' + t]}" for t in TIERS))
-        out.append({"dataset": name, "k": K, "topk": topk, "cap": cap, "rows": rows})
+        out.append({"dataset": name, "k": K, "topk": topk, "cap": cap,
+                    "subsample": subsample, "bands": [b[0] for b in bands], "rows": rows})
     REPORT.parent.mkdir(parents=True, exist_ok=True)
     REPORT.write_text(json.dumps(out, indent=2) + "\n")
     print(f"\n[wrote] {REPORT}")
