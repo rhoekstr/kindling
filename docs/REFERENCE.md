@@ -516,8 +516,20 @@ src/kindling/
    so this needs a bounded shallow probe before conceding it to sequence
    modeling. **beauty is retrieval-bound**: median pool recall 0 — half of
    users' held-out items never reach the pool, so no ranker can help; the
-   in-philosophy lever is multi-source candidate generation. *Attack
-   direction (ml1m-ranking vs beauty-retrieval) not yet chosen.*
+   in-philosophy lever is multi-source candidate generation.
+
+   **ml1m-ranking probed (`bench/run_ml1m_rerank.py`) → gap is sequential.**
+   On the engine's actual pool: in-philosophy shallow re-ranking can't
+   move it (recent-window EASE *hurts* 0.26-0.27; trend reweight is
+   noise-band — +1.8% NDCG / −0.8% recall, mixed across datasets). A
+   *learned* non-linear re-ranker (LightGBM) over the SAME features lifts
+   the eval-half +7% (0.287→0.308) — but a linear ranker (logreg) does
+   not, and the learned ceiling stays ~0.62 below the oracle (0.93). So
+   the gap is **feature-limited, not ranker-limited**: the missing signal
+   is which item comes *next* (sequential), out of the no-training
+   philosophy. The +7% learned signal is the one non-negative result and
+   is **under evaluation** (cross-dataset generalization + dependency cost
+   vs "a wheel that imports works").
 3. **EASE beyond the gate** — **CLOSED, negative (Phase 2).** Low-rank
    EASE (top-r eigendecomposition of the sparse Gram, scoring without
    materializing the dense n×n B; `bench/run_ease_large.py`) was the

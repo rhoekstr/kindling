@@ -1,0 +1,13 @@
+{
+  "current_blend(ease+0.5trend+0.25last)": 0.2931,
+  "+recent3@0.5": 0.2597,
+  "+recent10@0.5": 0.2709,
+  "+recent10@1.0": 0.2478,
+  "trend@1.0": 0.2984,
+  "trend@2.0": 0.2947,
+  "lastitem@1.0": 0.2344,
+  "pop@0.5": 0.2922,
+  "__eval_half_current": 0.2867,
+  "learned_logreg(eval_half)": 0.2789,
+  "learned_gbm(eval_half)": 0.3076
+}
