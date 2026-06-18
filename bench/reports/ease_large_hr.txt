@@ -1,0 +1,5 @@
+[17:18:24] split: train 2,380,730 items 91,599 eval_users 1000
+[17:18:24] X nnz=2,380,730  lambda_default=519.8  lambdas=[150.0]  ranks=[512, 1024, 2048]
+[17:18:30] Gram: shape (91599, 91599) nnz 330,335,853 (6s)
+[17:31:00] eigsh r=512: top eig 14842.3 .. 413.953 (750s)
+[17:31:07]   r=512 lam=150.0: Recall@20=0.0424 NDCG@20=0.0358  (eval 7s)

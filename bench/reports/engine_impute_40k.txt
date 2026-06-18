@@ -1,0 +1,14 @@
+[load] ml-25m subsample=40000 ...
+[data] train_items=13433 cold_meta_items=383 eval_users=1552
+/Users/rhoekstr/Desktop/Code/kindling/src/kindling/engine_v2.py:1728: UserWarning: GMM session inference did not find a clear bimodal gap (log-likelihood ratio 0.00 < 10.0). Falling back to manual threshold of 1800s.
+  sess_inf = infer_sessions(interactions)
+  off      base=ease fit=171s
+           ndcg=0.1728 | cold_1-4=0.0(n=2831) 5-19=0.0001(n=7296) 20+=0.0495(n=94943)
+/Users/rhoekstr/Desktop/Code/kindling/src/kindling/engine_v2.py:1728: UserWarning: GMM session inference did not find a clear bimodal gap (log-likelihood ratio 0.00 < 10.0). Falling back to manual threshold of 1800s.
+  sess_inf = infer_sessions(interactions)
+  content  base=ease fit=166s
+           ndcg=0.1702 | cold_1-4=0.0014(n=2831) 5-19=0.0001(n=7296) 20+=0.0473(n=94943)
+/Users/rhoekstr/Desktop/Code/kindling/src/kindling/engine_v2.py:1728: UserWarning: GMM session inference did not find a clear bimodal gap (log-likelihood ratio 0.00 < 10.0). Falling back to manual threshold of 1800s.
+  sess_inf = infer_sessions(interactions)
+  impute   base=ease fit=192s r2=0.0882 nbr=0.1018 active=True
+           ndcg=0.1686 | cold_1-4=0.0011(n=2831) 5-19=0.0005(n=7296) 20+=0.0473(n=94943)
