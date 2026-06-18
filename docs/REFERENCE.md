@@ -381,6 +381,55 @@ Two operational lessons from the book run (each a real bug, each fixed):
   Book auto-caps 200k→107k (~18GB peak); small datasets unconstrained.
   `open_catalog_max_extension` pins it explicitly.
 
+### 4.9 Embedding imputation — **wired, default off; the bench positive did not transfer**
+
+The cold-slot ranker (§4.8) ranks reserved candidates by content-space
+cosine. Embedding imputation (`graph/cooc_impute.py`, `cold_impute`
+knob) was the attempt to do better: predict a cold item's position in
+**cooc-embedding space** (PPMI-SVD of the warm cooc) from its content
+via a ridge map, then rank by cosine to the user's cooc-space taste
+centroid — one vector per cold item, not k grafted edges, so it cannot
+flood the pool the way edge-grafting did (§4.7-adjacent; book cratered
+10×). The metadata→cooc **mapping-R²/neighbor-recovery** metric
+(`bench/run_meta_cooc_map.py`) is the validated gate: it ranks
+steam>book matching grafting outcomes, zeros content-orthogonal
+catalogs, and tops out ~0.10 even on ml-25m tag-genome (content
+reconstructs only ~10% of cooc structure — the durable ceiling).
+
+**Standalone it works** (`bench/run_ml25m_lift.py`, ml-25m 40k): cold-1-4
+recall 0→0.0081 (~half the warm tier), NDCG held, warm untouched — the
+first cost-free cold positive of the whole enrichment arc.
+
+**Through the production engine it does not** (`bench/run_engine_impute.py`,
+ml-25m 40k, the Phase-1 guardrail):
+
+| arm | NDCG@20 | cold-1-4 recall |
+|---|---:|---:|
+| off (`cold_slots=0`) | **0.1728** | 0.0 |
+| content ranker | 0.1702 | 0.0014 (~4 items) |
+| impute (gate active, r2 0.088) | 0.1686 | 0.0011 (~3 items) |
+
+Impute **ties** the content ranker (3 vs 4 recovered cold items — noise)
+and **costs ~2% NDCG**, recovering ~7× less than the standalone bench.
+The cause is the same EASE-path **scale mismatch** edge-grafting hit
+(§4.7 architecture note): the bench scored warm *and* cold in one
+unified cooc-space, so cold competed for all 20 top-K slots; the engine
+scores warm with **EASE** (a different space), so cold cooc-space scores
+are incomparable to warm EASE scores and are confined to the reserved
+slots. One slot cannot surface a 2.7%-prevalence cold population in a
+13.8k catalog, regardless of ranker. The deeper tension: catalogs with
+good content→cooc mapping are content-coherent and EASE-sized
+(≤20k → scale mismatch), while catalogs with a native cooc base (>20k →
+clean scale-match) have poor mapping (book r2 0.058). The bench positive
+lived in a regime production doesn't occupy.
+
+**Verdict:** `cold_impute` defaults to `"content"`. The imputation path
+is kept (`cold_impute="impute"/"auto"`) for the **cooc-base regime**
+(>20k items, where warm+cold share cooc-space) should a content-coherent,
+warm-dominated, high-mapping dataset be built there (open front §7.6).
+The clean scale-calibrator that would let cold compete in the main EASE
+ranking is the real unsolved problem.
+
 ## 5. Engine knobs (the ones that matter)
 
 | knob | default | touch when |
@@ -396,6 +445,7 @@ Two operational lessons from the book run (each a real bug, each fixed):
 | `open_catalog` | True | metadata-only items become candidates |
 | `cold_slots` | 0 | reserve N of top-K for cold items (set 1 on churning catalogs) |
 | `cold_recency_beta` | 2.0 | release-recency prior in cold-slot ranking; 0 disables |
+| `cold_impute` / `cold_impute_min_r2` | `"content"` / 0.06 | cold-slot ranker; `"impute"`/`"auto"` is the dormant cooc-space path (§4.9 — did not transfer on the EASE path) |
 | `open_catalog_max_extension` | None (RAM-auto) | pin the metadata-only extension size; auto caps it under 80% physical RAM |
 | `retrieval_budget` | 500 | oracle says little headroom from raising it alone |
 | `calibrate_base` | False | diagnostics only — see §4.4 |
@@ -438,11 +488,22 @@ src/kindling/
 2. **Remaining oracle headroom** — ml1m oracle on the same pool is 0.88
    vs 0.2931 current. Closing more of it likely requires real sequence
    modeling (out of scope today) or richer user-state features.
-3. **EASE beyond the gate** — blocked/low-rank EASE variants could
-   extend the closed-form base past 20k items. Now concretely motivated:
-   on the 91k-item LightGCN academic split the cooc base hits ~90% of
-   LightGCN (§3.4); EASE there would likely close the gap and is the
-   clearest path to beating the published GNN numbers outright.
+3. **EASE beyond the gate** — **CLOSED, negative (Phase 2).** Low-rank
+   EASE (top-r eigendecomposition of the sparse Gram, scoring without
+   materializing the dense n×n B; `bench/run_ease_large.py`) was the
+   memory-feasible candidate. On book-91k it climbs but **decelerates
+   far below wilson**: NDCG@20 0.0254 (r=128) → 0.0310 (r=256) → 0.0358
+   (r=512) vs wilson's **0.0482**. λ barely moves it (rank, not
+   regularization, is the binding constraint), so parity needs r≈4000+ —
+   hours of decomposition and multi-GB Q vs wilson's 86s O(edges) fit.
+   Mechanism: EASE's value is removing popularity/redundancy via the
+   inverse-Gram, but wilson *already* removes popularity cheaply; EASE's
+   residual edge lives in a near-full-rank inverse that has no low-rank-
+   feasible form on this heavy-tailed spectrum. (Aside: r=512 EASE 0.0358
+   already beats published LightGCN/Mult-VAE 0.0315 — but wilson is
+   better *and* cheaper.) **The EASE gate stays at 20k; wilson is the
+   >20k base.** CG-column / sparse-B variants face the same
+   spectrum + a diag(P) obstacle and are not pursued.
 4. **Cold-user serving** — LLM user profiles tie the mean-embedding
    control on warm data (§4.7); their distinctive value (cross-domain
    bootstrap, no-history users) has no protocol yet.
@@ -450,3 +511,11 @@ src/kindling/
    hashed metadata) would test content-channel mechanics under churn
    without LLM enrichability; H&M (rich readable metadata + churn)
    would exercise the full stack, Kaggle auth permitting.
+6. **Cooc-base embedding imputation** — imputation (§4.9) is wired but
+   confined to reserved slots on the EASE path (scale mismatch). Its
+   clean home is the cooc-base regime (>20k items, warm+cold share
+   cooc-space) — needs a content-coherent, warm-dominated, high-mapping
+   dataset there (Amazon Video Games, or ml-25m unrestricted ~59k). The
+   alternative is a calibrator mapping cold cooc-space scores to the
+   EASE scale so cold can compete in the main ranking — the unsolved
+   scale-matcher.

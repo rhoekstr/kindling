@@ -152,6 +152,11 @@ class V2FitState:
     # schema-inferred datetime column). Used only inside the cold slot.
     cold_recency: np.ndarray | None = None
     cold_recency_beta: float = 0.0
+    # Embedding-imputation cold-start model (graph/cooc_impute.ImputeModel).
+    # None when the cold slot uses content-space ranking (cold_impute resolved
+    # to "content", or cold_slots == 0). When present, the reserved cold slots
+    # rank candidates by cosine to the user's taste centroid in cooc space.
+    impute_model: Any = None
     # Last-item context channel: z(B[last_item, :]) — the EASE row of
     # the user's most recent item as a current-taste signal. Only
     # active on the EASE path (needs B).
@@ -409,6 +414,38 @@ class EngineV2:
         # is schema-inferred: any item_metadata column whose values are
         # majority-parseable as datetimes. 0 disables.
         cold_recency_beta: float = 2.0,
+        # Cold-slot ranking mechanism. The reserved cold slots (cold_slots>0)
+        # need a way to rank metadata-only / barely-seen items, which carry no
+        # interaction signal. Two rankers:
+        #   "content" — content-space cosine to the user's owned items
+        #               (item_features). The default and shipped mechanism.
+        #   "impute"  — EMBEDDING IMPUTATION (graph/cooc_impute.py): predict the
+        #               cold item's position in cooc-embedding space from its
+        #               content and rank by cosine to the user's taste centroid
+        #               in that space. Flood-free (one vector, reserved slots
+        #               only).
+        #   "auto"    — use impute when the metadata->cooc mapping clears
+        #               `cold_impute_min_r2` on a held-out warm split; else
+        #               fall back to content. Decision + metric land in `profile`.
+        # No effect when cold_slots == 0 (no cold slots are reserved).
+        # DEFAULT "content", NOT "auto": embedding imputation is validated
+        # cost-free *standalone* (bench/run_ml25m_lift.py: ml-25m cold recall
+        # 0→0.0081) but did NOT transfer through the production engine. On the
+        # EASE path (≤20k items — the only catalogs with good content→cooc
+        # mapping) cold cooc-space scores are not comparable to warm EASE
+        # scores, so cold is confined to the reserved slots, where imputation
+        # ties content and costs ~2% NDCG (bench/run_engine_impute.py, ml-25m
+        # 40k: off 0.1728 / content 0.1702 / impute 0.1686; cold recall 3 vs 4
+        # items = noise). Same EASE-path scale-mismatch grafting hit. The
+        # wiring is kept for the cooc-base regime (>20k, where warm+cold share
+        # cooc-space) should a content-coherent dataset be built there. See
+        # docs/REFERENCE.md §4.9.
+        cold_impute: str = "content",
+        # Mapping-R^2 floor for `cold_impute="auto"`. Imputation activates only
+        # when held-out transfer R^2 >= this. Content reconstructs ~0.10 of
+        # cooc structure at the ceiling (ml-25m), ~0 on content-orthogonal
+        # catalogs (book/beauty); ~0.06 admits ml-25m/steam, excludes book.
+        cold_impute_min_r2: float = 0.06,
         # Last-item context channel: blends z(B[last_item, :]) — the
         # EASE row of the user's most recent item — emphasizing the
         # current taste neighborhood over the whole-history average.
@@ -594,6 +631,16 @@ class EngineV2:
                 f"cold_recency_beta must be >= 0; got {cold_recency_beta!r}"
             )
         self.cold_recency_beta = float(cold_recency_beta)
+        if cold_impute not in ("auto", "impute", "content"):
+            raise ValueError(
+                f"cold_impute must be 'auto'/'impute'/'content'; got {cold_impute!r}"
+            )
+        self.cold_impute = cold_impute
+        if cold_impute_min_r2 < 0.0:
+            raise ValueError(
+                f"cold_impute_min_r2 must be >= 0; got {cold_impute_min_r2!r}"
+            )
+        self.cold_impute_min_r2 = float(cold_impute_min_r2)
         if last_item_alpha < 0.0:
             raise ValueError(f"last_item_alpha must be >= 0; got {last_item_alpha!r}")
         self.last_item_alpha = last_item_alpha
@@ -1025,6 +1072,10 @@ class EngineV2:
         cooc_data = np.asarray(cooc_data, dtype=np.float32)
         cooc_indices = np.asarray(cooc_indices, dtype=np.int32)
         cooc_indptr = np.asarray(cooc_indptr, dtype=np.int32)
+        # Keep a reference to the RAW co-counts: the cooc base transform below
+        # rebinds `cooc_data`, but embedding imputation (cold slots) needs the
+        # untransformed counts for its PPMI-SVD cooc embedding.
+        cooc_raw_data = cooc_data
 
         # ── EASE base (if selected). Closed-form inverse-Gram reweighting
         # of the co-occurrence signal; replaces raw-count cooc for both
@@ -1207,6 +1258,47 @@ class EngineV2:
                         cold_recency[ix] = np.exp(-max(days, 0) / 180.0)
                 profile["cold_recency_column"] = col_name
                 break
+
+        # ── Embedding imputation (cold-slot ranker). Predicts a cold item's
+        # cooc-space position from its content (one vector — flood-free, unlike
+        # edge grafting) so it can be ranked against the user's taste centroid
+        # in the same space warm items occupy. Built only when cold slots are
+        # reserved AND content features exist; activated only when the
+        # metadata->cooc mapping clears the floor on a held-out warm split (the
+        # validated predictor — book/beauty fail it, ml-25m/steam pass).
+        impute_model = None
+        if (
+            self.cold_slots > 0
+            and self.cold_impute != "content"
+            and content_features is not None
+            and content_features.n_features > 0
+        ):
+            from kindling.graph.cooc_impute import fit_impute
+
+            item_counts_ext = np.bincount(
+                item_idx, minlength=n_items_ext
+            ).astype(np.float64)
+            content_csr = sp.csr_matrix(
+                (
+                    content_features.data,
+                    content_features.indices,
+                    content_features.indptr,
+                ),
+                shape=(n_items_ext, content_features.n_features),
+            )
+            model = fit_impute(
+                cooc_raw_data, cooc_indices, cooc_indptr, content_csr,
+                item_counts_ext, n_users,
+                n_items=n_items, seed=self.random_state,
+            )
+            active = self.cold_impute == "impute" or (
+                self.cold_impute == "auto" and model.r2 >= self.cold_impute_min_r2
+            )
+            profile["cold_impute_r2"] = model.r2
+            profile["cold_impute_neighbor_recovery"] = model.neighbor_recovery
+            profile["cold_impute_active"] = bool(active)
+            if active:
+                impute_model = model
 
         # ── User-user CF channel (history-gated). Build the item→user
         # inverted CSR once at fit; neighbors are computed per recommend.
@@ -1693,6 +1785,7 @@ class EngineV2:
             content_coldness=content_coldness,
             cold_recency=cold_recency,
             cold_recency_beta=self.cold_recency_beta,
+            impute_model=impute_model,
             content_alpha=self.content_alpha,
             last_item_alpha=self.last_item_alpha,
             uu_users_data=uu_users_data,
@@ -1846,9 +1939,17 @@ class EngineV2:
             and st.content_coldness is not None
             and st.content_features.n_features > 0
         ):
-            from kindling.item_features import content_scores
+            if st.impute_model is not None:
+                # Cooc-space ranker: cosine of the cold item's imputed position
+                # to the user's taste centroid (flood-free embedding imputation).
+                from kindling.graph.cooc_impute import cold_scores
 
-            cs = content_scores(st.content_features, owned)
+                cs = cold_scores(st.impute_model, owned)
+            else:
+                # Content-space ranker: cosine to the user's owned-item content.
+                from kindling.item_features import content_scores
+
+                cs = content_scores(st.content_features, owned)
             std = cs.std()
             if std > 0:
                 cs = (cs - cs.mean()) / std
