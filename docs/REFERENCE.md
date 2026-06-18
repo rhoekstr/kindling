@@ -523,11 +523,27 @@ src/kindling/
    hashed metadata) would test content-channel mechanics under churn
    without LLM enrichability; H&M (rich readable metadata + churn)
    would exercise the full stack, Kaggle auth permitting.
-6. **Cooc-base embedding imputation** — imputation (§4.9) is wired but
-   confined to reserved slots on the EASE path (scale mismatch). Its
-   clean home is the cooc-base regime (>20k items, warm+cold share
-   cooc-space) — needs a content-coherent, warm-dominated, high-mapping
-   dataset there (Amazon Video Games, or ml-25m unrestricted ~59k). The
-   alternative is a calibrator mapping cold cooc-space scores to the
-   EASE scale so cold can compete in the main ranking — the unsolved
-   scale-matcher.
+6. **Cooc-base embedding imputation** — **CLOSED, regime absent
+   (dataset screen, `bench/run_dataset_screen.py`).** Imputation (§4.9)
+   needs the cooc-base sweet spot: >20k items AND content-coherent
+   (mapping-R²) AND warm-dominated. The screen shows a structural
+   anti-correlation — content-coherence lives at *small* scale here, and
+   scaling past 20k loses it and gains cold-domination:
+
+   | dataset | items | >20k | mapping-R² | warmth |
+   |---|---:|:--:|---:|---|
+   | steam (tags) | 14k | ✗ | 0.077 | warm-dom |
+   | ml-25m genome | 13.4k | ✗ | 0.088 | warm-dom |
+   | ml-25m unrestricted (genres) | 35.7k | ✓ | **0.035** | **53% cold** |
+   | amazon-book (categories) | 357k | ✓ | 0.058 | cold-dom |
+
+   No cached dataset occupies the sweet spot. Combined with the §4.9
+   EASE-path scale-mismatch, the §7.1 selection non-bottleneck, and the
+   ~10% content ceiling (§4.7), this **closes the content cold-start
+   program**: across imputation, edge-grafting, the content channel, and
+   enrichment, content is a structurally weak supplement that banks no
+   production value in the regimes available. The validated stack is
+   **wilson cooc base + EASE warm scorer**; cold exposure, where wanted,
+   is the structural `cold_slots` mechanism (§4.8), not a learned content
+   ranker. Reopen only with a downloaded dataset that screens into the
+   sweet spot (Amazon Video Games is the untested candidate).

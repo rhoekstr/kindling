@@ -1,0 +1,12 @@
+[18:14:27] screen ml-25m-genome (genome) in 57s:
+[18:14:27]     dataset                        ml-25m-genome
+[18:14:27]     content                        genome
+[18:14:27]     n_train_items                  13433
+[18:14:27]     >20k_cooc_base                 False
+[18:14:27]     n_warm(>=5)                    13280
+[18:14:27]     cold_share_of_catalog          0.011
+[18:14:27]     cold_demand(warmth0_heldout)   383
+[18:14:27]     n_content_features             1127
+[18:14:27]     mapping_r2                     0.0882
+[18:14:27]     neighbor_recovery@10           0.1025
+[18:14:27] [wrote] /Users/rhoekstr/Desktop/Code/kindling/bench/reports/screen_ml-25m-genome.json

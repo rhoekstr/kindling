@@ -1,0 +1,12 @@
+[18:14:50] screen ml-25m-unrestricted (genres) in 81s:
+[18:14:50]     dataset                        ml-25m-unrestricted
+[18:14:50]     content                        genres
+[18:14:50]     n_train_items                  35667
+[18:14:50]     >20k_cooc_base                 True
+[18:14:50]     n_warm(>=5)                    16702
+[18:14:50]     cold_share_of_catalog          0.532
+[18:14:50]     cold_demand(warmth0_heldout)   12334
+[18:14:50]     n_content_features             20
+[18:14:50]     mapping_r2                     0.0354
+[18:14:50]     neighbor_recovery@10           0.0258
+[18:14:50] [wrote] /Users/rhoekstr/Desktop/Code/kindling/bench/reports/screen_ml-25m-unrestricted.json
