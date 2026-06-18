@@ -479,12 +479,24 @@ src/kindling/
 
 ## 7. Open fronts
 
-1. **Cold-extension coverage policy** — book cold slots now run (§4.8)
-   but recover only 0.5%: the salesRank-top-107k extension covers just
-   26% of the warmth-0 held-out demand. The bottleneck is the *extension
-   selection* (salesRank ≠ future cold demand), not the cold ranker.
-   A demand-aware or recency-aware extension policy would raise the
-   ceiling; steam (8.5%, better coverage) shows the ranker is sound.
+1. **Cold-extension coverage policy** — **investigated (Stage-0 diagnostic),
+   demand-aware *selection* refuted.** `bench/run_cold_coverage.py` measures,
+   per dataset, the coverage of warmth-0 cold demand vs fraction of the
+   metadata pool admitted, under salesRank / recency / content / random.
+   Findings: (a) **book** is the only cap-bites dataset, and **salesRank is
+   already the best policy** — content-proximity is *worse* at every cap
+   fraction, and book has no date for recency; its cold ceiling is only
+   **~18%** (most cold-demand books aren't in the 2014 metadata), so book is
+   **metadata-coverage-limited, not selection-limited.** (b) **recency is a
+   strong demand signal where it applies** — steam newest-25% covers **90%**
+   of cold demand vs random 26% — but steam's cap doesn't bite (everything
+   fits), so it's moot there; it's ranker-limited. (c) **ml-25m** recency is
+   weak (movies are evergreen, not bought-near-release like games). The
+   regime where demand-aware selection pays — cap bites AND a strong recency
+   signal AND a high metadata ceiling — is represented by no current dataset;
+   it coincides with the §7.6 hunt and would validate there. (Trivial
+   separate lever: raising book's cap 107k→200k buys ~+3pp coverage — a
+   cap-size knob, not a policy.)
 2. **Remaining oracle headroom** — ml1m oracle on the same pool is 0.88
    vs 0.2931 current. Closing more of it likely requires real sequence
    modeling (out of scope today) or richer user-state features.

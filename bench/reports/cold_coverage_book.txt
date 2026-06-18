@@ -1,0 +1,8 @@
+[18:03:08] amazon-book-chrono: train_items=357,182 cold_demand=10,800 meta_pool=200,000  ceiling=0.1784 (=1927/10800 cold items are in metadata at all)
+[18:03:15] content features: 6808 feats, centroid in 7s
+[18:03:15] coverage of cold demand (ceiling=0.1784):
+[18:03:15]   policy        @ 10%  @ 25%  @ 50%  @100%
+[18:03:15]   salesrank     0.0878  0.1164  0.1438  0.1784
+[18:03:15]   random        0.0179  0.0454  0.0876  0.1784
+[18:03:15]   content       0.0465  0.0781  0.1228  0.1784
+[18:03:15] [wrote] /Users/rhoekstr/Desktop/Code/kindling/bench/reports/cold_coverage_amazon-book-chrono.json

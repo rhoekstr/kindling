@@ -1,0 +1,9 @@
+[18:00:32] steam: train_items=14,057 cold_demand=1,417 meta_pool=18,075  ceiling=1.0000 (=1417/1417 cold items are in metadata at all)
+[18:00:32] content features: 361 feats, centroid in 0s
+[18:00:32] coverage of cold demand (ceiling=1.0):
+[18:00:32]   policy        @ 10%  @ 25%  @ 50%  @100%
+[18:00:32]   meta-order    0.0099  0.0296  0.0670  1.0000
+[18:00:32]   random        0.0960  0.2583  0.4905  1.0000
+[18:00:32]   recency       0.5476  0.9026  0.9315  1.0000
+[18:00:32]   content       0.1517  0.3649  0.6069  1.0000
+[18:00:32] [wrote] /Users/rhoekstr/Desktop/Code/kindling/bench/reports/cold_coverage_steam.json
