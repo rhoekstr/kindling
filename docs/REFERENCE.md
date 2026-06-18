@@ -497,9 +497,27 @@ src/kindling/
    it coincides with the §7.6 hunt and would validate there. (Trivial
    separate lever: raising book's cap 107k→200k buys ~+3pp coverage — a
    cap-size knob, not a policy.)
-2. **Remaining oracle headroom** — ml1m oracle on the same pool is 0.88
-   vs 0.2931 current. Closing more of it likely requires real sequence
-   modeling (out of scope today) or richer user-state features.
+2. **Remaining oracle headroom** — re-grounded on the *current* engine
+   with the faithful EASE pool (`bench/run_gap_decomp.py`; the library
+   diagnostic's pool was stale — raw cooc, pre-pivot). The two benchmark
+   datasets are bound by **different** walls:
+
+   | dataset | base | pop floor | current | oracle (pool) | pool recall (med) | bound by |
+   |---|---|---:|---:|---:|---:|---|
+   | ml1m | ease | 0.2492 | 0.2931 | **0.9315** | 0.66 | **ranking** |
+   | beauty | ease | 0.0063 | 0.0325 | 0.2773 | **0.00** | **retrieval** |
+
+   **ml1m is ranking-bound**: the pool holds the answers (oracle 0.93) but
+   the scorer delivers 0.29 — a 0.64 gap, 3.2× scoring headroom *inside*
+   the pool (retrieval improved 0.56→0.66 since the pre-pivot §3.2 table).
+   Closing a pure ranking gap on a burst dataset is what sequence models
+   do (out of philosophy); the shallow levers (recency decay, per-fit
+   calibration, channel reweighting) were tried and rejected (§4.4–4.5),
+   so this needs a bounded shallow probe before conceding it to sequence
+   modeling. **beauty is retrieval-bound**: median pool recall 0 — half of
+   users' held-out items never reach the pool, so no ranker can help; the
+   in-philosophy lever is multi-source candidate generation. *Attack
+   direction (ml1m-ranking vs beauty-retrieval) not yet chosen.*
 3. **EASE beyond the gate** — **CLOSED, negative (Phase 2).** Low-rank
    EASE (top-r eigendecomposition of the sparse Gram, scoring without
    materializing the dense n×n B; `bench/run_ease_large.py`) was the
