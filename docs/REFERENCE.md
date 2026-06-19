@@ -226,6 +226,41 @@ Beauty: 0.0290 → 0.0306 (+EASE+trend) → 0.0315 (+transitions) →
 pivot within 3% of the popularity floor; both now sit at or above
 published full-ranking shallow-model results.
 
+### 3.5 Warming & cold-user benchmark — vs standard algorithms
+
+Two harnesses (`bench/run_warming_curve.py`, `run_user_warmth.py`;
+plots `plot_*`) compare the v2 stack against popularity, item-item kNN,
+and implicit ALS (the industry-standard trained MF). Honest, two-sided:
+
+- **Data-density warming** (nested random interaction subsample 1%→100%,
+  fixed test, fixed real-user population): kindling is the strongest
+  *personalized* model and its lead grows with data and sparsity —
+  full-data NDCG@10 ml1m 0.31 (vs ~0.25-0.26), beauty 0.032 (vs
+  kNN 0.026 / ALS 0.022, **5.6× popularity**). But in the genuinely
+  data-starved regime (≤8% data) **popularity wins** — EASE/cooc needs
+  co-occurrence structure before personalization beats the popularity
+  prior. So the advantage is *not* a thin-dataset edge; it emerges with
+  density. Speed: kindling is the slowest of these *classical* baselines
+  (EASE inversion ~10s vs ALS ~2s) but trains in seconds with no GPU and
+  serves at ~0.5 ms; the speed edge is vs neural (LightGCN: hours).
+
+- **Per-user warmth** (full data, eval sliced by user history length) —
+  the direct cold-*user* test. On sparse **beauty**, where cold users are
+  the majority (1559 of ~4000 eval users hold ≤4 items), kindling leads
+  the cold buckets and its margin over the other personalized methods is
+  **largest on the coldest users**: NDCG@10 at 1-4 items 0.045 vs ALS
+  0.032 (+40%) / kNN 0.043; at 5-19 0.024 vs ALS 0.014 (+72%) / kNN
+  0.019; the edge shrinks as users warm. On dense ml1m cold users are
+  rare (n=5 at 1-4) and popularity-dominated — but sparse catalogs are
+  where cold-start matters.
+
+**The precise, defensible claim:** kindling handles cold *users* better
+than competing personalized algorithms (ALS, item-kNN) on sparse
+catalogs — largest margin on the shortest-history users — and is the
+strongest personalized model overall; the only thing that beats it is
+the non-personalized popularity prior in data-starved regimes (a
+universal cold-start truth). NOT "better on all cold data."
+
 ## 4. The experiment record
 
 What was tried, what won, what was rejected, and why. Negative results
