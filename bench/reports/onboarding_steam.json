@@ -1,0 +1,54 @@
+{
+  "dataset": "steam",
+  "k": 10,
+  "rows": [
+    {
+      "seeds": 0,
+      "n": 3000,
+      "kindling_ndcg": 0.0348,
+      "kindling_recall": 0.0485,
+      "popularity_ndcg": 0.0348,
+      "popularity_recall": 0.0485
+    },
+    {
+      "seeds": 1,
+      "n": 2997,
+      "kindling_ndcg": 0.0261,
+      "kindling_recall": 0.0389,
+      "popularity_ndcg": 0.0338,
+      "popularity_recall": 0.0476
+    },
+    {
+      "seeds": 2,
+      "n": 2997,
+      "kindling_ndcg": 0.032,
+      "kindling_recall": 0.0485,
+      "popularity_ndcg": 0.0342,
+      "popularity_recall": 0.0478
+    },
+    {
+      "seeds": 3,
+      "n": 2995,
+      "kindling_ndcg": 0.0339,
+      "kindling_recall": 0.0532,
+      "popularity_ndcg": 0.0339,
+      "popularity_recall": 0.0472
+    },
+    {
+      "seeds": 5,
+      "n": 2994,
+      "kindling_ndcg": 0.0346,
+      "kindling_recall": 0.0522,
+      "popularity_ndcg": 0.0335,
+      "popularity_recall": 0.0466
+    },
+    {
+      "seeds": 10,
+      "n": 2993,
+      "kindling_ndcg": 0.0412,
+      "kindling_recall": 0.0602,
+      "popularity_ndcg": 0.0344,
+      "popularity_recall": 0.0483
+    }
+  ]
+}

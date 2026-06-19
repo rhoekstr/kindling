@@ -1,0 +1,54 @@
+{
+  "dataset": "movielens-1m",
+  "k": 10,
+  "rows": [
+    {
+      "seeds": 0,
+      "n": 1120,
+      "kindling_ndcg": 0.1014,
+      "kindling_recall": 0.0177,
+      "popularity_ndcg": 0.1014,
+      "popularity_recall": 0.0177
+    },
+    {
+      "seeds": 1,
+      "n": 1120,
+      "kindling_ndcg": 0.0936,
+      "kindling_recall": 0.0174,
+      "popularity_ndcg": 0.1027,
+      "popularity_recall": 0.018
+    },
+    {
+      "seeds": 2,
+      "n": 1120,
+      "kindling_ndcg": 0.0981,
+      "kindling_recall": 0.017,
+      "popularity_ndcg": 0.1039,
+      "popularity_recall": 0.0181
+    },
+    {
+      "seeds": 3,
+      "n": 1120,
+      "kindling_ndcg": 0.1016,
+      "kindling_recall": 0.017,
+      "popularity_ndcg": 0.1052,
+      "popularity_recall": 0.0183
+    },
+    {
+      "seeds": 5,
+      "n": 1120,
+      "kindling_ndcg": 0.1051,
+      "kindling_recall": 0.0193,
+      "popularity_ndcg": 0.1078,
+      "popularity_recall": 0.0185
+    },
+    {
+      "seeds": 10,
+      "n": 1120,
+      "kindling_ndcg": 0.1218,
+      "kindling_recall": 0.0277,
+      "popularity_ndcg": 0.1171,
+      "popularity_recall": 0.0193
+    }
+  ]
+}
