@@ -1,0 +1,7 @@
+[20:02:34] amazon-beauty: internal holdout 1500000 pairs, 2999 pos from 3000 train users
+[20:02:35] amazon-beauty deployability (full test eval, n=500):
+[20:02:35]     current_blend            0.0315
+[20:02:35]     deploy_ridge_linear      0.0317
+[20:02:35]     deploy_ridge_cross2      0.0279
+[20:02:35]   contrast (eval-half): current 0.0346 vs ceiling_cross2 0.0367
+[20:02:35] [wrote] rerank_deploy_amazon-beauty.json

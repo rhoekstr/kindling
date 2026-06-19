@@ -527,9 +527,22 @@ src/kindling/
    not, and the learned ceiling stays ~0.62 below the oracle (0.93). So
    the gap is **feature-limited, not ranker-limited**: the missing signal
    is which item comes *next* (sequential), out of the no-training
-   philosophy. The +7% learned signal is the one non-negative result and
-   is **under evaluation** (cross-dataset generalization + dependency cost
-   vs "a wheel that imports works").
+   philosophy.
+
+   **Learned re-ranker fully evaluated → rejected** (`bench/run_rerank.py`,
+   `run_rerank_deploy.py`). (a) The LightGBM ceiling (+7% ml1m) does NOT
+   generalize — it *craters −26% on sparse beauty* (trees overfit few
+   positives) — and would add a compiled C++ runtime dep against the
+   wheel-that-imports philosophy. (b) A dep-free closed-form ridge over
+   the channels + numpy degree-2 crosses beats the z-blend with eval-label
+   ceiling (+1.5% ml1m / +6% beauty), but the **deployable** version —
+   trained on the only available internal (train-only) holdout — *craters
+   −32% ml1m / −11% beauty*, the §4.4 inversion in full force (linear too).
+   So learned re-ranking is undeployable on these protocols. This
+   **vindicates** the fixed cross-dataset z-blend: per-fit/learned
+   calibration inverts because the internal holdout's drift/next-item
+   structure differs from the test slice. **ml1m-ranking is closed; the
+   remaining oracle headroom is sequential (out of scope).**
 3. **EASE beyond the gate** — **CLOSED, negative (Phase 2).** Low-rank
    EASE (top-r eigendecomposition of the sparse Gram, scoring without
    materializing the dense n×n B; `bench/run_ease_large.py`) was the

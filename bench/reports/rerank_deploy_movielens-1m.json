@@ -1,0 +1,10 @@
+{
+  "dataset": "movielens-1m",
+  "n_test_users": 500,
+  "internal_pos": 2380,
+  "current_blend": 0.2931,
+  "deploy_ridge_linear": 0.2217,
+  "deploy_ridge_cross2": 0.2005,
+  "ceiling_cross2_evalhalf": 0.2909,
+  "current_evalhalf": 0.2867
+}
