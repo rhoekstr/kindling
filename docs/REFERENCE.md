@@ -543,6 +543,21 @@ src/kindling/
    calibration inverts because the internal holdout's drift/next-item
    structure differs from the test slice. **ml1m-ranking is closed; the
    remaining oracle headroom is sequential (out of scope).**
+
+   **beauty-retrieval probed (`bench/run_beauty_retrieval.py`,
+   `run_beauty_rerank.py`) → reachable but unrankable.** Multi-source
+   candidate generation DOES reach the missing items: union of
+   EASE+popularity+2-hop lifts recall@500 mean 0.28→0.38, median 0→0.25,
+   and the oracle over the union pool is 0.365 (vs current 0.034 — 10×
+   headroom). But no in-philosophy fixed-weight blend surfaces them:
+   adding 2-hop *hurts* (0.034→0.029 — it pools the items but scores them
+   like noise, diluting EASE), popularity is flat (+0.9%, noise). Surfacing
+   them needs a ranker that discriminates *which* union items are relevant
+   — the learned re-ranker, undeployable per §4.4. **So §7.2 closes,
+   unified: both walls (ml1m ranking, beauty retrieval) have large real
+   oracle headroom that requires a discriminative/sequential ranker fixed-
+   weight blending can't express and learned weights can't deploy. The
+   engine is at its philosophy-bounded optimum.**
 3. **EASE beyond the gate** — **CLOSED, negative (Phase 2).** Low-rank
    EASE (top-r eigendecomposition of the sparse Gram, scoring without
    materializing the dense n×n B; `bench/run_ease_large.py`) was the

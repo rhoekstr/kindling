@@ -1,0 +1,8 @@
+[20:10:24] amazon-beauty: items=11959 base=ease content=no usercf=True
+[20:10:25] recall@500 (catalog ceiling 1.0):
+[20:10:25]     current      mean=0.2815  median=0.0000
+[20:10:25]     popularity   mean=0.1560  median=0.0000
+[20:10:25]     content      mean=0.0000  median=0.0000
+[20:10:25]     cooc_2hop    mean=0.2496  median=0.0000
+[20:10:25]     UNION        mean=0.3781  median=0.2500
+[20:10:25] [wrote] /Users/rhoekstr/Desktop/Code/kindling/bench/reports/beauty_retrieval.json

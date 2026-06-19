@@ -1,0 +1,10 @@
+[20:13:49] beauty re-rank over union pool (n=500, shipped ref 0.0325):
+[20:13:49]     current(blend)         0.0336
+[20:13:49]     +2hop@0.25             0.0336
+[20:13:49]     +2hop@0.5              0.0302
+[20:13:49]     +2hop@1.0              0.0285
+[20:13:49]     +pop@0.25              0.0334
+[20:13:49]     +pop@0.5               0.0339
+[20:13:49]     +2hop@0.5+pop@0.25     0.0307
+[20:13:49]     oracle_union           0.3648
+[20:13:49] [wrote] /Users/rhoekstr/Desktop/Code/kindling/bench/reports/beauty_rerank.json
