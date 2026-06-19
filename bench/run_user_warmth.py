@@ -23,9 +23,8 @@ from pathlib import Path
 
 import numpy as np
 
-from kindling.benchmarks.comparison import _load_dataset
 from kindling.benchmarks.metrics import aggregate
-from run_warming_curve import build_models
+from run_warming_curve import build_models, load_split
 
 BUCKETS = {"1-4": (1, 5), "5-19": (5, 20), "20-49": (20, 50), "50+": (50, 10**9)}
 REPORT_DIR = Path(__file__).parent / "reports"
@@ -39,7 +38,7 @@ def main() -> None:
     dataset = os.environ.get("DATASET", "amazon-beauty")
     k = int(os.environ.get("K", "10"))
     max_eval = int(os.environ.get("MAX_EVAL", "4000"))
-    split = _load_dataset(dataset, test_fraction=0.1)
+    split = load_split(dataset)
     train, test = split.train, split.test
     train_by = train.groupby("entity_id", sort=False)["item_id"].apply(lambda s: set(s))
     test_by = test.groupby("entity_id", sort=False)["item_id"].apply(lambda s: set(s))

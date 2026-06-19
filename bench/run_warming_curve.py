@@ -42,6 +42,17 @@ from kindling.benchmarks.metrics import aggregate
 REPORT_DIR = Path(__file__).parent / "reports"
 
 
+def load_split(name: str, tf: float = 0.1):
+    """_load_dataset, plus the timestamp-less book-academic (52k/91k) split —
+    full amazon-book (357k) OOMs / trips the kill wall on this box."""
+    if name == "amazon-book-academic":
+        from kindling.benchmarks.comparison import _load_academic_split
+        b = Path("~/.cache/kindling/amazon-book").expanduser()
+        return _load_academic_split(b / "train.txt", b / "test.txt",
+                                    name=name, action_type="rate")
+    return _load_dataset(name, test_fraction=tf)
+
+
 def log(m: str) -> None:
     print(f"[{time.strftime('%H:%M:%S')}] {m}", flush=True)
 
@@ -80,7 +91,7 @@ def main() -> None:
     # the chronological-prefix artifact (early prefixes lack the future users,
     # so only non-personalized popularity scores). WARM=chrono = earliest prefix.
     mode = os.environ.get("WARM", "random")
-    split = _load_dataset(dataset, test_fraction=0.1)
+    split = load_split(dataset)
     train, test = split.train, split.test
     train_by = train.groupby("entity_id", sort=False)["item_id"].apply(lambda s: set(s))
     test_by = test.groupby("entity_id", sort=False)["item_id"].apply(lambda s: set(s))

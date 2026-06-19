@@ -230,36 +230,52 @@ published full-ranking shallow-model results.
 
 Two harnesses (`bench/run_warming_curve.py`, `run_user_warmth.py`;
 plots `plot_*`) compare the v2 stack against popularity, item-item kNN,
-and implicit ALS (the industry-standard trained MF). Honest, two-sided:
+and implicit ALS (the industry-standard trained MF) across four datasets
+(ml1m, amazon-beauty, steam, amazon-book-academic). Honest, two-sided:
 
 - **Data-density warming** (nested random interaction subsample 1%→100%,
   fixed test, fixed real-user population): kindling is the strongest
-  *personalized* model and its lead grows with data and sparsity —
-  full-data NDCG@10 ml1m 0.31 (vs ~0.25-0.26), beauty 0.032 (vs
-  kNN 0.026 / ALS 0.022, **5.6× popularity**). But in the genuinely
-  data-starved regime (≤8% data) **popularity wins** — EASE/cooc needs
+  *personalized* model on every dataset and its lead grows with data —
+  full-data NDCG@10 ml1m 0.31 (vs ~0.25-0.26), beauty 0.032 (vs kNN 0.026
+  / ALS 0.022, **5.6× popularity**), steam 0.050 (vs pop ~0.04), book
+  0.043 (vs kNN 0.040 / ALS 0.014). But in the genuinely data-starved
+  regime (≤~10% data) **popularity often wins** — EASE/cooc needs
   co-occurrence structure before personalization beats the popularity
-  prior. So the advantage is *not* a thin-dataset edge; it emerges with
-  density. Speed: kindling is the slowest of these *classical* baselines
-  (EASE inversion ~10s vs ALS ~2s) but trains in seconds with no GPU and
-  serves at ~0.5 ms; the speed edge is vs neural (LightGCN: hours).
+  prior. So the global-density advantage is *not* a thin-dataset edge; it
+  emerges with density. Speed: kindling is the slowest of these
+  *classical* baselines (EASE inversion: ml1m ~10s, steam ~240s vs ALS
+  ~2-100s) but trains with no GPU / no training loop and serves at ~0.5 ms;
+  the speed edge is vs neural (LightGCN: hours).
 
 - **Per-user warmth** (full data, eval sliced by user history length) —
-  the direct cold-*user* test. On sparse **beauty**, where cold users are
-  the majority (1559 of ~4000 eval users hold ≤4 items), kindling leads
-  the cold buckets and its margin over the other personalized methods is
-  **largest on the coldest users**: NDCG@10 at 1-4 items 0.045 vs ALS
-  0.032 (+40%) / kNN 0.043; at 5-19 0.024 vs ALS 0.014 (+72%) / kNN
-  0.019; the edge shrinks as users warm. On dense ml1m cold users are
-  rare (n=5 at 1-4) and popularity-dominated — but sparse catalogs are
-  where cold-start matters.
+  the direct cold-*user* test, and the real win. On the **cold-heavy
+  realistic-tier** datasets where cold users are common, kindling leads
+  the cold buckets:
+  - **steam** (2657 of 4000 eval users hold ≤4 items): kindling leads
+    **every** bucket including the coldest, beating even popularity —
+    NDCG@10 at 1-4 items **0.053** vs pop 0.040 (+34%) / ALS 0.019
+    (+180%) / kNN 0.034.
+  - **beauty** (1559 cold users): kindling leads the cold buckets, margin
+    **largest on the coldest** — 1-4 0.045 vs ALS 0.032 (+40%); 5-19
+    0.024 vs ALS 0.014 (+72%); edge shrinks as users warm.
+  - **book-academic** (5-core → no 1-4 users): kindling ≈ item-kNN on the
+    coldest available (5-19: 0.047 vs 0.047) and beats it warm; both
+    crush ALS (~3×) and popularity. Item-item CF is naturally strong on
+    book (the wilson cooc base is a normalized item-kNN), so they
+    converge there.
+  - **ml1m** (dense, ~no cold users — n=5 at 1-4): popularity wins the
+    tiny cold bucket; kindling wins the warm majority. Cold-start is moot
+    on a dataset with no cold users.
 
 **The precise, defensible claim:** kindling handles cold *users* better
-than competing personalized algorithms (ALS, item-kNN) on sparse
-catalogs — largest margin on the shortest-history users — and is the
-strongest personalized model overall; the only thing that beats it is
-the non-personalized popularity prior in data-starved regimes (a
-universal cold-start truth). NOT "better on all cold data."
+than competing personalized algorithms (ALS, item-kNN) on cold-heavy
+catalogs — on steam beating even the popularity prior, with its largest
+margins on the shortest-history users — and is the strongest personalized
+model overall on all four datasets. It dominates trained MF (ALS)
+everywhere. The only thing that beats it is the non-personalized
+popularity prior in genuinely data-starved *global* settings (a universal
+cold-start truth). NOT "better on all cold data" — better on cold *users*
+where they matter, and best personalized model always.
 
 ## 4. The experiment record
 

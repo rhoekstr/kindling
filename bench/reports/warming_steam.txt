@@ -1,0 +1,18 @@
+[21:49:12] steam: warm=random train 7,013,762 test 779,307 eval_entities 800 catalog 14,057 fractions [0.05, 0.15, 0.4, 1.0]
+[21:49:40]   frac=0.05  kindling       fit=  25.3s ndcg=0.0118 recall=0.0170 p50=0.0ms
+[21:49:44]   frac=0.05  popularity     fit=   4.8s ndcg=0.0385 recall=0.0648 p50=0.0ms
+[21:49:45]   frac=0.05  item_item_knn  fit=   0.3s ndcg=0.0002 recall=0.0004 p50=0.0ms
+[21:49:56]   frac=0.05  implicit_als   fit=  11.2s ndcg=0.0015 recall=0.0032 p50=0.0ms
+[21:51:04]   frac=0.15  kindling       fit=  61.2s ndcg=0.0205 recall=0.0310 p50=0.0ms
+[21:51:16]   frac=0.15  popularity     fit=  12.1s ndcg=0.0390 recall=0.0661 p50=0.0ms
+[21:51:17]   frac=0.15  item_item_knn  fit=   0.9s ndcg=0.0020 recall=0.0037 p50=0.0ms
+[21:51:45]   frac=0.15  implicit_als   fit=  27.5s ndcg=0.0065 recall=0.0134 p50=0.0ms
+[21:53:59]   frac=0.4   kindling       fit= 119.8s ndcg=0.0402 recall=0.0678 p50=2.8ms
+[21:54:26]   frac=0.4   popularity     fit=  26.0s ndcg=0.0396 recall=0.0677 p50=0.0ms
+[21:54:28]   frac=0.4   item_item_knn  fit=   2.3s ndcg=0.0203 recall=0.0344 p50=0.1ms
+[21:55:29]   frac=0.4   implicit_als   fit=  60.7s ndcg=0.0138 recall=0.0240 p50=0.1ms
+[22:00:00]   frac=1.0   kindling       fit= 238.2s ndcg=0.0502 recall=0.0886 p50=5.9ms
+[22:00:46]   frac=1.0   popularity     fit=  46.5s ndcg=0.0386 recall=0.0674 p50=0.0ms
+[22:00:52]   frac=1.0   item_item_knn  fit=   5.7s ndcg=0.0272 recall=0.0456 p50=0.1ms
+[22:02:44]   frac=1.0   implicit_als   fit= 112.0s ndcg=0.0160 recall=0.0323 p50=0.1ms
+[22:02:45] [wrote] /Users/rhoekstr/Desktop/Code/kindling/bench/reports/warming_steam.json

@@ -1,0 +1,6 @@
+[22:15:42] amazon-book-academic: eval_users 3000 catalog 91,599 buckets {'1-4': 0, '5-19': 787, '20-49': 1532, '50+': 681}
+[22:18:14]   kindling       fit=151.7s | 1-4:None  5-19:0.0467  20-49:0.042  50+:0.0325
+[22:18:16]   popularity     fit=  1.4s | 1-4:None  5-19:0.0025  20-49:0.0044  50+:0.0054
+[22:18:27]   item_item_knn  fit= 11.6s | 1-4:None  5-19:0.0474  20-49:0.0422  50+:0.0291
+[22:18:39]   implicit_als   fit= 12.1s | 1-4:None  5-19:0.0143  20-49:0.0164  50+:0.0194
+[22:18:39] [wrote] user_warmth_amazon-book-academic.json

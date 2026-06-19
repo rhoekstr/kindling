@@ -1,0 +1,18 @@
+[22:09:57] amazon-book-academic: warm=random train 2,380,730 test 603,378 eval_entities 600 catalog 91,599 fractions [0.1, 0.3, 0.6, 1.0]
+[22:10:07]   frac=0.1   kindling       fit=   9.1s ndcg=0.0033 recall=0.0020 p50=0.0ms
+[22:10:08]   frac=0.1   popularity     fit=   1.0s ndcg=0.0022 recall=0.0014 p50=0.0ms
+[22:10:08]   frac=0.1   item_item_knn  fit=   0.6s ndcg=0.0024 recall=0.0018 p50=0.2ms
+[22:10:14]   frac=0.1   implicit_als   fit=   5.5s ndcg=0.0046 recall=0.0024 p50=0.3ms
+[22:10:44]   frac=0.3   kindling       fit=  28.9s ndcg=0.0151 recall=0.0117 p50=0.2ms
+[22:10:45]   frac=0.3   popularity     fit=   1.1s ndcg=0.0022 recall=0.0014 p50=0.0ms
+[22:10:48]   frac=0.3   item_item_knn  fit=   2.8s ndcg=0.0068 recall=0.0061 p50=0.2ms
+[22:10:57]   frac=0.3   implicit_als   fit=   8.7s ndcg=0.0075 recall=0.0065 p50=0.4ms
+[22:12:10]   frac=0.6   kindling       fit=  71.9s ndcg=0.0280 recall=0.0271 p50=0.5ms
+[22:12:11]   frac=0.6   popularity     fit=   1.2s ndcg=0.0022 recall=0.0014 p50=0.0ms
+[22:12:18]   frac=0.6   item_item_knn  fit=   6.0s ndcg=0.0215 recall=0.0211 p50=0.3ms
+[22:12:29]   frac=0.6   implicit_als   fit=  11.0s ndcg=0.0110 recall=0.0095 p50=0.4ms
+[22:15:14]   frac=1.0   kindling       fit= 161.2s ndcg=0.0431 recall=0.0387 p50=2.2ms
+[22:15:16]   frac=1.0   popularity     fit=   1.9s ndcg=0.0022 recall=0.0014 p50=0.0ms
+[22:15:28]   frac=1.0   item_item_knn  fit=  11.8s ndcg=0.0397 recall=0.0368 p50=0.4ms
+[22:15:39]   frac=1.0   implicit_als   fit=  10.9s ndcg=0.0140 recall=0.0106 p50=0.4ms
+[22:15:39] [wrote] /Users/rhoekstr/Desktop/Code/kindling/bench/reports/warming_amazon-book-academic.json
