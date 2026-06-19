@@ -625,9 +625,23 @@ src/kindling/
    better *and* cheaper.) **The EASE gate stays at 20k; wilson is the
    >20k base.** CG-column / sparse-B variants face the same
    spectrum + a diag(P) obstacle and are not pursued.
-4. **Cold-user serving** — LLM user profiles tie the mean-embedding
-   control on warm data (§4.7); their distinctive value (cross-domain
-   bootstrap, no-history users) has no protocol yet.
+4. **Cold-user serving** — **BUILT** (`EngineV2.recommend_for_items`).
+   Brand-new / anonymous users (absent from training) are served from
+   ad-hoc seed items: the closed-form base scores from *any* seed set
+   with no per-user training, so a user who just interacted with a few
+   items gets personalized recs immediately; zero/all-unknown seeds fall
+   back to all-time popularity (`_cold_recommend` — the warming
+   benchmark's cold-data champion). Onboarding curve
+   (`bench/run_onboarding.py`, NDCG@10 vs # seeds): graceful 0-seed
+   fallback (==popularity), then kindling personalizes and overtakes —
+   crossover at **1 seed (beauty)**, ~3 (steam), ~7-10 (ml1m); the
+   crossover comes later on popularity-heavy catalogs, with a 1-seed dip
+   below popularity there (a single seed is a weak signal vs a strong
+   popularity prior). Popularity is flat (ignores seeds) and trained MF
+   cannot serve absent users at all. Open refinement: shrink the
+   seed-based score toward popularity at low seed counts so 1-2 seeds
+   never underperform the prior. LLM user profiles (§4.7) remain a
+   separate, untested cross-domain bootstrap angle.
 5. **More realistic-tier datasets** — RetailRocket (live clickstream,
    hashed metadata) would test content-channel mechanics under churn
    without LLM enrichability; H&M (rich readable metadata + churn)

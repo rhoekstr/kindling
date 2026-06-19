@@ -131,6 +131,10 @@ class V2FitState:
     # n_items). None when timestamps are absent or trend_alpha == 0.
     trend_z: np.ndarray | None = None
     trend_alpha: float = 0.0
+    # Per-item train popularity (interaction counts, length n_items). The
+    # zero-seed cold-start fallback for brand-new users: recommend_for_items([])
+    # returns top popularity (the benchmark's cold-data champion).
+    item_popularity: np.ndarray | None = None
     # Sequential transition channel: directional cooc CSR (item → item),
     # user-level timestamp-ordered. None when gated off (no timestamps /
     # rating bursts / transition_alpha == 0).
@@ -1777,6 +1781,7 @@ class EngineV2:
             base_scorer_used=base_scorer_used,
             trend_z=trend_z,
             trend_alpha=eff_trend_alpha,
+            item_popularity=np.bincount(item_idx, minlength=n_items_ext).astype(np.float64),
             trans_data=trans_data,
             trans_indices=trans_indices,
             trans_indptr=trans_indptr,
@@ -1828,10 +1833,64 @@ class EngineV2:
     def recommend(self, entity_id: object, n: int = 10) -> list[RecommendationV2]:
         if self._state is None:
             raise RuntimeError("EngineV2 not fitted. Call .fit(interactions) first.")
-        st = self._state
-        owned = st.owned_by_entity.get(entity_id)
+        owned = self._state.owned_by_entity.get(entity_id)
         if owned is None or owned.size == 0:
             return []
+        return self._recommend_core(owned, entity_id, n)
+
+    def recommend_for_items(
+        self, seed_item_ids: object, n: int = 10
+    ) -> list[RecommendationV2]:
+        """Serve a NEW / anonymous user from ad-hoc seed items — no per-user
+        training, no stored history required. The closed-form base (EASE/cooc)
+        scores from *any* seed set, so a brand-new user who just interacted
+        with a few items gets personalized recommendations immediately. Seeds
+        not in the catalog are dropped; an empty/all-unknown seed set falls back
+        to popularity (`_cold_recommend`) — the benchmark's cold-data champion.
+        This is the cold-USER serving path (§7.4); cf. `recommend` for known
+        entities.
+        """
+        if self._state is None:
+            raise RuntimeError("EngineV2 not fitted. Call .fit(interactions) first.")
+        st = self._state
+        seen: set[int] = set()
+        owned_list: list[int] = []
+        for it in seed_item_ids:
+            ix = st.item_to_idx.get(it)
+            if ix is not None and ix not in seen:
+                seen.add(ix)
+                owned_list.append(ix)
+        if not owned_list:
+            return self._cold_recommend(n)
+        return self._recommend_core(np.asarray(owned_list, dtype=np.int64), None, n)
+
+    def _cold_recommend(self, n: int) -> list[RecommendationV2]:
+        """Zero-history fallback for brand-new users with no seeds: top-n by
+        all-time item popularity (the warming benchmark's cold-data champion —
+        it beats recent-trend for a zero-info user), falling back to the trend
+        vector only when popularity is unavailable. Popularity is unbeatable in
+        the data-starved regime, so it is the right zero-seed prior."""
+        st = self._state
+        assert st is not None
+        scores = st.item_popularity if st.item_popularity is not None else st.trend_z
+        if scores is None or scores.size == 0:
+            return []
+        n_eff = min(n, scores.size)
+        top = np.argpartition(-scores, n_eff - 1)[:n_eff]
+        top = top[np.argsort(-scores[top], kind="stable")]
+        return [
+            RecommendationV2(
+                item_id=st.item_ids[int(c)], score=float(scores[c]),
+                base_kind="cold_popularity",
+            )
+            for c in top
+        ]
+
+    def _recommend_core(
+        self, owned: np.ndarray, entity_id: object, n: int
+    ) -> list[RecommendationV2]:
+        st = self._state
+        assert st is not None
 
         # ── 1. Retrieve candidate pool. When EASE is the base scorer it
         # powers retrieval too — the gap-decomposition diagnostic showed
