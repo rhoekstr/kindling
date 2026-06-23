@@ -44,6 +44,7 @@ def main() -> None:
     test_by = test.groupby("entity_id", sort=False)["item_id"].apply(lambda s: set(s))
     catalog = int(train["item_id"].nunique())
 
+    pop_prior_c = float(os.environ.get("COLD_POP_PRIOR", "8.0"))
     eng = EngineV2(persona_min_users=10**9, retrieval_budget=500, random_state=0).fit(train)
     st = eng._state
     pop = st.item_popularity if st.item_popularity is not None else np.zeros(st.n_items)
@@ -55,29 +56,33 @@ def main() -> None:
     rng = np.random.default_rng(0)
     rng.shuffle(eval_users)
     eval_users = eval_users[:max_eval]
-    log(f"{dataset}: eval_users {len(eval_users)} catalog {catalog:,} seeds {SEEDS}")
+    log(f"{dataset}: eval_users {len(eval_users)} catalog {catalog:,} seeds {SEEDS} "
+        f"pop_prior_c={pop_prior_c}")
 
     rows = []
     for k in SEEDS:
-        per_k, per_pop = [], []
+        per_raw, per_shrunk, per_pop = [], [], []
         for e in eval_users:
             seeds = train_seq[e][:k]
             rel = test_by[e] - set(seeds)
             if not rel:
                 continue
-            kr = eng.recommend_for_items(seeds, n=K)
-            per_k.append(([r.item_id for r in kr], rel))
-            # popularity baseline excludes the seeds
+            eng.cold_user_pop_prior = 0.0  # raw (no shrinkage)
+            per_raw.append(([r.item_id for r in eng.recommend_for_items(seeds, n=K)], rel))
+            eng.cold_user_pop_prior = pop_prior_c  # empirical-Bayes shrinkage
+            per_shrunk.append(([r.item_id for r in eng.recommend_for_items(seeds, n=K)], rel))
             seed_set = set(seeds)
-            pr = [it for it in pop_order if it not in seed_set][:K]
-            per_pop.append((pr, rel))
-        mk = aggregate(per_k, catalog_size=catalog, k=K)
+            per_pop.append(([it for it in pop_order if it not in seed_set][:K], rel))
+        mr = aggregate(per_raw, catalog_size=catalog, k=K)
+        ms = aggregate(per_shrunk, catalog_size=catalog, k=K)
         mp = aggregate(per_pop, catalog_size=catalog, k=K)
-        rows.append({"seeds": k, "n": len(per_k),
-                     "kindling_ndcg": round(mk.ndcg_at_k, 4), "kindling_recall": round(mk.recall_at_k, 4),
-                     "popularity_ndcg": round(mp.ndcg_at_k, 4), "popularity_recall": round(mp.recall_at_k, 4)})
-        log(f"  seeds={k:<3} kindling ndcg={rows[-1]['kindling_ndcg']:.4f} recall={rows[-1]['kindling_recall']:.4f}"
-            f"   popularity ndcg={rows[-1]['popularity_ndcg']:.4f}")
+        rows.append({"seeds": k, "n": len(per_raw),
+                     "kindling_raw_ndcg": round(mr.ndcg_at_k, 4),
+                     "kindling_ndcg": round(ms.ndcg_at_k, 4),
+                     "kindling_recall": round(ms.recall_at_k, 4),
+                     "popularity_ndcg": round(mp.ndcg_at_k, 4)})
+        log(f"  seeds={k:<3} raw={rows[-1]['kindling_raw_ndcg']:.4f} "
+            f"shrunk={rows[-1]['kindling_ndcg']:.4f} pop={rows[-1]['popularity_ndcg']:.4f}")
 
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     (REPORT_DIR / f"onboarding_{dataset}.json").write_text(

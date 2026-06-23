@@ -450,6 +450,20 @@ class EngineV2:
         # cooc structure at the ceiling (ml-25m), ~0 on content-orthogonal
         # catalogs (book/beauty); ~0.06 admits ml-25m/steam, excludes book.
         cold_impute_min_r2: float = 0.06,
+        # New-user popularity-shrinkage (recommend_for_items only). A brand-new
+        # user's seed-based score is noisy when seeds are few; this adds a
+        # popularity-prior term  (pop_prior · z(log popularity))  with
+        # pop_prior = cold_user_pop_prior / n_seeds, so the ranking leans on the
+        # popularity prior when evidence is thin and on the personalized signal
+        # as seeds accumulate (empirical-Bayes shrinkage). Removes the 1-seed
+        # dip below popularity on popularity-heavy catalogs (onboarding curve)
+        # without retraining. Scoped to the new-user path — `recommend` (known
+        # users with full history) passes pop_prior=0, so warm ranking and all
+        # warm/cold-user benchmarks are unchanged. Default 8.0 (tuned on the
+        # onboarding curve): closes the 1-seed dip on ml1m, mostly on steam, is
+        # harmless on sparse catalogs (their popularity is too flat to pull),
+        # and preserves the high-seed wins (decays as c/n_seeds). 0 disables.
+        cold_user_pop_prior: float = 8.0,
         # Last-item context channel: blends z(B[last_item, :]) — the
         # EASE row of the user's most recent item — emphasizing the
         # current taste neighborhood over the whole-history average.
@@ -645,6 +659,11 @@ class EngineV2:
                 f"cold_impute_min_r2 must be >= 0; got {cold_impute_min_r2!r}"
             )
         self.cold_impute_min_r2 = float(cold_impute_min_r2)
+        if cold_user_pop_prior < 0.0:
+            raise ValueError(
+                f"cold_user_pop_prior must be >= 0; got {cold_user_pop_prior!r}"
+            )
+        self.cold_user_pop_prior = float(cold_user_pop_prior)
         if last_item_alpha < 0.0:
             raise ValueError(f"last_item_alpha must be >= 0; got {last_item_alpha!r}")
         self.last_item_alpha = last_item_alpha
@@ -1862,7 +1881,12 @@ class EngineV2:
                 owned_list.append(ix)
         if not owned_list:
             return self._cold_recommend(n)
-        return self._recommend_core(np.asarray(owned_list, dtype=np.int64), None, n)
+        # Empirical-Bayes shrinkage: lean on the popularity prior when seeds are
+        # few, the personalized signal as they accumulate.
+        pop_prior = self.cold_user_pop_prior / len(owned_list)
+        return self._recommend_core(
+            np.asarray(owned_list, dtype=np.int64), None, n, pop_prior=pop_prior
+        )
 
     def _cold_recommend(self, n: int) -> list[RecommendationV2]:
         """Zero-history fallback for brand-new users with no seeds: top-n by
@@ -1887,10 +1911,20 @@ class EngineV2:
         ]
 
     def _recommend_core(
-        self, owned: np.ndarray, entity_id: object, n: int
+        self, owned: np.ndarray, entity_id: object, n: int, pop_prior: float = 0.0
     ) -> list[RecommendationV2]:
         st = self._state
         assert st is not None
+
+        # New-user popularity shrinkage: a length-n_items addend
+        # pop_prior · z(log popularity), added to the blended full-catalog
+        # score so a thin-seed ranking leans on the popularity prior. Scalar 0
+        # (no-op) for known users (recommend passes pop_prior=0).
+        pop_addend: np.ndarray | float = 0.0
+        if pop_prior > 0.0 and st.item_popularity is not None:
+            p = np.log1p(st.item_popularity.astype(np.float64))
+            sd = p.std()
+            pop_addend = pop_prior * ((p - p.mean()) / sd) if sd > 0 else 0.0
 
         # ── 1. Retrieve candidate pool. When EASE is the base scorer it
         # powers retrieval too — the gap-decomposition diagnostic showed
@@ -1908,6 +1942,7 @@ class EngineV2:
                 st, owned, base_vec,
                 user_row=st.entity_to_user_idx.get(entity_id, -1),
             )
+            ease_scores_full = ease_scores_full + pop_addend
             ease_scores_full[owned] = -np.inf
             budget = min(self.retrieval_budget, ease_scores_full.size)
             top = np.argpartition(-ease_scores_full, budget - 1)[:budget]
@@ -1934,6 +1969,7 @@ class EngineV2:
                 st, owned, cooc_full,
                 user_row=st.entity_to_user_idx.get(entity_id, -1),
             )
+            ease_scores_full = ease_scores_full + pop_addend
             ease_scores_full[owned] = -np.inf
             budget = min(self.retrieval_budget, ease_scores_full.size)
             top = np.argpartition(-ease_scores_full, budget - 1)[:budget]

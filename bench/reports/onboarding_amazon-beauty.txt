@@ -1,8 +1,8 @@
-[07:00:09] amazon-beauty: eval_users 1412 catalog 11,959 seeds [0, 1, 2, 3, 5, 10]
-[07:00:09]   seeds=0   kindling ndcg=0.0036 recall=0.0059   popularity ndcg=0.0036
-[07:00:09]   seeds=1   kindling ndcg=0.0041 recall=0.0045   popularity ndcg=0.0036
-[07:00:10]   seeds=2   kindling ndcg=0.0048 recall=0.0071   popularity ndcg=0.0036
-[07:00:11]   seeds=3   kindling ndcg=0.0066 recall=0.0090   popularity ndcg=0.0036
-[07:00:12]   seeds=5   kindling ndcg=0.0068 recall=0.0092   popularity ndcg=0.0036
-[07:00:13]   seeds=10  kindling ndcg=0.0084 recall=0.0139   popularity ndcg=0.0036
-[07:00:13] [wrote] onboarding_amazon-beauty.json
+[15:55:57] amazon-beauty: eval_users 1412 catalog 11,959 seeds [0, 1, 2, 3, 5, 10] pop_prior_c=8.0
+[15:55:57]   seeds=0   raw=0.0036 shrunk=0.0036 pop=0.0036
+[15:56:00]   seeds=1   raw=0.0041 shrunk=0.0039 pop=0.0036
+[15:56:02]   seeds=2   raw=0.0048 shrunk=0.0050 pop=0.0036
+[15:56:04]   seeds=3   raw=0.0066 shrunk=0.0074 pop=0.0036
+[15:56:06]   seeds=5   raw=0.0068 shrunk=0.0069 pop=0.0036
+[15:56:09]   seeds=10  raw=0.0084 shrunk=0.0083 pop=0.0036
+[15:56:09] [wrote] onboarding_amazon-beauty.json

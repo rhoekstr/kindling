@@ -1,8 +1,8 @@
-[07:03:53] steam: eval_users 3000 catalog 14,057 seeds [0, 1, 2, 3, 5, 10]
-[07:03:53]   seeds=0   kindling ndcg=0.0348 recall=0.0485   popularity ndcg=0.0348
-[07:04:07]   seeds=1   kindling ndcg=0.0261 recall=0.0389   popularity ndcg=0.0338
-[07:04:21]   seeds=2   kindling ndcg=0.0320 recall=0.0485   popularity ndcg=0.0342
-[07:04:36]   seeds=3   kindling ndcg=0.0339 recall=0.0532   popularity ndcg=0.0339
-[07:04:50]   seeds=5   kindling ndcg=0.0346 recall=0.0522   popularity ndcg=0.0335
-[07:05:07]   seeds=10  kindling ndcg=0.0412 recall=0.0602   popularity ndcg=0.0344
-[07:05:07] [wrote] onboarding_steam.json
+[16:00:48] steam: eval_users 3000 catalog 14,057 seeds [0, 1, 2, 3, 5, 10] pop_prior_c=8.0
+[16:00:49]   seeds=0   raw=0.0348 shrunk=0.0348 pop=0.0348
+[16:01:19]   seeds=1   raw=0.0261 shrunk=0.0303 pop=0.0338
+[16:01:52]   seeds=2   raw=0.0320 shrunk=0.0337 pop=0.0342
+[16:02:28]   seeds=3   raw=0.0339 shrunk=0.0350 pop=0.0339
+[16:03:05]   seeds=5   raw=0.0346 shrunk=0.0345 pop=0.0335
+[16:03:46]   seeds=10  raw=0.0412 shrunk=0.0413 pop=0.0344
+[16:03:46] [wrote] onboarding_steam.json

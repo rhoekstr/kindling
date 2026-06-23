@@ -25,7 +25,11 @@ def _genre_data(seed: int = 0, per_genre: int = 25, n_users: int = 800):
 
 @pytest.fixture(scope="module")
 def engine():
-    return EngineV2(persona_min_users=10**9, random_state=0).fit(_genre_data())
+    # pop-shrinkage off: these tests verify the pure seed->neighbor mechanism;
+    # shrinkage toward popularity is exercised separately below.
+    return EngineV2(
+        persona_min_users=10**9, random_state=0, cold_user_pop_prior=0.0
+    ).fit(_genre_data())
 
 
 def test_new_user_from_seeds_is_personalized(engine):
@@ -76,3 +80,33 @@ def test_known_entity_recommend_unchanged(engine):
 def test_recommend_for_items_requires_fit():
     with pytest.raises(RuntimeError, match="not fitted"):
         EngineV2().recommend_for_items(["x"], n=5)
+
+
+def test_invalid_pop_prior_rejected():
+    with pytest.raises(ValueError, match="cold_user_pop_prior"):
+        EngineV2(cold_user_pop_prior=-1.0)
+
+
+def test_pop_shrinkage_surfaces_popular_items_when_seeds_thin():
+    # Skewed popularity: genre 0 is hugely popular, genre 1 rare. A new user
+    # seeded with ONE genre-1 item: with shrinkage off the recs are genre-1
+    # neighbors; with strong shrinkage the popular genre-0 items are pulled in
+    # (the empirical-Bayes prior dominates when seed evidence is thin).
+    rng = np.random.default_rng(1)
+    rows = []
+    pop_items = [f"p{i}" for i in range(10)]   # genre 0, very popular
+    niche_items = [f"q{i}" for i in range(10)]  # genre 1, rare
+    for u in range(1000):  # everyone consumes the popular cluster
+        for it in rng.choice(pop_items, size=5, replace=False):
+            rows.append((u, it))
+    for u in range(40):    # a few users consume the niche cluster
+        for it in rng.choice(niche_items, size=5, replace=False):
+            rows.append((1000 + u, it))
+    data = pd.DataFrame(rows, columns=["entity_id", "item_id"])
+
+    raw = EngineV2(persona_min_users=10**9, cold_user_pop_prior=0.0).fit(data)
+    shrunk = EngineV2(persona_min_users=10**9, cold_user_pop_prior=8.0).fit(data)
+    raw_recs = {r.item_id for r in raw.recommend_for_items(["q0"], n=5)}
+    shrunk_recs = {r.item_id for r in shrunk.recommend_for_items(["q0"], n=5)}
+    # raw stays in the niche neighborhood; shrinkage pulls in popular items.
+    assert sum(it in pop_items for it in shrunk_recs) > sum(it in pop_items for it in raw_recs)

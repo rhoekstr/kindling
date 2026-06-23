@@ -638,10 +638,17 @@ src/kindling/
    crossover comes later on popularity-heavy catalogs, with a 1-seed dip
    below popularity there (a single seed is a weak signal vs a strong
    popularity prior). Popularity is flat (ignores seeds) and trained MF
-   cannot serve absent users at all. Open refinement: shrink the
-   seed-based score toward popularity at low seed counts so 1-2 seeds
-   never underperform the prior. LLM user profiles (§4.7) remain a
-   separate, untested cross-domain bootstrap angle.
+   cannot serve absent users at all. **Popularity-shrinkage refinement
+   BUILT** (`cold_user_pop_prior`, default 8): adds
+   `(c/n_seeds)·z(log popularity)` to the seed score — empirical-Bayes
+   shrinkage toward the popularity prior when seeds are thin, decaying as
+   they accumulate. Lifts the raw 1-seed dip to/above the popularity floor
+   on popularity-heavy catalogs (ml1m k=1 0.094→0.105 > pop 0.103; steam
+   −23%→−10%), is harmless on sparse catalogs (popularity too flat to
+   pull), and preserves the high-seed wins; scoped to the new-user path
+   (`recommend` passes pop_prior=0 → warm ranking untouched). LLM user
+   profiles (§4.7) remain a separate, untested cross-domain bootstrap
+   angle.
 5. **More realistic-tier datasets** — RetailRocket (live clickstream,
    hashed metadata) would test content-channel mechanics under churn
    without LLM enrichability; H&M (rich readable metadata + churn)

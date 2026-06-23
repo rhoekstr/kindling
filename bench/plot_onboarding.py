@@ -26,7 +26,10 @@ def main() -> None:
         rows = sorted(data[d]["rows"], key=lambda r: r["seeds"])
         xs = [r["seeds"] for r in rows]
         ax.plot(xs, [r["kindling_ndcg"] for r in rows], marker="o", ms=5,
-                color="#d62728", lw=2.6, label="kindling (recommend_for_items)")
+                color="#d62728", lw=2.6, label="kindling (+ pop-shrinkage)")
+        if "kindling_raw_ndcg" in rows[0]:
+            ax.plot(xs, [r["kindling_raw_ndcg"] for r in rows], marker="^", ms=4,
+                    color="#ff9896", lw=1.4, ls="--", label="kindling (raw, no shrinkage)")
         ax.plot(xs, [r["popularity_ndcg"] for r in rows], marker="s", ms=4,
                 color="#7f7f7f", lw=1.6, label="popularity (new-user fallback)")
         ax.set_xlabel("# seed interactions from the new user")
