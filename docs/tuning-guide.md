@@ -1,159 +1,63 @@
-# kindling tuning guide
+# kindling — Tuning Guide
 
-Most of kindling's knobs are data-adaptive: leave them at defaults and the
-engine will learn reasonable values from your interactions. This guide
-covers the knobs worth thinking about, grouped by what you're trying to
-change.
+Most of kindling's behaviour is **auto-gated**: the engine picks the base
+scorer and the active channels from measurable properties of your data, so
+the defaults are the right starting point on almost every dataset. Confirm
+what it chose with `engine.activation_plan.summary()`. This guide covers
+the few knobs worth thinking about. Full table: [`REFERENCE.md`](REFERENCE.md) §5.
 
-## Decay half-life
+## The defaults are the tuning
 
-```python
-from kindling import Engine
-from kindling.lifecycle.decay import ExponentialDecay
+The single most important fact: per-fit / learned calibration of these
+weights was tried and **rejected** — the internal holdout's drift structure
+inverts the test ranking, so per-dataset tuning transfers *worse* than the
+fixed cross-dataset defaults (EXPERIMENTS.md §4.4, §7.2). Reach for a knob
+only when you have a specific, measured reason.
 
-engine = Engine(decay=ExponentialDecay(half_life_days=90))
-```
+## Base scorer
 
-- Default: `ExponentialDecay(half_life_days=180)`.
-- Shorter half-life (30-60 days) for fast-moving catalogs (news, trending
-  products). Old interactions fade quickly so recent behavior dominates.
-- Longer half-life (365+ days) for stable catalogs (movies, books). Old
-  interactions still carry signal.
-- `LinearDecay(zero_at_days=...)` and `NoDecay()` ship as alternates.
-- `CustomDecay(fn, name=...)` lets you supply any monotonic non-increasing
-  function. kindling checks `decay(0) == 1.0` and monotonicity at
-  construction.
+| knob | default | when to touch |
+|---|---|---|
+| `base_scorer` | `"auto"` | force `"ease"` / `"cooc"` only for experiments |
+| `ease_max_items` | 20 000 | the EASE/cooc gate; raise only with more RAM/patience |
+| `ease_lambda` | auto (`20·nnz/n_items`) | beauty-like catalogs measure slightly better at ~250 |
 
-The decay applies consistently to every structure that cares about age -
-path trees, item graph, cost graph, basket index. Changing it is one
-dial, not seven.
+Above `ease_max_items` the base switches to wilson-normalized
+co-occurrence automatically (it removes popularity cheaply and, on
+large sparse catalogs, beats low-rank EASE at a fraction of the cost).
 
-## Temperature (novelty vs. relevance trade-off)
+## Channels (all auto-gated)
 
-Four input forms, all equivalent internally:
+| knob | default | gate |
+|---|---|---|
+| `trend_alpha` | 0.5 | needs timestamps; 0 to disable |
+| `last_item_alpha` | 0.25 | needs EASE base; 0.5 overshoots everywhere measured |
+| `transition_alpha` | 0.25 | needs timestamps AND not a rating-burst (auto-off on burst data like ml1m) |
+| `user_cf_alpha` / `user_cf_history_gate` | 1.0 / 20 | activates only on sparse-history data (median ≤ gate) |
+| `content_alpha` | 0.0 | content blending stays off; the cold-slot path is the content channel |
 
-```python
-engine.recommend(entity_id=..., temperature=0.3)                    # scalar
-engine.recommend(entity_id=..., temperature=[0.0, 0.2, 0.5, 0.8, 1.0])  # per-position
-engine.recommend(entity_id=..., temperature="balanced")             # named profile
-engine.recommend(entity_id=..., temperature={0: 0.0, 4: 1.0})       # sparse dict
-```
+If `activation_plan` shows a channel `off` that you expected on, check the
+gate reason it prints — it's almost always a missing `timestamp` column, a
+rating-burst, or a history length on the wrong side of the gate.
 
-Named profiles live in `kindling.rerank.temperature`:
+## Cold-start / open catalog
 
-- `"balanced"` = `[0.0, 0.25, 0.5, 0.75, 1.0]` - reliable at the top,
-  exploratory at the bottom.
-- `"explore_tail"` = `[0.0, 0.0, 0.5, 1.0, 1.0]` - two safe picks, then
-  sharply novel.
-- `"conservative"` = `[0.0, 0.0, 0.0, 0.25, 0.5]` - argmax-dominant.
+| knob | default | when to touch |
+|---|---|---|
+| `open_catalog` | `True` | metadata-only items become recommendable candidates |
+| `cold_slots` | 0 | set `1` on churning catalogs to reserve a top-K slot for cold items |
+| `cold_recency_beta` | 2.0 | release-recency prior in the cold-slot ranker; 0 disables |
 
-Solvers (`temperature_solver=`):
+## Retrieval
 
-- `"beam"` (default, width 10) - near-optimal, fast.
-- `"greedy"` - fastest; can be suboptimal when high- and low-temperature
-  positions compete for the same items.
-- `"dpp"` - DPP with position-dependent quality. Use when diversity is
-  the dominant constraint.
+| knob | default | when to touch |
+|---|---|---|
+| `retrieval_budget` | 500 | the gap-decomposition diagnostic shows little headroom from raising it alone |
 
-### The coverage U-shape
+## Diagnosing a disappointing result
 
-Catalog coverage is not monotonic in τ. At τ=0 coverage is low (argmax
-only). At τ=1 coverage is also low (novelty collapses toward a single
-tail mode). Maximum catalog coverage appears at mid τ (0.4-0.6 on the
-benchmark datasets). If you care about coverage, sweep τ and look for
-the peak on your data - the Phase 7 reports under `bench/reports/` show
-the shape on the four reference datasets.
-
-## Blend weights
-
-The default is the Bayesian blend - kindling learns weights from outcome
-data and reports credible intervals. You don't set the weights directly.
-If the posterior variance is too wide to trust (cold start, sparse
-outcomes), the engine falls back to the heuristic blend with fixed
-weights until the posterior tightens.
-
-Inspect the posterior:
-
-```python
-summary = engine.posterior_summary()
-print(summary.posterior_mean)          # per-signal weight
-print(summary.credible_interval)       # Bayesian CI per signal
-print(summary.warnings)                # e.g., simple-reporter calibration
-```
-
-If you want to override weights (disabling the learned blend):
-
-```python
-from kindling.blend.heuristic import HeuristicBlend
-
-engine = Engine(blend=HeuristicBlend(weights={
-    "path_full": 0.2,
-    "path_tail": 0.15,
-    "path_basket": 0.15,
-    "cooccurrence": 0.3,
-    "cost_population": 0.1,
-    "cost_entity": 0.05,
-    "cost_context": 0.05,
-}))
-```
-
-The seven signals are fixed in v1. The prior coefficients for the
-learned blend live in `src/kindling/blend/priors.toml` and are tunable
-per install - see the file header comment for the mapping.
-
-## Constraint design
-
-Constraints apply between retrieval and ranking (plan departure from
-PRD §7.6) so filtered items never reach the ranker:
-
-```python
-in_stock = set(catalog.available_now())
-
-recs = engine.recommend(
-    entity_id=...,
-    constraints=[
-        lambda item: item in in_stock,
-        lambda item: not catalog[item].is_adult,
-    ],
-)
-```
-
-Guidelines:
-
-- Predicates should be cheap and total (no I/O, no exceptions). A slow
-  predicate runs once per candidate; a failing predicate short-circuits
-  that candidate.
-- If a predicate needs external state, close over a cached snapshot
-  rather than querying live. The retrieval budget is typically 200-1000
-  candidates.
-- Order predicates from most- to least-restrictive. The short-circuit
-  order matters for wall-time, not for correctness.
-- Constraints do not persist with `engine.save(...)`. Pass them per call
-  on the loaded engine.
-
-## Diversity and calibration
-
-- `diversity=0.5` (default 0) turns on DPP greedy MAP with cosine-kernel
-  similarity. Higher = more diverse at the cost of per-item relevance.
-- `calibration_weight=0.3` turns on Steck 2018 category calibration.
-  Requires categorical metadata on items; configure via
-  `Engine(category_index=...)`.
-- `emphasis="distinctive"` with `lift_weight` in `[0, 1]` promotes items
-  with above-average personal lift vs. the population baseline. Useful
-  when you want the list to feel personal, not merely popular.
-
-## When to retrain
-
-Default retrain cadence: weekly for most production loads. Signals for
-"retrain now":
-
-```python
-drift = engine.drift_report()
-if drift.concerning:
-    engine.fit(fresh_interactions)
-```
-
-`drift_report()` uses item-graph Spearman + neighbor overlap as defaults.
-See `src/kindling/lifecycle/drift.py` for thresholds. The drift baseline
-is calibrated at first retrain; a 3× baseline deviation flags as
-concerning.
+1. `engine.activation_plan.summary()` — did the right base + channels turn on?
+2. `bench/run_gap_decomp.py` — is the system **ranking-bound** (the right
+   items are retrieved but ranked poorly) or **retrieval-bound** (the right
+   items never reach the candidate pool)? The fix differs entirely, and the
+   diagnostic tells you which wall you're against before you tune anything.
