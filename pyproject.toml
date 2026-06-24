@@ -55,8 +55,6 @@ Issues = "https://github.com/awrylabs/kindling/issues"
 [tool.hatch.build.targets.wheel]
 packages = ["src/kindling"]
 
-[tool.hatch.build.targets.wheel.force-include]
-"src/kindling/blend/priors.toml" = "kindling/blend/priors.toml"
 
 [tool.ruff]
 line-length = 100

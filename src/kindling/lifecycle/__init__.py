@@ -1,4 +1,4 @@
-"""Data lifecycle: decay, pruning, drift detection (PRD §3.5)."""
+"""Data lifecycle: time-decay kernels (used by the path-family indices)."""
 
 from kindling.lifecycle.decay import (
     CustomDecay,
@@ -7,18 +7,11 @@ from kindling.lifecycle.decay import (
     LinearDecay,
     NoDecay,
 )
-from kindling.lifecycle.drift import DriftMetrics, DriftReport, DriftTracker
-from kindling.lifecycle.pruning import PreservedAggregate, PruningConfig
 
 __all__ = [
     "CustomDecay",
     "DecayProtocol",
-    "DriftMetrics",
-    "DriftReport",
-    "DriftTracker",
     "ExponentialDecay",
     "LinearDecay",
     "NoDecay",
-    "PreservedAggregate",
-    "PruningConfig",
 ]

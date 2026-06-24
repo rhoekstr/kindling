@@ -112,3 +112,39 @@ ml1m **0.2931** · beauty **0.0343** · steam **0.0660** · book-chrono **0.0318
   field; default `cold_impute="content"` means removal is behavior-
   preserving (verify via steam staying 0.0660). Then `graph/cooc_impute.py`
   is deletable.
+
+### Phase 3a/3b committed
+- **3a `6e398ab`**: `__init__` → v2; 18 v1-API tests redirected to explicit
+  v1; README rewritten. Tests 416/7/1 — the 7 are pre-existing v1/dead-module
+  failures (gate, v1-persistence, v1-retrievers, temporal), confirmed via
+  stash-to-baseline. No new failures.
+- **3b `65259dc`**: removed `cold_impute`/`cold_impute_min_r2` knobs + the
+  embedding-imputation paths from engine_v2; deleted `graph/cooc_impute.py`
+  + `test_cooc_impute.py`. ml1m unchanged 0.2928; cold-slot content ranker
+  smoke OK; import + v2-direct tests clean. (`bench/run_dataset_screen.py`
+  still refs it — a delete-set script, goes in Phase 5.)
+
+### Phase 5 deletion plan (refined; execute after book frees RAM)
+Batches, leaf-first, ml1m+import after each, full pytest at the end:
+1. **Leaf experiment code** (zero production importers): `benchmarks/*`
+   experiment modules (keep `parity`, `metrics`, `comparison`, `baselines`,
+   `gap_decomposition`, `layer_scoring` for CI); `bench/run_*.py` (keep
+   `verify.py`, `capture_channel_ablation.py`, `run_book_chrono.py`);
+   `dense_content.py`, `llm_enrich.py`; FPR PRD → archive.
+2. **Strip v1 from CI-keep `comparison.py`** (`from kindling.engine import
+   Engine`, `from kindling.personas import ...` → into the arms or drop).
+3. **v1 + exclusive deps**: `engine.py`, `gate/*`, `personas/*`,
+   `graph/{als_factors,cost_graph,item_cosine,lightgcn,persona_cooccurrence,
+   session_cooccurrence,temporal_interaction}`, `profile/*`, `rank/*`,
+   `rerank/{calibration,constraints,lift,temperature}`, `lifecycle/drift`,
+   `outcomes/replay`, `retrieve/{interaction_neighborhood,interaction_network,
+   policy,signal_retrievers}`, `blend/{bayesian,diagnostics,layered,
+   layered_calibrator,outcome_builder,priors}` (verify `normalize` not
+   needed by CI first).
+4. **Test triage**: delete tests for each deleted module (incl. the 7
+   pre-existing failures' files).
+5. **Full pytest + 4-dataset gate**.
+
+**BLOCKED ON:** book run (`run_book_chrono`, ~33min wall, mem-pressured) —
+finishing it captures U3 + book baseline and frees RAM for the Phase-5
+test runs. Not adding load until it completes.

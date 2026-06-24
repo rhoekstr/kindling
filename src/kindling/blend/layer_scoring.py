@@ -1,41 +1,18 @@
-"""Production-side scoring helpers and evaluation aggregation for the
-layered (cooc + adaptive boosting) scorer.
+"""Evaluation metrics: ``MetricReport`` + the per-list metric functions
+(precision / recall / NDCG / MRR / hit / diversity) and ``aggregate``.
 
-These were previously defined in the benchmarks package (the four signal
-helpers in ``probe_layered`` and ``aggregate`` in ``metrics``). The
-fit-time auto-calibrator (``kindling.blend.layered_calibrator``) — which
-``Engine`` invokes when ``layered_scoring=True`` — depends on all five.
-Keeping them under benchmarks made the production engine transitively
-import that package, which blocked extracting the benchmark scaffolding
-into a separate addendum.
-
-They now live here, in a production module, so the dependency points the
-right way: the benchmarks package may re-import from ``kindling.blend``,
-never the reverse. ``benchmarks.metrics`` re-exports the metric functions
-below for backward compatibility, and ``benchmarks.probe_layered`` (plus
-its callers) re-imports the signal helpers.
-
-Behaviour is identical to the prior definitions — this is a relocation,
-not a rewrite.
+``benchmarks.metrics`` re-exports these for the verification harness
+(``bench/verify.py``) and the gap-decomposition diagnostic. (The v1
+layer-scoring signal helpers that once lived here were removed with the
+v1 engine in the production consolidation.)
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 import numpy as np
-
-from kindling.path.basket_index import BasketSimilarity
-
-if TYPE_CHECKING:
-    from kindling.engine import Engine
-
-# Cap on how many recent history items feed the path-basket query. Longer
-# baskets add cost without improving coverage scores in practice.
-MAX_QUERY_BASKET_SIZE = 50
-
 
 # ---------------------------------------------------------------------------
 # Evaluation metrics
@@ -189,74 +166,3 @@ def aggregate(
     )
 
 
-# ---------------------------------------------------------------------------
-# Layer signal helpers
-#
-# Each scores a candidate pool against an entity's owned/history set for one
-# signal layer, returning a dense float64 array aligned with ``cand_ids``.
-# Zero is returned (per-candidate or wholesale) when the signal is absent.
-# ---------------------------------------------------------------------------
-
-
-def _path_basket_scores(engine: Engine, cand_ids: list[object], history: tuple) -> np.ndarray:
-    if engine._basket_index is None or not history:
-        return np.zeros(len(cand_ids), dtype=np.float64)
-    q = frozenset(history[-MAX_QUERY_BASKET_SIZE:])
-    if not q:
-        return np.zeros(len(cand_ids), dtype=np.float64)
-    return np.asarray(
-        engine._basket_index.score_many(cand_ids, q, BasketSimilarity.COVERAGE),
-        dtype=np.float64,
-    )
-
-
-def _session_cooc_scores(engine: Engine, cand_ids: list[object], owned: np.ndarray) -> np.ndarray:
-    g = engine._session_cooc_graph
-    if g is None or g.n_edges == 0 or owned.size == 0:
-        return np.zeros(len(cand_ids), dtype=np.float64)
-    owned_idx = np.fromiter(
-        (g.item_index.get(o, -1) for o in owned.tolist()),
-        dtype=np.int64, count=owned.size,
-    )
-    owned_idx = owned_idx[owned_idx >= 0]
-    if owned_idx.size == 0:
-        return np.zeros(len(cand_ids), dtype=np.float64)
-    full = g.score_against_owned(owned_idx, exclude_indices={int(i) for i in owned_idx.tolist()})
-    cand_idx = np.fromiter(
-        (g.item_index.get(c, -1) for c in cand_ids),
-        dtype=np.int64, count=len(cand_ids),
-    )
-    valid = cand_idx >= 0
-    out = np.zeros(len(cand_ids), dtype=np.float64)
-    if valid.any():
-        out[valid] = full[cand_idx[valid]]
-    return out
-
-
-def _temporal_cooc_scores(engine: Engine, cand_ids: list[object], owned: np.ndarray) -> np.ndarray:
-    g = engine._temporal_graph
-    if g is None or g.n_edges == 0 or owned.size == 0:
-        return np.zeros(len(cand_ids), dtype=np.float64)
-    owned_idx = np.fromiter(
-        (g.item_index.get(o, -1) for o in owned.tolist()),
-        dtype=np.int64, count=owned.size,
-    )
-    owned_idx = owned_idx[owned_idx >= 0]
-    if owned_idx.size == 0:
-        return np.zeros(len(cand_ids), dtype=np.float64)
-    full = g.score_against_owned(owned_idx, exclude_indices={int(i) for i in owned_idx.tolist()})
-    cand_idx = np.fromiter(
-        (g.item_index.get(c, -1) for c in cand_ids),
-        dtype=np.int64, count=len(cand_ids),
-    )
-    valid = cand_idx >= 0
-    out = np.zeros(len(cand_ids), dtype=np.float64)
-    if valid.any():
-        out[valid] = full[cand_idx[valid]]
-    return out
-
-
-def _cooc_scores(engine: Engine, cand_ids: list[object], owned: np.ndarray) -> np.ndarray:
-    from kindling.engine import _cooccurrence_signal
-
-    return _cooccurrence_signal(cand_ids, owned, engine._item_graph)
