@@ -145,6 +145,25 @@ Batches, leaf-first, ml1m+import after each, full pytest at the end:
    pre-existing failures' files).
 5. **Full pytest + 4-dataset gate**.
 
-**BLOCKED ON:** book run (`run_book_chrono`, ~33min wall, mem-pressured) —
-finishing it captures U3 + book baseline and frees RAM for the Phase-5
-test runs. Not adding load until it completes.
+**Book run note:** the first book run OOM-killed (exit 137) under concurrent
+load; lesson = book (18GB/24GB) must run ALONE. Resequenced: did Phase 5
+deletion + verification while the machine was free, then launched book last
+and alone.
+
+### Phases 3b–6 + capstone — COMMITTED
+- `65259dc` 3b cold_impute removal · `6e398ab` 3a promote v2.
+- `af991c9` **Phase 5 deletion**: 175 files changed, 32,359 deletions; core
+  130→40 modules. ml1m 0.2928 unchanged throughout.
+- `03e7303` v2 integration test · `ef27810` **Phase 4 ActivationPlan**
+  (`engine.activation_plan`).
+- `388b046` Phase 6 config: gates.toml real baselines, version 0.2.0, ruff
+  **739→0**, format clean. `a494ce9` docs rewrite (user/tuning/migration).
+- **4-dataset gate (re-measured this run):** ml1m 0.2928, beauty 0.0328,
+  steam 0.0660 — all unchanged post-deletion. Book = final run (in progress).
+- Suite: **121 passed** (was 416/7); mypy: 18 pre-existing engine_v2 errors
+  (master wasn't mypy-clean either — strict mode vs dynamic numpy; noted).
+- Capstone `docs/PRODUCTION-SYSTEM.md` drafted; pending book NDCG + serve
+  latency (fill after book frees RAM).
+
+**REMAINING:** book NDCG + U3 capture → fill capstone + gates.toml + §U3;
+measure serve latency; final pytest/ruff gate; push + draft PR.
