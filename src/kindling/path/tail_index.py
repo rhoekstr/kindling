@@ -19,7 +19,6 @@ from typing import cast
 
 import numpy as np
 
-from kindling._native import NATIVE_AVAILABLE, kindling_native
 from kindling.lifecycle.decay import DecayProtocol, NoDecay
 from kindling.path._sessions import SessionSequence
 
@@ -56,36 +55,12 @@ class TailIndex:
         return row.get(candidate, 0.0) / total
 
     def score_many(self, candidates: Iterable[object], last_item: object | None) -> np.ndarray:
-        """Vectorized variant for a list of candidates.
-
-        Routes through ``kindling_native.tail_score_many`` when the Rust
-        extension is present; the Rust path trades a Python dict-lookup
-        loop for a FxHashMap scan.
-        """
+        """Vectorized variant for a list of candidates."""
         cand_list = list(candidates)
         if last_item is None:
             return np.zeros(len(cand_list), dtype=np.float64)
         row = self.counts.get(last_item, {})
         total = self.row_totals.get(last_item, 0.0) or 1.0
-
-        if (
-            NATIVE_AVAILABLE
-            and kindling_native is not None
-            and row
-            and all(isinstance(c, int | np.integer) for c in cand_list)
-            and all(isinstance(k, int | np.integer) for k in row)
-        ):
-            # Rust path: requires integer item ids. Fall back to Python
-            # for string / mixed-type ids.
-            row_items: list[tuple[int, float]] = [
-                (int(k), v)  # type: ignore[call-overload]
-                for k, v in row.items()
-            ]
-            cand_ints: list[int] = [int(c) for c in cand_list]  # type: ignore[call-overload]
-            return np.asarray(
-                kindling_native.tail_score_many(row_items, float(total), cand_ints),
-                dtype=np.float64,
-            )
         return np.array(
             [row.get(c, 0.0) / total for c in cand_list],
             dtype=np.float64,

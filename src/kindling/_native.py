@@ -1,29 +1,14 @@
-"""Optional Rust extension imports.
+"""Rust core import.
 
-Two extensions live alongside each other during the v1→v2 migration:
-
-- ``kindling_native`` — legacy hot-path crate (cooc/path_family/dpp_kernel/
-  dedup/personas). Used by the v1 Engine path. Will be deleted after the
-  v2 cutover.
-- ``kindling_core`` — v2 Rust core. Owns signals/clustering/scoring/
-  retrieval/repeat/loaders. Used by the v2 Engine path
-  (``Engine(use_v2_core=True)``).
-
-Either or both may be missing on a given install; call sites must check
-``NATIVE_AVAILABLE`` (v1) or ``CORE_AVAILABLE`` (v2) before dereferencing.
-The pure-Python fallback only exists for the v1 path; v2 requires the
-``kindling_core`` wheel.
+``kindling_core`` is the (PyO3) Rust extension that owns the numeric
+kernels — EASE, cooccurrence, directional cooc, layered scoring, retrieval.
+The v2 engine requires it; there is no pure-Python fallback. Call sites
+check ``CORE_AVAILABLE`` before dereferencing ``kindling_core`` so that
+``import kindling`` still succeeds on a partial install (with a clear
+error at ``fit`` time rather than at import).
 """
 
 from __future__ import annotations
-
-try:
-    import kindling_native  # type: ignore[import-untyped]
-
-    NATIVE_AVAILABLE = True
-except ImportError:  # pragma: no cover - platform-specific
-    kindling_native = None
-    NATIVE_AVAILABLE = False
 
 try:
     import kindling_core  # type: ignore[import-untyped]
@@ -36,7 +21,5 @@ except ImportError:  # pragma: no cover - platform-specific
 
 __all__ = [
     "CORE_AVAILABLE",
-    "NATIVE_AVAILABLE",
     "kindling_core",
-    "kindling_native",
 ]
