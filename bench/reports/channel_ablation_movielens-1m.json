@@ -1,0 +1,68 @@
+{
+  "dataset": "movielens-1m",
+  "arms": [
+    {
+      "arm": "raw_cooc_base",
+      "ndcg@10": 0.2465,
+      "recall@10": 0.0442,
+      "mrr": 0.412,
+      "base_used": "cooc",
+      "transition_active": false,
+      "fit_s": 5.5
+    },
+    {
+      "arm": "ease_base",
+      "ndcg@10": 0.2665,
+      "recall@10": 0.0488,
+      "mrr": 0.4557,
+      "base_used": "ease",
+      "transition_active": false,
+      "fit_s": 7.6
+    },
+    {
+      "arm": "+trend",
+      "ndcg@10": 0.2841,
+      "recall@10": 0.0572,
+      "mrr": 0.4653,
+      "base_used": "ease",
+      "transition_active": false,
+      "fit_s": 9.5
+    },
+    {
+      "arm": "+last_item",
+      "ndcg@10": 0.2875,
+      "recall@10": 0.0576,
+      "mrr": 0.4722,
+      "base_used": "ease",
+      "transition_active": false,
+      "fit_s": 6.4
+    },
+    {
+      "arm": "+transitions",
+      "ndcg@10": 0.2875,
+      "recall@10": 0.0576,
+      "mrr": 0.4722,
+      "base_used": "ease",
+      "transition_active": false,
+      "fit_s": 6.6
+    },
+    {
+      "arm": "+rating_weight",
+      "ndcg@10": 0.2928,
+      "recall@10": 0.0611,
+      "mrr": 0.4734,
+      "base_used": "ease",
+      "transition_active": false,
+      "fit_s": 6.3
+    },
+    {
+      "arm": "+user_cf",
+      "ndcg@10": 0.2928,
+      "recall@10": 0.0611,
+      "mrr": 0.4734,
+      "base_used": "ease",
+      "transition_active": false,
+      "fit_s": 6.2
+    }
+  ]
+}

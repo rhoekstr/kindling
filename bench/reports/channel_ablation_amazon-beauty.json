@@ -1,0 +1,68 @@
+{
+  "dataset": "amazon-beauty",
+  "arms": [
+    {
+      "arm": "raw_cooc_base",
+      "ndcg@10": 0.0263,
+      "recall@10": 0.0299,
+      "mrr": 0.0379,
+      "base_used": "cooc",
+      "transition_active": false,
+      "fit_s": 2.8
+    },
+    {
+      "arm": "ease_base",
+      "ndcg@10": 0.0289,
+      "recall@10": 0.0316,
+      "mrr": 0.0407,
+      "base_used": "ease",
+      "transition_active": false,
+      "fit_s": 16.1
+    },
+    {
+      "arm": "+trend",
+      "ndcg@10": 0.0309,
+      "recall@10": 0.0395,
+      "mrr": 0.0411,
+      "base_used": "ease",
+      "transition_active": false,
+      "fit_s": 13.9
+    },
+    {
+      "arm": "+last_item",
+      "ndcg@10": 0.0306,
+      "recall@10": 0.0385,
+      "mrr": 0.0424,
+      "base_used": "ease",
+      "transition_active": false,
+      "fit_s": 14.1
+    },
+    {
+      "arm": "+transitions",
+      "ndcg@10": 0.0312,
+      "recall@10": 0.0429,
+      "mrr": 0.0414,
+      "base_used": "ease",
+      "transition_active": true,
+      "fit_s": 14.2
+    },
+    {
+      "arm": "+rating_weight",
+      "ndcg@10": 0.0304,
+      "recall@10": 0.0391,
+      "mrr": 0.0424,
+      "base_used": "ease",
+      "transition_active": true,
+      "fit_s": 15.2
+    },
+    {
+      "arm": "+user_cf",
+      "ndcg@10": 0.0328,
+      "recall@10": 0.0425,
+      "mrr": 0.0432,
+      "base_used": "ease",
+      "transition_active": true,
+      "fit_s": 18.7
+    }
+  ]
+}
