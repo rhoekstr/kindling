@@ -1,3 +1,0 @@
-[23:30:19] loaded 2s: train 8,008,236  users 596,284  items 357,182
-[23:30:39] eval set: 500 users
-[23:30:39] metadata: 557,182 items (catalog + salesRank-capped extension)

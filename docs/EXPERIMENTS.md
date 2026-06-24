@@ -269,7 +269,7 @@ artifact below before the corresponding code is removed.
 | Rating-aware signals (intensity) | `ADR-rating-aware-signals` (NB: measures the *pre-pivot* cooc engine — a wash there; the post-pivot EASE +1.8% ml1m is in `channel_ablation_movielens-1m.json`) | `channel_ablation_*.json` |
 | Pair-index / distinctiveness basket signal | `ADR-pair-index-distinctiveness` | (path-family signal; see ADR) |
 | Phase-7 cross-dataset consolidation | `ADR-phase7-cross-dataset` | `consolidated/*` |
-| Cold-slot recovery (the §4.8 cold-start answer) | — | **`book_chrono_recovery.txt`** (re-captured this run); steam recovery in `REFERENCE §3.3/§4.8` (multi-arm ablation not separately frozen) |
+| Cold-slot recovery (the §4.8 cold-start answer) | — | steam (0%→8.5%) and book (0%→0.5%) recovery in `REFERENCE §3.3/§4.8`. *Note: re-freezing the book run for this consolidation OOM-killed on the available 24 GB box — the full-extension book fit peaks ~18 GB and does not fit alongside the OS; the warm-only book NDCG is in `book_chrono_warm.json`. The cold-slot recovery numbers remain REFERENCE-cited.* |
 | Cooc smoothing / wilson base | — | `cooc_smoothing*.json` |
 | Gap decomposition | — | `gap_decomp_current.json/.txt`, `consolidated/gap_decomposition_*` |
 | ml1m ranking probe | — | `ml1m_rerank.json/.txt`, `rerank_*`, `rerank_deploy_*` |

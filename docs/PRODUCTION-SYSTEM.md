@@ -122,7 +122,12 @@ ranking, k=10):
 | movielens-1m | **0.2928** | 0.0611 | 0.4734 | 0.756 | ~6s | rating-weighted EASE |
 | amazon-beauty | **0.0328** | 0.0425 | 0.0432 | 0.094 | ~15s | EASE (λ=250) |
 | steam (realistic) | **0.0660** | 0.1200 | 0.0608 | 0.164 | ~250s | EASE + cold_slots |
-| amazon-book-chrono | _[pending final book run]_ | | | | ~25min | wilson cooc |
+| amazon-book-chrono | 0.0318† | 0.0443 | 0.0426 | 0.080 | ~25min | wilson cooc |
+
+†amazon-book-chrono is **REFERENCE-cited, not re-measured this run**: its
+full-extension fit peaks ~18 GB and OOM-killed on the available 24 GB dev box
+(the other three were re-measured). It is local/manual validation, not a CI
+gate.
 
 *(Calibrate to full-ranking literature: sampled-negative papers report
 HR@10 ≈ 0.5; those deflate ~10× under full ranking. Full-ranking SOTA on
@@ -142,5 +147,6 @@ beauty is NDCG@10 ≈ 0.03–0.05 — the band kindling is in.)*
 coldest bucket, beating even popularity.
 
 **Cost:** no GPU, no training loop. Fit is one dense Cholesky (EASE) or an
-O(edges) cooc pass; serve latency is _[pending measurement]_ per query.
-ruff-clean, 121 tests green.
+O(edges) cooc pass — ml1m ~4–6s, beauty ~15s, steam ~250s. Serve latency
+(ml1m, full-catalog scoring, no caching): **p50 0.5 ms, p95 1.1 ms** per
+recommendation. ruff-clean (739→0), 121 tests green.

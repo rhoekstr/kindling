@@ -165,5 +165,19 @@ and alone.
 - Capstone `docs/PRODUCTION-SYSTEM.md` drafted; pending book NDCG + serve
   latency (fill after book frees RAM).
 
-**REMAINING:** book NDCG + U3 capture → fill capstone + gates.toml + §U3;
-measure serve latency; final pytest/ruff gate; push + draft PR.
+### Finalization — DONE
+- **book-chrono is NOT measurable on this 24 GB box** — full-extension AND
+  warm-only (357k-item cooc) runs both OOM-killed (exit 137). Hard
+  environment constraint, documented. Book stays REFERENCE-cited (0.0318)
+  in the capstone + gates.toml; cold-slot recovery (U3) stays REFERENCE-cited
+  (EXPERIMENTS Part V note corrected). The 3 feasible datasets were
+  re-measured (ml1m 0.2928, beauty 0.0328, steam 0.0660).
+- **Serve latency measured** (ml1m, RAM free): p50 **0.5 ms**, p95 **1.1 ms**
+  (the earlier slow probes were this session's zombie-process contention;
+  REFERENCE's ~0.5 ms is confirmed). Fit: ml1m ~4s, beauty ~15s, steam ~250s.
+- **Capstone PRODUCTION-SYSTEM.md complete** with all measured numbers.
+- **Final gate GREEN:** 121 passed · ruff 0 errors · format clean.
+
+**Net:** transition complete on `prod-transition`. Core 130→40 modules,
+−32k lines, ship==validated, activation_plan exposed, experiment record
+preserved, docs+CI+version updated. Pushing + opening draft PR.
