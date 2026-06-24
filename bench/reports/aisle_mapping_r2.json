@@ -1,0 +1,29 @@
+[
+  {
+    "dataset": "amazon-book-chrono",
+    "meta_mode": "multihot",
+    "map": "ridge",
+    "n_warm": 6000,
+    "meta_dim": 64,
+    "transfer_r2": 0.0462,
+    "neighbor_recovery@10": 0.0703
+  },
+  {
+    "dataset": "amazon-book-chrono",
+    "meta_mode": "aisle",
+    "map": "ridge",
+    "n_warm": 6000,
+    "meta_dim": 36,
+    "transfer_r2": -0.0157,
+    "neighbor_recovery@10": 0.0228
+  },
+  {
+    "dataset": "amazon-book-chrono",
+    "meta_mode": "aisle_shuffle",
+    "map": "ridge",
+    "n_warm": 6000,
+    "meta_dim": 36,
+    "transfer_r2": -0.0115,
+    "neighbor_recovery@10": 0.0098
+  }
+]

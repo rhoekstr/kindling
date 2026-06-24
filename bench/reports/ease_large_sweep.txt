@@ -1,0 +1,11 @@
+[17:07:01] split: train 2,380,730 items 91,599 eval_users 1000
+[17:07:02] X nnz=2,380,730  lambda_default=519.8  lambdas=[150.0, 520.0]  ranks=[256, 512]
+[17:07:06] Gram: shape (91599, 91599) nnz 330,335,853 (4s)
+[17:11:23] eigsh r=256: top eig 14842.3 .. 590.026 (257s)
+[17:11:27]   r=256 lam=150.0: Recall@20=0.036 NDCG@20=0.0309  (eval 3s)
+[17:11:30]   r=256 lam=520.0: Recall@20=0.0363 NDCG@20=0.031  (eval 3s)
+[17:19:30] eigsh r=512: top eig 14842.3 .. 434.739 (480s)
+[17:19:38]   r=512 lam=150.0: Recall@20=0.0419 NDCG@20=0.0354  (eval 8s)
+[17:19:46]   r=512 lam=520.0: Recall@20=0.0437 NDCG@20=0.0363  (eval 8s)
+[17:19:46] wilson cooc reference: Recall@20 0.0592  NDCG@20 0.0482  (run_book_academic)
+[17:19:46] [wrote] /Users/rhoekstr/Desktop/Code/kindling/bench/reports/ease_large.json

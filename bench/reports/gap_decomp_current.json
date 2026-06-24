@@ -1,0 +1,54 @@
+[
+  {
+    "loader": "movielens-1m",
+    "n_users": 500,
+    "fit_s": 5.4,
+    "base": "ease",
+    "pop_floor": {
+      "ndcg": 0.2492,
+      "recall": 0.0415,
+      "mrr": 0.4216,
+      "hr": 0.666
+    },
+    "current": {
+      "ndcg": 0.2931,
+      "recall": 0.0612,
+      "mrr": 0.4735,
+      "hr": 0.756
+    },
+    "oracle_pool": {
+      "ndcg": 0.9315,
+      "recall": 0.3441,
+      "mrr": 0.984,
+      "hr": 0.984
+    },
+    "pool_recall_mean": 0.6525,
+    "pool_recall_median": 0.6596
+  },
+  {
+    "loader": "amazon-beauty",
+    "n_users": 500,
+    "fit_s": 16.9,
+    "base": "ease",
+    "pop_floor": {
+      "ndcg": 0.0063,
+      "recall": 0.0083,
+      "mrr": 0.0125,
+      "hr": 0.032
+    },
+    "current": {
+      "ndcg": 0.0325,
+      "recall": 0.0426,
+      "mrr": 0.0413,
+      "hr": 0.094
+    },
+    "oracle_pool": {
+      "ndcg": 0.2773,
+      "recall": 0.2366,
+      "mrr": 0.39,
+      "hr": 0.39
+    },
+    "pool_recall_mean": 0.2367,
+    "pool_recall_median": 0.0
+  }
+]

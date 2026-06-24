@@ -40,7 +40,7 @@ def load(name):
 
 REPORT = Path(__file__).parent / "reports" / "meta_cooc_map.json"
 DIM = 64
-N_WARM = 20000
+N_WARM = int(os.environ.get("N_WARM", "20000"))
 WARM_MIN = 5
 
 
@@ -102,8 +102,27 @@ def _load_enriched(name, content):
                          "content": [" ".join(r.get("keywords", [])) for r in rows]})
 
 
+def _load_aisle(name, shuffle=False):
+    """LLM store-aisle labels (run_aisle_classify.py) as an items df with
+    aisle + section categorical columns; optionally shuffle labels across items
+    (a control: does the cooc-mapping come from the LABELS or just bucketing?)."""
+    path = Path(__file__).parent / "cache" / f"{name}_aisle.jsonl"
+    rows = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+    df = pd.DataFrame([r for r in rows if r.get("aisle")])
+    if shuffle:
+        perm = np.random.default_rng(0).permutation(len(df))
+        df[["aisle", "section"]] = df[["aisle", "section"]].to_numpy()[perm]
+    return df[["item_id", "aisle", "section"]]
+
+
 def meta_embedding(name, meta_mode, items, item_to_idx, n_items, warm):
-    # meta_mode: native "multihot"/"dense", or "<content>_<rep>" e.g. "kw_dense".
+    # meta_mode: native "multihot"/"dense", "<content>_<rep>", or "aisle"[_shuffle].
+    if meta_mode.startswith("aisle"):
+        adf = _load_aisle(name, shuffle=meta_mode.endswith("shuffle"))
+        feat = ItemFeatureExtractor().fit_transform(adf, item_to_idx, n_items)
+        F = sp.csr_matrix((feat.data, feat.indices, feat.indptr),
+                          shape=(n_items, feat.n_features))
+        return svd_emb(F[warm], DIM)
     rep = meta_mode
     if "_" in meta_mode:
         content, rep = meta_mode.split("_", 1)

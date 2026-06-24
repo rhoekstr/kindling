@@ -1,0 +1,16 @@
+{
+  "dataset": "amazon-beauty",
+  "budget": 500,
+  "n_users": 455,
+  "catalog_ceiling_mean": 1.0,
+  "current_recall_mean": 0.2815,
+  "current_recall_median": 0.0,
+  "popularity_recall_mean": 0.156,
+  "popularity_recall_median": 0.0,
+  "content_recall_mean": 0.0,
+  "content_recall_median": 0.0,
+  "cooc_2hop_recall_mean": 0.2496,
+  "cooc_2hop_recall_median": 0.0,
+  "UNION_recall_mean": 0.3781,
+  "UNION_recall_median": 0.25
+}

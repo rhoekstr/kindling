@@ -1,0 +1,12 @@
+{
+  "dataset": "ml-25m-genome",
+  "content": "genome",
+  "n_train_items": 13433,
+  ">20k_cooc_base": false,
+  "n_warm(>=5)": 13280,
+  "cold_share_of_catalog": 0.011,
+  "cold_demand(warmth0_heldout)": 383,
+  "n_content_features": 1127,
+  "mapping_r2": 0.0882,
+  "neighbor_recovery@10": 0.1025
+}

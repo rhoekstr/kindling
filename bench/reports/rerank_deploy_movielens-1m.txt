@@ -1,0 +1,7 @@
+[20:02:25] movielens-1m: internal holdout 1500000 pairs, 2380 pos from 3000 train users
+[20:02:28] movielens-1m deployability (full test eval, n=500):
+[20:02:28]     current_blend            0.2931
+[20:02:28]     deploy_ridge_linear      0.2217
+[20:02:28]     deploy_ridge_cross2      0.2005
+[20:02:28]   contrast (eval-half): current 0.2867 vs ceiling_cross2 0.2909
+[20:02:28] [wrote] rerank_deploy_movielens-1m.json

@@ -1,0 +1,7 @@
+[17:04:10] split: train 2,380,730 items 91,599 eval_users 1000
+[17:04:11] X nnz=2,380,730  lambda_default=519.8  lambdas=[519.8157185122109]  ranks=[128]
+[17:04:15] Gram: shape (91599, 91599) nnz 330,335,853 (4s)
+[17:06:26] eigsh r=128: top eig 14842.3 .. 789.885 (131s)
+[17:06:28]   r=128 lam=519.8: Recall@20=0.0298 NDCG@20=0.0254  (eval 2s)
+[17:06:28] wilson cooc reference: Recall@20 0.0592  NDCG@20 0.0482  (run_book_academic)
+[17:06:28] [wrote] /Users/rhoekstr/Desktop/Code/kindling/bench/reports/ease_large.json

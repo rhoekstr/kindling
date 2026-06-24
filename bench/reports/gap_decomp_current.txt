@@ -1,0 +1,7 @@
+[18:32:36] movielens-1m (base=ease, n=500):
+[18:32:36]   pop_floor=0.2492  current=0.2931  oracle_pool=0.9315  pool_recall(med)=0.6596
+[18:32:36]   ranking headroom (oracle−current)=0.6384  retrieval loss (1−pool_recall)=0.3404  value-add (current−pop)=0.0439
+[18:32:59] amazon-beauty (base=ease, n=500):
+[18:32:59]   pop_floor=0.0063  current=0.0325  oracle_pool=0.2773  pool_recall(med)=0.0
+[18:32:59]   ranking headroom (oracle−current)=0.2448  retrieval loss (1−pool_recall)=1.0  value-add (current−pop)=0.0262
+[18:32:59] [wrote] /Users/rhoekstr/Desktop/Code/kindling/bench/reports/gap_decomp_current.json

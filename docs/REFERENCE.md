@@ -226,6 +226,57 @@ Beauty: 0.0290 → 0.0306 (+EASE+trend) → 0.0315 (+transitions) →
 pivot within 3% of the popularity floor; both now sit at or above
 published full-ranking shallow-model results.
 
+### 3.5 Warming & cold-user benchmark — vs standard algorithms
+
+Two harnesses (`bench/run_warming_curve.py`, `run_user_warmth.py`;
+plots `plot_*`) compare the v2 stack against popularity, item-item kNN,
+and implicit ALS (the industry-standard trained MF) across four datasets
+(ml1m, amazon-beauty, steam, amazon-book-academic). Honest, two-sided:
+
+- **Data-density warming** (nested random interaction subsample 1%→100%,
+  fixed test, fixed real-user population): kindling is the strongest
+  *personalized* model on every dataset and its lead grows with data —
+  full-data NDCG@10 ml1m 0.31 (vs ~0.25-0.26), beauty 0.032 (vs kNN 0.026
+  / ALS 0.022, **5.6× popularity**), steam 0.050 (vs pop ~0.04), book
+  0.043 (vs kNN 0.040 / ALS 0.014). But in the genuinely data-starved
+  regime (≤~10% data) **popularity often wins** — EASE/cooc needs
+  co-occurrence structure before personalization beats the popularity
+  prior. So the global-density advantage is *not* a thin-dataset edge; it
+  emerges with density. Speed: kindling is the slowest of these
+  *classical* baselines (EASE inversion: ml1m ~10s, steam ~240s vs ALS
+  ~2-100s) but trains with no GPU / no training loop and serves at ~0.5 ms;
+  the speed edge is vs neural (LightGCN: hours).
+
+- **Per-user warmth** (full data, eval sliced by user history length) —
+  the direct cold-*user* test, and the real win. On the **cold-heavy
+  realistic-tier** datasets where cold users are common, kindling leads
+  the cold buckets:
+  - **steam** (2657 of 4000 eval users hold ≤4 items): kindling leads
+    **every** bucket including the coldest, beating even popularity —
+    NDCG@10 at 1-4 items **0.053** vs pop 0.040 (+34%) / ALS 0.019
+    (+180%) / kNN 0.034.
+  - **beauty** (1559 cold users): kindling leads the cold buckets, margin
+    **largest on the coldest** — 1-4 0.045 vs ALS 0.032 (+40%); 5-19
+    0.024 vs ALS 0.014 (+72%); edge shrinks as users warm.
+  - **book-academic** (5-core → no 1-4 users): kindling ≈ item-kNN on the
+    coldest available (5-19: 0.047 vs 0.047) and beats it warm; both
+    crush ALS (~3×) and popularity. Item-item CF is naturally strong on
+    book (the wilson cooc base is a normalized item-kNN), so they
+    converge there.
+  - **ml1m** (dense, ~no cold users — n=5 at 1-4): popularity wins the
+    tiny cold bucket; kindling wins the warm majority. Cold-start is moot
+    on a dataset with no cold users.
+
+**The precise, defensible claim:** kindling handles cold *users* better
+than competing personalized algorithms (ALS, item-kNN) on cold-heavy
+catalogs — on steam beating even the popularity prior, with its largest
+margins on the shortest-history users — and is the strongest personalized
+model overall on all four datasets. It dominates trained MF (ALS)
+everywhere. The only thing that beats it is the non-personalized
+popularity prior in genuinely data-starved *global* settings (a universal
+cold-start truth). NOT "better on all cold data" — better on cold *users*
+where they matter, and best personalized model always.
+
 ## 4. The experiment record
 
 What was tried, what won, what was rejected, and why. Negative results
@@ -351,6 +402,26 @@ Findings that generalize:
   Enrichment's domain is catalogs with THIN metadata (ml1m's bare
   genres), not rich ones. The 3-minute probe answers this before the
   multi-hour enrichment spend — run it first, always.
+- **Store-aisle/section prompt — tested, negative** (`run_aisle_classify.py`,
+  `run_aisle_recs.py`). The hypothesis: asking the model where an item
+  would be *shelved* (aisle + section + confidence) captures shopping-
+  context similarity that aligns with co-purchase better than topical
+  keywords. Free-form generation degenerated on the 4-bit model (25%
+  parse-fail, fixated on one aisle); a **constrained 2-pass** (derive a
+  fixed shelf menu, then classify each item into it) fixed compliance
+  (5% fail) — a real prompt-design win — and plays to the small model's
+  classification strength. But on amazon-book (the one catalog with
+  headroom: 87% of items have native category == `['Books']`), the labels
+  carried **no cooc signal**: mapping-R² −0.016 vs native +0.046, and
+  *indistinguishable from the same labels shuffled across items* (−0.012)
+  — i.e. no better than random bucketing. The recommendation A/B
+  confirmed the proxy: EASE + aisle content gave **zero lift** (0.0598 →
+  0.0588-0.0597 NDCG@10), and aisle-only (0.0012) was worse than
+  native-only (0.0032). Two independent failures: (1) the 4-bit model
+  can't place obscure titles, and (2) even *native* content gives no warm-
+  ranking lift (the §4.6 ceiling), so better labels alone wouldn't rescue
+  it. The prompt design is clever and the constrained form is the right
+  way to use a small model — but the signal isn't there.
 
 ### 4.8 Open catalog + reserved cold slots — **shipped; the cold-start answer**
 
@@ -381,6 +452,55 @@ Two operational lessons from the book run (each a real bug, each fixed):
   Book auto-caps 200k→107k (~18GB peak); small datasets unconstrained.
   `open_catalog_max_extension` pins it explicitly.
 
+### 4.9 Embedding imputation — **wired, default off; the bench positive did not transfer**
+
+The cold-slot ranker (§4.8) ranks reserved candidates by content-space
+cosine. Embedding imputation (`graph/cooc_impute.py`, `cold_impute`
+knob) was the attempt to do better: predict a cold item's position in
+**cooc-embedding space** (PPMI-SVD of the warm cooc) from its content
+via a ridge map, then rank by cosine to the user's cooc-space taste
+centroid — one vector per cold item, not k grafted edges, so it cannot
+flood the pool the way edge-grafting did (§4.7-adjacent; book cratered
+10×). The metadata→cooc **mapping-R²/neighbor-recovery** metric
+(`bench/run_meta_cooc_map.py`) is the validated gate: it ranks
+steam>book matching grafting outcomes, zeros content-orthogonal
+catalogs, and tops out ~0.10 even on ml-25m tag-genome (content
+reconstructs only ~10% of cooc structure — the durable ceiling).
+
+**Standalone it works** (`bench/run_ml25m_lift.py`, ml-25m 40k): cold-1-4
+recall 0→0.0081 (~half the warm tier), NDCG held, warm untouched — the
+first cost-free cold positive of the whole enrichment arc.
+
+**Through the production engine it does not** (`bench/run_engine_impute.py`,
+ml-25m 40k, the Phase-1 guardrail):
+
+| arm | NDCG@20 | cold-1-4 recall |
+|---|---:|---:|
+| off (`cold_slots=0`) | **0.1728** | 0.0 |
+| content ranker | 0.1702 | 0.0014 (~4 items) |
+| impute (gate active, r2 0.088) | 0.1686 | 0.0011 (~3 items) |
+
+Impute **ties** the content ranker (3 vs 4 recovered cold items — noise)
+and **costs ~2% NDCG**, recovering ~7× less than the standalone bench.
+The cause is the same EASE-path **scale mismatch** edge-grafting hit
+(§4.7 architecture note): the bench scored warm *and* cold in one
+unified cooc-space, so cold competed for all 20 top-K slots; the engine
+scores warm with **EASE** (a different space), so cold cooc-space scores
+are incomparable to warm EASE scores and are confined to the reserved
+slots. One slot cannot surface a 2.7%-prevalence cold population in a
+13.8k catalog, regardless of ranker. The deeper tension: catalogs with
+good content→cooc mapping are content-coherent and EASE-sized
+(≤20k → scale mismatch), while catalogs with a native cooc base (>20k →
+clean scale-match) have poor mapping (book r2 0.058). The bench positive
+lived in a regime production doesn't occupy.
+
+**Verdict:** `cold_impute` defaults to `"content"`. The imputation path
+is kept (`cold_impute="impute"/"auto"`) for the **cooc-base regime**
+(>20k items, where warm+cold share cooc-space) should a content-coherent,
+warm-dominated, high-mapping dataset be built there (open front §7.6).
+The clean scale-calibrator that would let cold compete in the main EASE
+ranking is the real unsolved problem.
+
 ## 5. Engine knobs (the ones that matter)
 
 | knob | default | touch when |
@@ -396,6 +516,7 @@ Two operational lessons from the book run (each a real bug, each fixed):
 | `open_catalog` | True | metadata-only items become candidates |
 | `cold_slots` | 0 | reserve N of top-K for cold items (set 1 on churning catalogs) |
 | `cold_recency_beta` | 2.0 | release-recency prior in cold-slot ranking; 0 disables |
+| `cold_impute` / `cold_impute_min_r2` | `"content"` / 0.06 | cold-slot ranker; `"impute"`/`"auto"` is the dormant cooc-space path (§4.9 — did not transfer on the EASE path) |
 | `open_catalog_max_extension` | None (RAM-auto) | pin the metadata-only extension size; auto caps it under 80% physical RAM |
 | `retrieval_budget` | 500 | oracle says little headroom from raising it alone |
 | `calibrate_base` | False | diagnostics only — see §4.4 |
@@ -429,24 +550,150 @@ src/kindling/
 
 ## 7. Open fronts
 
-1. **Cold-extension coverage policy** — book cold slots now run (§4.8)
-   but recover only 0.5%: the salesRank-top-107k extension covers just
-   26% of the warmth-0 held-out demand. The bottleneck is the *extension
-   selection* (salesRank ≠ future cold demand), not the cold ranker.
-   A demand-aware or recency-aware extension policy would raise the
-   ceiling; steam (8.5%, better coverage) shows the ranker is sound.
-2. **Remaining oracle headroom** — ml1m oracle on the same pool is 0.88
-   vs 0.2931 current. Closing more of it likely requires real sequence
-   modeling (out of scope today) or richer user-state features.
-3. **EASE beyond the gate** — blocked/low-rank EASE variants could
-   extend the closed-form base past 20k items. Now concretely motivated:
-   on the 91k-item LightGCN academic split the cooc base hits ~90% of
-   LightGCN (§3.4); EASE there would likely close the gap and is the
-   clearest path to beating the published GNN numbers outright.
-4. **Cold-user serving** — LLM user profiles tie the mean-embedding
-   control on warm data (§4.7); their distinctive value (cross-domain
-   bootstrap, no-history users) has no protocol yet.
+1. **Cold-extension coverage policy** — **investigated (Stage-0 diagnostic),
+   demand-aware *selection* refuted.** `bench/run_cold_coverage.py` measures,
+   per dataset, the coverage of warmth-0 cold demand vs fraction of the
+   metadata pool admitted, under salesRank / recency / content / random.
+   Findings: (a) **book** is the only cap-bites dataset, and **salesRank is
+   already the best policy** — content-proximity is *worse* at every cap
+   fraction, and book has no date for recency; its cold ceiling is only
+   **~18%** (most cold-demand books aren't in the 2014 metadata), so book is
+   **metadata-coverage-limited, not selection-limited.** (b) **recency is a
+   strong demand signal where it applies** — steam newest-25% covers **90%**
+   of cold demand vs random 26% — but steam's cap doesn't bite (everything
+   fits), so it's moot there; it's ranker-limited. (c) **ml-25m** recency is
+   weak (movies are evergreen, not bought-near-release like games). The
+   regime where demand-aware selection pays — cap bites AND a strong recency
+   signal AND a high metadata ceiling — is represented by no current dataset;
+   it coincides with the §7.6 hunt and would validate there. (Trivial
+   separate lever: raising book's cap 107k→200k buys ~+3pp coverage — a
+   cap-size knob, not a policy.)
+2. **Remaining oracle headroom** — re-grounded on the *current* engine
+   with the faithful EASE pool (`bench/run_gap_decomp.py`; the library
+   diagnostic's pool was stale — raw cooc, pre-pivot). The two benchmark
+   datasets are bound by **different** walls:
+
+   | dataset | base | pop floor | current | oracle (pool) | pool recall (med) | bound by |
+   |---|---|---:|---:|---:|---:|---|
+   | ml1m | ease | 0.2492 | 0.2931 | **0.9315** | 0.66 | **ranking** |
+   | beauty | ease | 0.0063 | 0.0325 | 0.2773 | **0.00** | **retrieval** |
+
+   **ml1m is ranking-bound**: the pool holds the answers (oracle 0.93) but
+   the scorer delivers 0.29 — a 0.64 gap, 3.2× scoring headroom *inside*
+   the pool (retrieval improved 0.56→0.66 since the pre-pivot §3.2 table).
+   Closing a pure ranking gap on a burst dataset is what sequence models
+   do (out of philosophy); the shallow levers (recency decay, per-fit
+   calibration, channel reweighting) were tried and rejected (§4.4–4.5),
+   so this needs a bounded shallow probe before conceding it to sequence
+   modeling. **beauty is retrieval-bound**: median pool recall 0 — half of
+   users' held-out items never reach the pool, so no ranker can help; the
+   in-philosophy lever is multi-source candidate generation.
+
+   **ml1m-ranking probed (`bench/run_ml1m_rerank.py`) → gap is sequential.**
+   On the engine's actual pool: in-philosophy shallow re-ranking can't
+   move it (recent-window EASE *hurts* 0.26-0.27; trend reweight is
+   noise-band — +1.8% NDCG / −0.8% recall, mixed across datasets). A
+   *learned* non-linear re-ranker (LightGBM) over the SAME features lifts
+   the eval-half +7% (0.287→0.308) — but a linear ranker (logreg) does
+   not, and the learned ceiling stays ~0.62 below the oracle (0.93). So
+   the gap is **feature-limited, not ranker-limited**: the missing signal
+   is which item comes *next* (sequential), out of the no-training
+   philosophy.
+
+   **Learned re-ranker fully evaluated → rejected** (`bench/run_rerank.py`,
+   `run_rerank_deploy.py`). (a) The LightGBM ceiling (+7% ml1m) does NOT
+   generalize — it *craters −26% on sparse beauty* (trees overfit few
+   positives) — and would add a compiled C++ runtime dep against the
+   wheel-that-imports philosophy. (b) A dep-free closed-form ridge over
+   the channels + numpy degree-2 crosses beats the z-blend with eval-label
+   ceiling (+1.5% ml1m / +6% beauty), but the **deployable** version —
+   trained on the only available internal (train-only) holdout — *craters
+   −32% ml1m / −11% beauty*, the §4.4 inversion in full force (linear too).
+   So learned re-ranking is undeployable on these protocols. This
+   **vindicates** the fixed cross-dataset z-blend: per-fit/learned
+   calibration inverts because the internal holdout's drift/next-item
+   structure differs from the test slice. **ml1m-ranking is closed; the
+   remaining oracle headroom is sequential (out of scope).**
+
+   **beauty-retrieval probed (`bench/run_beauty_retrieval.py`,
+   `run_beauty_rerank.py`) → reachable but unrankable.** Multi-source
+   candidate generation DOES reach the missing items: union of
+   EASE+popularity+2-hop lifts recall@500 mean 0.28→0.38, median 0→0.25,
+   and the oracle over the union pool is 0.365 (vs current 0.034 — 10×
+   headroom). But no in-philosophy fixed-weight blend surfaces them:
+   adding 2-hop *hurts* (0.034→0.029 — it pools the items but scores them
+   like noise, diluting EASE), popularity is flat (+0.9%, noise). Surfacing
+   them needs a ranker that discriminates *which* union items are relevant
+   — the learned re-ranker, undeployable per §4.4. **So §7.2 closes,
+   unified: both walls (ml1m ranking, beauty retrieval) have large real
+   oracle headroom that requires a discriminative/sequential ranker fixed-
+   weight blending can't express and learned weights can't deploy. The
+   engine is at its philosophy-bounded optimum.**
+3. **EASE beyond the gate** — **CLOSED, negative (Phase 2).** Low-rank
+   EASE (top-r eigendecomposition of the sparse Gram, scoring without
+   materializing the dense n×n B; `bench/run_ease_large.py`) was the
+   memory-feasible candidate. On book-91k it climbs but **decelerates
+   far below wilson**: NDCG@20 0.0254 (r=128) → 0.0310 (r=256) → 0.0358
+   (r=512) vs wilson's **0.0482**. λ barely moves it (rank, not
+   regularization, is the binding constraint), so parity needs r≈4000+ —
+   hours of decomposition and multi-GB Q vs wilson's 86s O(edges) fit.
+   Mechanism: EASE's value is removing popularity/redundancy via the
+   inverse-Gram, but wilson *already* removes popularity cheaply; EASE's
+   residual edge lives in a near-full-rank inverse that has no low-rank-
+   feasible form on this heavy-tailed spectrum. (Aside: r=512 EASE 0.0358
+   already beats published LightGCN/Mult-VAE 0.0315 — but wilson is
+   better *and* cheaper.) **The EASE gate stays at 20k; wilson is the
+   >20k base.** CG-column / sparse-B variants face the same
+   spectrum + a diag(P) obstacle and are not pursued.
+4. **Cold-user serving** — **BUILT** (`EngineV2.recommend_for_items`).
+   Brand-new / anonymous users (absent from training) are served from
+   ad-hoc seed items: the closed-form base scores from *any* seed set
+   with no per-user training, so a user who just interacted with a few
+   items gets personalized recs immediately; zero/all-unknown seeds fall
+   back to all-time popularity (`_cold_recommend` — the warming
+   benchmark's cold-data champion). Onboarding curve
+   (`bench/run_onboarding.py`, NDCG@10 vs # seeds): graceful 0-seed
+   fallback (==popularity), then kindling personalizes and overtakes —
+   crossover at **1 seed (beauty)**, ~3 (steam), ~7-10 (ml1m); the
+   crossover comes later on popularity-heavy catalogs, with a 1-seed dip
+   below popularity there (a single seed is a weak signal vs a strong
+   popularity prior). Popularity is flat (ignores seeds) and trained MF
+   cannot serve absent users at all. **Popularity-shrinkage refinement
+   BUILT** (`cold_user_pop_prior`, default 8): adds
+   `(c/n_seeds)·z(log popularity)` to the seed score — empirical-Bayes
+   shrinkage toward the popularity prior when seeds are thin, decaying as
+   they accumulate. Lifts the raw 1-seed dip to/above the popularity floor
+   on popularity-heavy catalogs (ml1m k=1 0.094→0.105 > pop 0.103; steam
+   −23%→−10%), is harmless on sparse catalogs (popularity too flat to
+   pull), and preserves the high-seed wins; scoped to the new-user path
+   (`recommend` passes pop_prior=0 → warm ranking untouched). LLM user
+   profiles (§4.7) remain a separate, untested cross-domain bootstrap
+   angle.
 5. **More realistic-tier datasets** — RetailRocket (live clickstream,
    hashed metadata) would test content-channel mechanics under churn
    without LLM enrichability; H&M (rich readable metadata + churn)
    would exercise the full stack, Kaggle auth permitting.
+6. **Cooc-base embedding imputation** — **CLOSED, regime absent
+   (dataset screen, `bench/run_dataset_screen.py`).** Imputation (§4.9)
+   needs the cooc-base sweet spot: >20k items AND content-coherent
+   (mapping-R²) AND warm-dominated. The screen shows a structural
+   anti-correlation — content-coherence lives at *small* scale here, and
+   scaling past 20k loses it and gains cold-domination:
+
+   | dataset | items | >20k | mapping-R² | warmth |
+   |---|---:|:--:|---:|---|
+   | steam (tags) | 14k | ✗ | 0.077 | warm-dom |
+   | ml-25m genome | 13.4k | ✗ | 0.088 | warm-dom |
+   | ml-25m unrestricted (genres) | 35.7k | ✓ | **0.035** | **53% cold** |
+   | amazon-book (categories) | 357k | ✓ | 0.058 | cold-dom |
+
+   No cached dataset occupies the sweet spot. Combined with the §4.9
+   EASE-path scale-mismatch, the §7.1 selection non-bottleneck, and the
+   ~10% content ceiling (§4.7), this **closes the content cold-start
+   program**: across imputation, edge-grafting, the content channel, and
+   enrichment, content is a structurally weak supplement that banks no
+   production value in the regimes available. The validated stack is
+   **wilson cooc base + EASE warm scorer**; cold exposure, where wanted,
+   is the structural `cold_slots` mechanism (§4.8), not a learned content
+   ranker. Reopen only with a downloaded dataset that screens into the
+   sweet spot (Amazon Video Games is the untested candidate).

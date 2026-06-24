@@ -1,0 +1,8 @@
+[15:55:37] movielens-1m: eval_users 1120 catalog 3,678 seeds [0, 1, 2, 3, 5, 10] pop_prior_c=8.0
+[15:55:37]   seeds=0   raw=0.1014 shrunk=0.1014 pop=0.1014
+[15:55:39]   seeds=1   raw=0.0936 shrunk=0.1049 pop=0.1027
+[15:55:41]   seeds=2   raw=0.0981 shrunk=0.1021 pop=0.1039
+[15:55:44]   seeds=3   raw=0.1016 shrunk=0.1041 pop=0.1052
+[15:55:46]   seeds=5   raw=0.1051 shrunk=0.1069 pop=0.1078
+[15:55:49]   seeds=10  raw=0.1218 shrunk=0.1208 pop=0.1171
+[15:55:49] [wrote] onboarding_movielens-1m.json

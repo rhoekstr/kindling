@@ -1,0 +1,10 @@
+{
+  "dataset": "amazon-beauty",
+  "n_test_users": 500,
+  "internal_pos": 2999,
+  "current_blend": 0.0315,
+  "deploy_ridge_linear": 0.0317,
+  "deploy_ridge_cross2": 0.0279,
+  "ceiling_cross2_evalhalf": 0.0367,
+  "current_evalhalf": 0.0346
+}

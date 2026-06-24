@@ -1,0 +1,12 @@
+{
+  "dataset": "ml-25m-unrestricted",
+  "content": "genres",
+  "n_train_items": 35667,
+  ">20k_cooc_base": true,
+  "n_warm(>=5)": 16702,
+  "cold_share_of_catalog": 0.532,
+  "cold_demand(warmth0_heldout)": 12334,
+  "n_content_features": 20,
+  "mapping_r2": 0.0354,
+  "neighbor_recovery@10": 0.0258
+}

@@ -1,0 +1,36 @@
+{
+  "dataset": "amazon-book-chrono",
+  "n_labeled": 5696,
+  "n_users": 3000,
+  "aisle_features": 37,
+  "results": {
+    "ease (baseline)": {
+      "ndcg": 0.0598,
+      "recall": 0.1009
+    },
+    "+ aisle@0.25": {
+      "ndcg": 0.0597,
+      "recall": 0.1011
+    },
+    "+ aisle@0.5": {
+      "ndcg": 0.0597,
+      "recall": 0.1013
+    },
+    "+ aisle@1.0": {
+      "ndcg": 0.0588,
+      "recall": 0.0994
+    },
+    "+ native@0.5": {
+      "ndcg": 0.0596,
+      "recall": 0.1005
+    },
+    "aisle-only": {
+      "ndcg": 0.0012,
+      "recall": 0.0025
+    },
+    "native-only": {
+      "ndcg": 0.0032,
+      "recall": 0.0039
+    }
+  }
+}

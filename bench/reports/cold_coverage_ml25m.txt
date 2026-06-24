@@ -1,0 +1,9 @@
+[18:01:23] ml-25m: train_items=35,667 cold_demand=12,334 meta_pool=26,756  ceiling=1.0000 (=12334/12334 cold items are in metadata at all)
+[18:01:24] content features: 20 feats, centroid in 0s
+[18:01:24] coverage of cold demand (ceiling=1.0):
+[18:01:24]   policy        @ 10%  @ 25%  @ 50%  @100%
+[18:01:24]   meta-order    0.0643  0.1479  0.3141  1.0000
+[18:01:24]   random        0.0996  0.2514  0.5021  1.0000
+[18:01:24]   recency       0.1716  0.3597  0.5568  1.0000
+[18:01:24]   content       0.1039  0.2521  0.5147  1.0000
+[18:01:24] [wrote] /Users/rhoekstr/Desktop/Code/kindling/bench/reports/cold_coverage_ml-25m.json

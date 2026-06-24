@@ -1,0 +1,13 @@
+{
+  "dataset": "amazon-beauty",
+  "n_users": 500,
+  "shipped_ref": 0.0325,
+  "current(blend)": 0.0336,
+  "+2hop@0.25": 0.0336,
+  "+2hop@0.5": 0.0302,
+  "+2hop@1.0": 0.0285,
+  "+pop@0.25": 0.0334,
+  "+pop@0.5": 0.0339,
+  "+2hop@0.5+pop@0.25": 0.0307,
+  "oracle_union": 0.3648
+}

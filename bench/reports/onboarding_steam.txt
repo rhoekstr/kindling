@@ -1,0 +1,8 @@
+[16:00:48] steam: eval_users 3000 catalog 14,057 seeds [0, 1, 2, 3, 5, 10] pop_prior_c=8.0
+[16:00:49]   seeds=0   raw=0.0348 shrunk=0.0348 pop=0.0348
+[16:01:19]   seeds=1   raw=0.0261 shrunk=0.0303 pop=0.0338
+[16:01:52]   seeds=2   raw=0.0320 shrunk=0.0337 pop=0.0342
+[16:02:28]   seeds=3   raw=0.0339 shrunk=0.0350 pop=0.0339
+[16:03:05]   seeds=5   raw=0.0346 shrunk=0.0345 pop=0.0335
+[16:03:46]   seeds=10  raw=0.0412 shrunk=0.0413 pop=0.0344
+[16:03:46] [wrote] onboarding_steam.json

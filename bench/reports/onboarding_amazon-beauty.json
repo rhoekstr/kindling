@@ -1,0 +1,54 @@
+{
+  "dataset": "amazon-beauty",
+  "k": 10,
+  "rows": [
+    {
+      "seeds": 0,
+      "n": 1412,
+      "kindling_raw_ndcg": 0.0036,
+      "kindling_ndcg": 0.0036,
+      "kindling_recall": 0.0059,
+      "popularity_ndcg": 0.0036
+    },
+    {
+      "seeds": 1,
+      "n": 1412,
+      "kindling_raw_ndcg": 0.0041,
+      "kindling_ndcg": 0.0039,
+      "kindling_recall": 0.0045,
+      "popularity_ndcg": 0.0036
+    },
+    {
+      "seeds": 2,
+      "n": 1412,
+      "kindling_raw_ndcg": 0.0048,
+      "kindling_ndcg": 0.005,
+      "kindling_recall": 0.0074,
+      "popularity_ndcg": 0.0036
+    },
+    {
+      "seeds": 3,
+      "n": 1412,
+      "kindling_raw_ndcg": 0.0066,
+      "kindling_ndcg": 0.0074,
+      "kindling_recall": 0.0105,
+      "popularity_ndcg": 0.0036
+    },
+    {
+      "seeds": 5,
+      "n": 1412,
+      "kindling_raw_ndcg": 0.0068,
+      "kindling_ndcg": 0.0069,
+      "kindling_recall": 0.0093,
+      "popularity_ndcg": 0.0036
+    },
+    {
+      "seeds": 10,
+      "n": 1412,
+      "kindling_raw_ndcg": 0.0084,
+      "kindling_ndcg": 0.0083,
+      "kindling_recall": 0.0136,
+      "popularity_ndcg": 0.0036
+    }
+  ]
+}

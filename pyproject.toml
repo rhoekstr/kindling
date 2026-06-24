@@ -37,6 +37,7 @@ dev = [
 bench = [
     "requests>=2.31",
     "tqdm>=4.66",
+    "matplotlib>=3.8",
 ]
 baselines = [
     "implicit>=0.7",
