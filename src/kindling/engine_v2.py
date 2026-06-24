@@ -39,7 +39,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
@@ -54,6 +54,9 @@ from kindling.path._sessions import sessions_from_interactions
 from kindling.path.basket_index import BasketIndex, build_basket_index
 from kindling.path.tail_index import TailIndex, build_tail_index
 from kindling.preprocess import preprocess_interactions, weights_of
+
+if TYPE_CHECKING:
+    from kindling.activation import ActivationPlan
 
 
 @dataclass(frozen=True)
@@ -1761,6 +1764,20 @@ class EngineV2:
             profile=profile,
         )
         return self
+
+    @property
+    def activation_plan(self) -> "ActivationPlan":
+        """Which layers were activated for this dataset, and why.
+
+        A self-explaining record of the regime-based gating (base scorer,
+        per-channel on/off with reasons, cold-start). Inspect after fit:
+        ``print(engine.activation_plan.summary())``.
+        """
+        if self._state is None:
+            raise RuntimeError("EngineV2 not fitted. Call .fit(interactions) first.")
+        from kindling.activation import build_activation_plan
+
+        return build_activation_plan(self, self._state.profile)
 
     # ------------------------------------------------------------------
     # recommend
