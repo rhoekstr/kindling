@@ -27,9 +27,9 @@ def _genre_data(seed: int = 0, per_genre: int = 25, n_users: int = 800):
 def engine():
     # pop-shrinkage off: these tests verify the pure seed->neighbor mechanism;
     # shrinkage toward popularity is exercised separately below.
-    return EngineV2(
-        persona_min_users=10**9, random_state=0, cold_user_pop_prior=0.0
-    ).fit(_genre_data())
+    return EngineV2(persona_min_users=10**9, random_state=0, cold_user_pop_prior=0.0).fit(
+        _genre_data()
+    )
 
 
 def test_new_user_from_seeds_is_personalized(engine):
@@ -94,12 +94,12 @@ def test_pop_shrinkage_surfaces_popular_items_when_seeds_thin():
     # (the empirical-Bayes prior dominates when seed evidence is thin).
     rng = np.random.default_rng(1)
     rows = []
-    pop_items = [f"p{i}" for i in range(10)]   # genre 0, very popular
+    pop_items = [f"p{i}" for i in range(10)]  # genre 0, very popular
     niche_items = [f"q{i}" for i in range(10)]  # genre 1, rare
     for u in range(1000):  # everyone consumes the popular cluster
         for it in rng.choice(pop_items, size=5, replace=False):
             rows.append((u, it))
-    for u in range(40):    # a few users consume the niche cluster
+    for u in range(40):  # a few users consume the niche cluster
         for it in rng.choice(niche_items, size=5, replace=False):
             rows.append((1000 + u, it))
     data = pd.DataFrame(rows, columns=["entity_id", "item_id"])

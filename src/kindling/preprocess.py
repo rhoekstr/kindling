@@ -111,13 +111,9 @@ def _resolve_use_ratings(interactions: pd.DataFrame, user_choice: bool | None) -
 
     if user_choice is True:
         if not has_rating:
-            raise ValueError(
-                "use_ratings=True but the interactions have no 'rating' column."
-            )
+            raise ValueError("use_ratings=True but the interactions have no 'rating' column.")
         if not has_any_value:
-            raise ValueError(
-                "use_ratings=True but the 'rating' column has no numeric values."
-            )
+            raise ValueError("use_ratings=True but the 'rating' column has no numeric values.")
         return True
     if user_choice is False:
         return False

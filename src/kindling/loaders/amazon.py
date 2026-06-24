@@ -100,7 +100,11 @@ def load(
         description=(
             "Amazon 5-core reviews; rating-driven positive/negative signal; "
             "tests cost graph via explicit low ratings."
-            + (" Items frame includes brand (store) when meta_file is present." if items_frame is not None else "")
+            + (
+                " Items frame includes brand (store) when meta_file is present."
+                if items_frame is not None
+                else ""
+            )
         ),
     )
 

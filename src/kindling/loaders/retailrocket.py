@@ -110,9 +110,8 @@ def _relabel_cost_events(events: pd.DataFrame) -> pd.DataFrame:
             how="left",
             suffixes=("_add", "_txn"),
         )
-        within_24h = (
-            (merged["timestamp_txn"] >= merged["timestamp_add"])
-            & (merged["timestamp_txn"] - merged["timestamp_add"] <= pd.Timedelta(hours=24))
+        within_24h = (merged["timestamp_txn"] >= merged["timestamp_add"]) & (
+            merged["timestamp_txn"] - merged["timestamp_add"] <= pd.Timedelta(hours=24)
         )
         # Rows with NO transaction within the window -> remove.
         no_txn = merged.groupby("index")["timestamp_txn"].apply(
@@ -136,17 +135,14 @@ def _load_item_metadata(base: Path) -> pd.DataFrame | None:
     if not prop_files:
         return None
     frames = [
-        pd.read_csv(f, usecols=["timestamp", "itemid", "property", "value"])
-        for f in prop_files
+        pd.read_csv(f, usecols=["timestamp", "itemid", "property", "value"]) for f in prop_files
     ]
     props = pd.concat(frames, ignore_index=True)
     cat_rows = props[props["property"] == "categoryid"]
     if cat_rows.empty:
         return None
     # Keep the latest known categoryid per item.
-    cat_rows = cat_rows.sort_values("timestamp").drop_duplicates(
-        subset=["itemid"], keep="last"
-    )
+    cat_rows = cat_rows.sort_values("timestamp").drop_duplicates(subset=["itemid"], keep="last")
     return pd.DataFrame(
         {
             "item_id": cat_rows["itemid"].astype("int64").to_numpy(),

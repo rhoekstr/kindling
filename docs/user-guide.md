@@ -1,126 +1,94 @@
-# kindling user guide
+# kindling — User Guide
 
-A hybrid recommender system that grows with your data.
+A practical guide to the kindling recommender (v0.2, the consolidated v2
+engine). For the architecture and the empirical record see
+[`REFERENCE.md`](REFERENCE.md); for a one-page system overview see
+[`PRODUCTION-SYSTEM.md`](PRODUCTION-SYSTEM.md).
 
 ## Install
 
 ```bash
-pip install kindling
+pip install -e ".[dev]"        # core + dev tooling
+pip install -e ".[dev,bench]"  # + benchmark harness
 ```
 
-With the optional Rust extension (modest speedup):
+## Fit and recommend
 
-```bash
-pip install kindling[native]  # when the wheel exists for your platform
-# or build from source:
-pip install kindling
-# then:
-git clone ...
-cd kindling/native
-maturin develop --release
-```
-
-With optional dependencies:
-
-```bash
-pip install kindling[lightgbm]   # activates LightGBMRanker
-pip install kindling[arrow]      # enables export_arrow() (pyarrow)
-```
-
-## Quickstart
+`kindling` takes a long-format interaction DataFrame with `entity_id` and
+`item_id` (and, ideally, `timestamp` and/or `rating`). It infers the index
+and chooses the scoring layers from the data — there is nothing to
+configure for the common case.
 
 ```python
-import pandas as pd
 from kindling import Engine
+from kindling.loaders import movielens
 
-interactions = pd.DataFrame({
-    "entity_id": [...],
-    "item_id":   [...],
-    "timestamp": [...],      # optional but recommended
-    "action_type": [...],    # optional: add/remove/rate for cost graph
-})
+interactions = movielens.load_1m()   # entity_id, item_id, timestamp, rating
 
 engine = Engine()
 engine.fit(interactions)
 
-for rec in engine.recommend(entity_id="customer_42", n=10):
-    print(rec.item_id, rec.score, rec.explanation.primary)
-    print("  credible:", rec.credible_interval)
+for rec in engine.recommend(entity_id=42, n=10):
+    print(rec.item_id, rec.score, rec.explanation)
 ```
 
-## Core concepts
+A `Recommendation` carries `item_id`, `score`, `base_kind` (which base
+scored it), and an `explanation`. For just the ids:
+`[r.item_id for r in engine.recommend(entity_id=42, n=10)]`.
 
-- **Entity**: the subject of recommendations (user, customer, account).
-- **Item**: what we recommend (product, movie, article).
-- **Signal**: one dimension of the scoring stack. kindling ships seven:
-  three path signals (full / tail / basket), cooccurrence, and three
-  cost signals (population / entity / context).
-- **Blend**: how signals combine. The Bayesian blend (default) learns
-  weights from outcome data; the heuristic blend uses fixed weights
-  until the posterior is confident.
-- **Credible interval**: a Bayesian range on each recommendation's
-  score, derived from the posterior over blend weights. *Not* a
-  frequentist confidence interval; conformal prediction for frequentist
-  coverage arrives in v1.x.
+## New / anonymous users
 
-## Input format (PRD §4)
-
-Required columns: `entity_id`, `item_id`. Optional columns the engine
-activates automatically:
-
-| Column         | Enables                                       |
-| -------------- | --------------------------------------------- |
-| `timestamp`    | Time decay, session inference, path signals, drift |
-| `session_id`   | Explicit sessions (skips GMM inference)       |
-| `action_type`  | Cost graph (`remove`, `negative_rating`)       |
-| `rating`       | Low ratings populate the cost graph            |
-
-## Recommendation controls
+Brand-new users absent from training are served with **no per-user
+training** from whatever items they've touched; a zero/all-unknown seed
+set falls back to popularity:
 
 ```python
-recs = engine.recommend(
-    entity_id="customer_42",
-    n=5,
-
-    # Stage 3 re-rank knobs (all optional):
-    diversity=0.5,                        # DPP weight in [0, 1]
-    temperature=[0.0, 0.25, 0.5, 0.75, 1.0],  # per-position novelty
-    temperature_solver="beam",            # beam | greedy | dpp
-    calibration_weight=0.3,               # Steck 2018 category calibration
-    emphasis="distinctive",               # lift rare items
-    lift_weight=1.0,                      # 0..1 lift intensity
-    constraints=[lambda item: item != "out_of_stock"],
-)
+engine.recommend_for_items(seed_item_ids=[101, 205], n=10)  # personalized from seeds
+engine.recommend_for_items(seed_item_ids=[], n=10)          # → popularity fallback
 ```
 
-## Tuning guide
+The closed-form base scores any seed set immediately, so a user who just
+interacted with a few items gets personalized recommendations on the spot.
 
-See [tuning-guide.md](tuning-guide.md) for decay half-life, temperature,
-blend weights, constraint design, and the coverage U-shape that
-surfaces at mid temperature.
+## Understanding what activated
 
-## Observability
-
-- `engine.posterior_summary()` — posterior mean, credible interval, VI
-  diagnostics, simple-reporter warning if any.
-- `engine.drift_report()` — item-graph drift, community stability,
-  estimated retention horizon.
-- `engine.data_density()` — item / entity / interaction counts.
-- `engine.preserved_aggregates` — ledger of what pruning has removed.
-
-## Persistence
+The engine gates each layer on a measurable property of your data. Inspect
+the decisions after fit:
 
 ```python
-engine.save("customer_recs.kndl")
-loaded = Engine.load("customer_recs.kndl")
-
-# Cross-language interop via Apache Arrow IPC:
-engine.export_arrow("customer_recs.arrow")
+print(engine.activation_plan.summary())
+# Regime: 6,011 users x 3,883 items, median history 23, timestamps=True, ...
+# Base: ease (lambda=750), rating-weighted
+# Channels:
+#   [ON ] trend x0.5 — recent-window popularity; needs timestamps
+#   [ON ] last_item x0.25 — EASE row of the newest item ...
+#   [off] transitions — ... (burst detected → off)
+#   [off] user_cf — ... (median 23 > gate 20)
 ```
 
-User-supplied constraint closures can't be pickled and are not
-restored. Pass constraints per call on the loaded engine instead.
+`engine.activation_plan.active_channels` returns just the active layer
+names. This is how the system explains *why* it is configured the way it
+is for your dataset.
 
-## Migration from LightFM / Surprise
+## Getting good results
 
-See [migration-guide.md](migration-guide.md).
+1. **Add a `timestamp` column.** It activates the trend and (on session
+   data) transition channels; nearly every signal improves with it.
+2. **Keep `rating` if you have real ratings.** The base becomes
+   rating-weighted (preference intensity), worth a few % NDCG.
+3. **Inspect `activation_plan`** to confirm the engine detected your regime
+   correctly (catalog size → EASE vs cooc base; sparse history → user-CF).
+4. **For cold/churning catalogs**, set `cold_slots=1` and keep
+   `open_catalog=True` so metadata-only items can be recommended.
+5. **Benchmark your own data** with `bench/verify.py` (`DATASET=...`) before
+   comparing metrics to a previous stack.
+
+## Cold-start
+
+- **Cold *users*** (short history): handled automatically — kindling is the
+  strongest personalized model on cold-heavy catalogs (see §3.5 of
+  REFERENCE), and `recommend_for_items` serves anonymous users.
+- **Cold *items*** (no interactions): the reserved `cold_slots` mechanism
+  surfaces metadata-only items ranked by content similarity + release
+  recency. This is the shipped cold-item answer; a learned content ranker
+  was tried across four programs and retired (see EXPERIMENTS.md §4).

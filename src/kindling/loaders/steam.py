@@ -22,7 +22,6 @@ import gzip
 import re
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 _CACHE = Path("~/.cache/kindling/steam").expanduser()
@@ -43,9 +42,7 @@ def _parse_reviews(path: Path) -> pd.DataFrame:
                 continue
             rows.append((u, str(i), t, float(d.get("hours") or 0.0)))
     df = pd.DataFrame(rows, columns=["entity_id", "item_id", "date", "hours"])
-    df["timestamp"] = (
-        pd.to_datetime(df["date"], errors="coerce").astype("int64") // 10**9
-    )
+    df["timestamp"] = pd.to_datetime(df["date"], errors="coerce").astype("int64") // 10**9
     df = df.dropna(subset=["timestamp"])
     return df[["entity_id", "item_id", "timestamp", "hours"]]
 
@@ -65,17 +62,19 @@ def _parse_games(path: Path) -> pd.DataFrame:
                 gid = m.group(1) if m else None
             if not gid:
                 continue
-            rows.append({
-                "item_id": str(gid),
-                "title": d.get("title") or d.get("app_name"),
-                "genres": list(d.get("genres") or []),
-                "tags": list(d.get("tags") or []),
-                "specs": list(d.get("specs") or []),
-                "developer": d.get("developer"),
-                "publisher": d.get("publisher"),
-                "price": d.get("price") if isinstance(d.get("price"), (int, float)) else None,
-                "release_date": d.get("release_date"),
-            })
+            rows.append(
+                {
+                    "item_id": str(gid),
+                    "title": d.get("title") or d.get("app_name"),
+                    "genres": list(d.get("genres") or []),
+                    "tags": list(d.get("tags") or []),
+                    "specs": list(d.get("specs") or []),
+                    "developer": d.get("developer"),
+                    "publisher": d.get("publisher"),
+                    "price": d.get("price") if isinstance(d.get("price"), (int, float)) else None,
+                    "release_date": d.get("release_date"),
+                }
+            )
     return pd.DataFrame(rows).drop_duplicates(subset="item_id", keep="first")
 
 

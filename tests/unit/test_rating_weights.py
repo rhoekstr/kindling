@@ -16,8 +16,10 @@ from kindling.preprocess import preprocess_interactions
 
 
 def test_weight_transform_maps_ratings_to_zero_one() -> None:
-    df = pd.DataFrame({"entity_id": [1, 2, 3, 4, 5], "item_id": ["a"] * 5, "rating": [1, 2, 3, 4, 5]})
-    _, ctx = preprocess_interactions(df)  # noqa: F841
+    df = pd.DataFrame(
+        {"entity_id": [1, 2, 3, 4, 5], "item_id": ["a"] * 5, "rating": [1, 2, 3, 4, 5]}
+    )
+    _, ctx = preprocess_interactions(df)
     processed, _ = preprocess_interactions(df)
     w = processed["_interaction_weight"].to_numpy()
     assert w[0] == pytest.approx(0.0)  # below threshold
@@ -29,7 +31,7 @@ def test_weight_transform_maps_ratings_to_zero_one() -> None:
 
 def test_weight_defaults_to_one_when_no_rating_column() -> None:
     df = pd.DataFrame({"entity_id": [1, 2], "item_id": ["a", "b"]})
-    _, ctx = preprocess_interactions(df)  # noqa: F841
+    _, ctx = preprocess_interactions(df)
     processed, _ = preprocess_interactions(df)
     w = processed["_interaction_weight"].to_numpy()
     assert (w == 1.0).all()
@@ -37,7 +39,7 @@ def test_weight_defaults_to_one_when_no_rating_column() -> None:
 
 def test_weight_treats_missing_rating_as_implicit_positive() -> None:
     df = pd.DataFrame({"entity_id": [1, 2], "item_id": ["a", "b"], "rating": [np.nan, 5]})
-    _, ctx = preprocess_interactions(df)  # noqa: F841
+    _, ctx = preprocess_interactions(df)
     processed, _ = preprocess_interactions(df)
     w = processed["_interaction_weight"].to_numpy()
     assert w[0] == 1.0  # NaN rating -> treat as implicit positive
@@ -46,11 +48,13 @@ def test_weight_treats_missing_rating_as_implicit_positive() -> None:
 
 def test_item_graph_drops_low_rating_edges() -> None:
     """Users who only rated 1-2 stars should contribute nothing to cooc."""
-    df = pd.DataFrame({
-        "entity_id": [1, 1, 2, 2, 3, 3],
-        "item_id":   ["A", "B", "A", "B", "A", "C"],
-        "rating":    [5, 5, 1, 2, 5, 5],
-    })
+    df = pd.DataFrame(
+        {
+            "entity_id": [1, 1, 2, 2, 3, 3],
+            "item_id": ["A", "B", "A", "B", "A", "C"],
+            "rating": [5, 5, 1, 2, 5, 5],
+        }
+    )
     processed, _ = preprocess_interactions(df)
     g = build_item_graph(processed)
     adj = g.adjacency.toarray()
@@ -67,10 +71,12 @@ def test_item_graph_drops_low_rating_edges() -> None:
 def test_item_graph_binary_behavior_preserved_without_rating() -> None:
     """No rating column -> cooc is integer count of shared users, same
     as before rating support was added."""
-    df = pd.DataFrame({
-        "entity_id": [1, 1, 2, 2, 3, 3],
-        "item_id":   ["A", "B", "A", "B", "A", "C"],
-    })
+    df = pd.DataFrame(
+        {
+            "entity_id": [1, 1, 2, 2, 3, 3],
+            "item_id": ["A", "B", "A", "B", "A", "C"],
+        }
+    )
     g = build_item_graph(df)
     adj = g.adjacency.toarray()
     idx = g.item_index
@@ -83,11 +89,13 @@ def test_item_graph_binary_behavior_preserved_without_rating() -> None:
 def test_item_graph_deduplicates_with_max_weight() -> None:
     """A (user, item) repeated with different ratings should keep the
     MAX weight, not sum them."""
-    df = pd.DataFrame({
-        "entity_id": [1, 1, 2, 2],
-        "item_id":   ["A", "A", "A", "A"],
-        "rating":    [3, 5, 4, 4],
-    })
+    df = pd.DataFrame(
+        {
+            "entity_id": [1, 1, 2, 2],
+            "item_id": ["A", "A", "A", "A"],
+            "rating": [3, 5, 4, 4],
+        }
+    )
     processed, _ = preprocess_interactions(df)
     w = processed["_interaction_weight"].to_numpy()
     assert w.shape == (4,)

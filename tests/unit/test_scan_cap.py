@@ -71,8 +71,12 @@ def test_scan_cap_deterministic_given_seed() -> None:
     idx = build_basket_index(_sessions(), build_pair_index=False)
     candidates = list(range(80))
     q = frozenset(range(15))
-    a = idx.score_many(candidates, q, BasketSimilarity.COVERAGE, scan_cap=50, rng=np.random.default_rng(42))
-    b = idx.score_many(candidates, q, BasketSimilarity.COVERAGE, scan_cap=50, rng=np.random.default_rng(42))
+    a = idx.score_many(
+        candidates, q, BasketSimilarity.COVERAGE, scan_cap=50, rng=np.random.default_rng(42)
+    )
+    b = idx.score_many(
+        candidates, q, BasketSimilarity.COVERAGE, scan_cap=50, rng=np.random.default_rng(42)
+    )
     np.testing.assert_allclose(a, b)
 
 

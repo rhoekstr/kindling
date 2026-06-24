@@ -12,7 +12,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from kindling.path._sessions import SessionSequence, sessions_from_interactions
+from kindling.path._sessions import sessions_from_interactions
 from kindling.path.basket_index import build_basket_index
 from kindling.path.path_tree import build_path_tree
 from kindling.path.tail_index import build_tail_index
@@ -74,12 +74,14 @@ def test_path_tree_weighted_by_destination() -> None:
     rows = []
     for user, ratings in [(1, {"a": 5, "b": 5, "c": 5}), (2, {"a": 5, "b": 5, "c": 1})]:
         for i, item in enumerate(["a", "b", "c"]):
-            rows.append({
-                "entity_id": user,
-                "item_id": item,
-                "timestamp": base + pd.Timedelta(minutes=i),
-                "rating": ratings[item],
-            })
+            rows.append(
+                {
+                    "entity_id": user,
+                    "item_id": item,
+                    "timestamp": base + pd.Timedelta(minutes=i),
+                    "rating": ratings[item],
+                }
+            )
     df = pd.DataFrame(rows)
     processed, _ = preprocess_interactions(df)
     sessions = list(sessions_from_interactions(processed, session_ids=np.array([0, 0, 0, 1, 1, 1])))
@@ -95,11 +97,13 @@ def test_path_tree_binary_without_rating() -> None:
     rows = []
     for user in [1, 2]:
         for i, item in enumerate(["a", "b", "c"]):
-            rows.append({
-                "entity_id": user,
-                "item_id": item,
-                "timestamp": base + pd.Timedelta(minutes=i),
-            })
+            rows.append(
+                {
+                    "entity_id": user,
+                    "item_id": item,
+                    "timestamp": base + pd.Timedelta(minutes=i),
+                }
+            )
     df = pd.DataFrame(rows)
     processed, _ = preprocess_interactions(df)
     sessions = list(sessions_from_interactions(processed, session_ids=np.array([0, 0, 0, 1, 1, 1])))
