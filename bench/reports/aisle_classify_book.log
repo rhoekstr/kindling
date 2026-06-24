@@ -1,0 +1,30 @@
+[19:13:48] amazon-book-chrono: classifying 6000 warm items, cols=['title'], topic='a large bookstore'
+Fetching 12 files:   0%|          | 0/12 [00:00<?, ?it/s]Fetching 12 files: 100%|██████████| 12/12 [00:00<00:00, 15743.40it/s]
+[transformers] This model config has set a `rope_parameters['original_max_position_embeddings']` field, to be used together with `max_position_embeddings` to determine a scaling factor. Please set the `factor` field of `rope_parameters`with this ratio instead -- we recommend the use of this field over `original_max_position_embeddings`, as it is compatible with most model architectures.
+[19:13:53] pass1 menu: 29 shelves, e.g. ['Fiction > Classic Literature', 'Fiction > Historical Fiction', 'Fiction > Horror & Supernatural']
+[19:13:53] 0 cached, 6000 to classify
+[19:16:17] batch 25/600 ok=249 fail=1 (0% fail)
+[19:18:37] batch 50/600 ok=498 fail=2 (0% fail)
+[19:20:49] batch 75/600 ok=747 fail=3 (0% fail)
+[19:23:06] batch 100/600 ok=982 fail=18 (2% fail)
+[19:25:26] batch 125/600 ok=1229 fail=21 (2% fail)
+[19:27:43] batch 150/600 ok=1470 fail=30 (2% fail)
+[19:30:01] batch 175/600 ok=1710 fail=40 (2% fail)
+[19:32:23] batch 200/600 ok=1941 fail=59 (3% fail)
+[19:34:34] batch 225/600 ok=2163 fail=87 (4% fail)
+[19:36:37] batch 250/600 ok=2389 fail=111 (4% fail)
+[19:38:42] batch 275/600 ok=2607 fail=143 (5% fail)
+[19:40:54] batch 300/600 ok=2849 fail=151 (5% fail)
+[19:43:14] batch 325/600 ok=3086 fail=164 (5% fail)
+[19:45:30] batch 350/600 ok=3329 fail=171 (5% fail)
+[19:47:43] batch 375/600 ok=3576 fail=174 (5% fail)
+[19:49:55] batch 400/600 ok=3825 fail=175 (4% fail)
+[19:52:07] batch 425/600 ok=4070 fail=180 (4% fail)
+[19:54:19] batch 450/600 ok=4301 fail=199 (4% fail)
+[19:56:29] batch 475/600 ok=4536 fail=214 (5% fail)
+[19:58:35] batch 500/600 ok=4771 fail=229 (5% fail)
+[20:00:41] batch 525/600 ok=5006 fail=244 (5% fail)
+[20:02:46] batch 550/600 ok=5245 fail=255 (5% fail)
+[20:04:51] batch 575/600 ok=5479 fail=271 (5% fail)
+[20:06:58] batch 600/600 ok=5696 fail=304 (5% fail)
+[20:06:58] DONE ok=5696 fail=304 (5% fail) → /Users/rhoekstr/Desktop/Code/kindling/bench/cache/amazon-book-chrono_aisle.jsonl

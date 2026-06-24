@@ -402,6 +402,26 @@ Findings that generalize:
   Enrichment's domain is catalogs with THIN metadata (ml1m's bare
   genres), not rich ones. The 3-minute probe answers this before the
   multi-hour enrichment spend — run it first, always.
+- **Store-aisle/section prompt — tested, negative** (`run_aisle_classify.py`,
+  `run_aisle_recs.py`). The hypothesis: asking the model where an item
+  would be *shelved* (aisle + section + confidence) captures shopping-
+  context similarity that aligns with co-purchase better than topical
+  keywords. Free-form generation degenerated on the 4-bit model (25%
+  parse-fail, fixated on one aisle); a **constrained 2-pass** (derive a
+  fixed shelf menu, then classify each item into it) fixed compliance
+  (5% fail) — a real prompt-design win — and plays to the small model's
+  classification strength. But on amazon-book (the one catalog with
+  headroom: 87% of items have native category == `['Books']`), the labels
+  carried **no cooc signal**: mapping-R² −0.016 vs native +0.046, and
+  *indistinguishable from the same labels shuffled across items* (−0.012)
+  — i.e. no better than random bucketing. The recommendation A/B
+  confirmed the proxy: EASE + aisle content gave **zero lift** (0.0598 →
+  0.0588-0.0597 NDCG@10), and aisle-only (0.0012) was worse than
+  native-only (0.0032). Two independent failures: (1) the 4-bit model
+  can't place obscure titles, and (2) even *native* content gives no warm-
+  ranking lift (the §4.6 ceiling), so better labels alone wouldn't rescue
+  it. The prompt design is clever and the constrained form is the right
+  way to use a small model — but the signal isn't there.
 
 ### 4.8 Open catalog + reserved cold slots — **shipped; the cold-start answer**
 
