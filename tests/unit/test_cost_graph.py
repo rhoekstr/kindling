@@ -13,7 +13,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from kindling import Engine
+from kindling.engine import Engine
 from kindling.graph.cost_graph import (
     DEFAULT_ALPHA_POP,
     CostGraph,

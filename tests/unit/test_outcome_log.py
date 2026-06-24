@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from kindling import Engine
+from kindling.engine import Engine
 from kindling.outcomes.log import OutcomeLog, ReportingMode
 from kindling.outcomes.replay import replay_to_batch
 

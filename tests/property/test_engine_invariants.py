@@ -16,7 +16,7 @@ import pandas as pd
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from kindling import Engine
+from kindling.engine import Engine
 
 rows_strategy = st.lists(
     st.tuples(

@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from kindling import Engine
+from kindling.engine import Engine
 from kindling.blend.layered_calibrator import (
     DEFAULT_BOOST_GRID,
     DEFAULT_Z_GRID,

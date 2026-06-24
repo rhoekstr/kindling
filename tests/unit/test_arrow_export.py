@@ -7,7 +7,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from kindling import Engine
+from kindling.engine import Engine
 
 pyarrow = pytest.importorskip("pyarrow")
 

@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from kindling import Engine
+from kindling.engine import Engine
 from kindling.repeat import Pattern, RepeatConfig, RepeatProfile
 
 

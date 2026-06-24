@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from kindling import Engine
+from kindling.engine import Engine
 
 
 def _df(n_entities: int = 50, sessions_per_entity: int = 6, items_per_session: int = 5) -> pd.DataFrame:

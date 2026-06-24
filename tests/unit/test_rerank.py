@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from kindling import Engine
+from kindling.engine import Engine
 from kindling.graph.item_graph import build_item_graph
 from kindling.rerank.calibration import (
     CategoryIndex,

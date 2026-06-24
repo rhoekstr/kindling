@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import pytest
 
-from kindling import Engine
+from kindling.engine import Engine
 from kindling.loaders import (
     amazon,
     dunnhumby,

@@ -212,6 +212,29 @@ feasibility**: ml1m is CI-runnable; steam/book need large local caches,
 so their gates are local/manual validation, not CI. Packaging + version
 bump (0.0.1.dev0 → a real v2 line). Production-path test coverage.
 
+**Capstone — `docs/PRODUCTION-SYSTEM.md` (write last, with measured
+numbers).** A clean, honest description of the shipped system for someone
+who never saw the experiment history:
+1. **What it is** — one-paragraph definition + the design philosophy.
+2. **What it includes** — the engine, the base/channels, the activation
+   detection, cold-start/new-user serving, the Rust core, loaders, the
+   public API surface. A component inventory, not aspirational.
+3. **Value-add — and where it has none.** The honest two-sided claim:
+   strongest personalized model on all four datasets, beats ALS
+   everywhere, wins cold-*users* on cold-heavy catalogs; **does NOT** beat
+   popularity in data-starved global regimes, has closed-as-bounded
+   ranking/retrieval headroom (sequential / discriminative), and banks no
+   value from content cold-start. State the non-value-add plainly.
+4. **Noteworthy / novel** — the auto-gated regime activation (deterministic,
+   because learned calibration provably doesn't deploy here); raw-cooc =
+   popularity-in-costume → EASE/wilson pivot; the realistic-tier
+   methodology; "a wheel that imports is a wheel that works"; closed-form
+   no-training serving incl. anonymous users.
+5. **Performance statistics** — the final four-dataset NDCG@10/recall/MRR/HR
+   from `bench/verify.py`, fit times, serve latency, vs popularity/kNN/ALS,
+   and the cold-user segment slices. Real measured numbers, not REFERENCE
+   carryover.
+
 ---
 
 ## 4. The experiment addendum

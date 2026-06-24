@@ -12,7 +12,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from kindling import Engine
+from kindling.engine import Engine
 from kindling.lifecycle.drift import DriftTracker
 
 

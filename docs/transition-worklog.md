@@ -16,6 +16,11 @@ Governs: [PRODUCTION-CONSOLIDATION.md](PRODUCTION-CONSOLIDATION.md).
 - Env: `.venv/bin/python` (editable install fixed); `CORE_AVAILABLE=True`;
   24 GB RAM (book ~18 GB peak — tight, run in background, OOM = note+continue).
 
+**Capstone deliverable (user request, write last):** `docs/PRODUCTION-SYSTEM.md`
+— clean honest description of the shipped system: what it is, what it
+includes, value-add (and explicitly where it has none), noteworthy/novel
+aspects, and *measured* performance statistics. Spec in PRODUCTION-CONSOLIDATION.md.
+
 Reference metrics to hold (REFERENCE §3.3, EngineV2 defaults):
 ml1m **0.2931** · beauty **0.0343** · steam **0.0660** · book-chrono **0.0318** (NDCG@10).
 
@@ -86,3 +91,24 @@ ml1m **0.2931** · beauty **0.0343** · steam **0.0660** · book-chrono **0.0318
 - `profile/*` is v1's; v2 profiles inline → Phase 4 ActivationPlan builds
   on engine_v2. `rerank.temperature` is v1-only (v2 uses `rerank.dpp`) →
   drop, don't port.
+
+### Phase 3a — promote v2 to public Engine (the headline change)
+- **`kindling/__init__.py` now exports `EngineV2 as Engine` + `RecommendationV2
+  as Recommendation`.** `from kindling import Engine` resolves to the
+  validated v2 stack (confirmed: `EngineV2` w/ `recommend_for_items`).
+  **Ship == validated.**
+- Blast-radius handled: 18 v1-API test files redirected to explicit
+  `from kindling.engine import Engine` so they keep testing v1 until it's
+  deleted in Phase 5. No test imports `Recommendation` from `kindling`; the
+  4 `credible_interval` tests use explicit-v1 Engine → still valid.
+- **Decision: drop credible-interval porting.** v2's `Recommendation` is
+  (item_id, score, base_kind, explanation); credible intervals were a v1
+  Bayesian-blend feature (blend being deleted) and aren't data-supported.
+- README rewritten to v2 production reality (was stale "Phase 1, trivial").
+- Verifying: full test suite post-swap (expect 416/7/1, no NEW failures);
+  book baseline + U3 recovery still running (~27 min).
+- **cold_impute removal (3b) mapped:** contained to engine_v2 constructor
+  params + fit block L1292-1324 + recommend branch L2037-2042 + state
+  field; default `cold_impute="content"` means removal is behavior-
+  preserving (verify via steam staying 0.0660). Then `graph/cooc_impute.py`
+  is deletable.
