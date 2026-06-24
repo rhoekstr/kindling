@@ -38,12 +38,15 @@ import pandas as pd
 from kindling import Engine, __version__
 from kindling.benchmarks.comparison import _load_dataset
 from kindling.benchmarks.metrics import aggregate
+from kindling.blend.layer_scoring import (
+    _cooc_scores,
+    _path_basket_scores,
+    _session_cooc_scores,
+    _temporal_cooc_scores,
+)
 from kindling.blend.layered import LayeredConfig, diagnostic_report, layered_score
-from kindling.path.basket_index import BasketSimilarity
 from kindling.retrieve.cooccurrence import CoOccurrenceRetriever
 from kindling.retrieve.protocol import Candidate
-
-MAX_QUERY_BASKET_SIZE = 50
 
 
 @dataclass(frozen=True)
@@ -72,70 +75,6 @@ class LayeredCell:
         if self.diagnostic is not None:
             d["diagnostic"] = self.diagnostic
         return d
-
-
-def _path_basket_scores(engine: Engine, cand_ids: list[object], history: tuple) -> np.ndarray:
-    if engine._basket_index is None or not history:
-        return np.zeros(len(cand_ids), dtype=np.float64)
-    q = frozenset(history[-MAX_QUERY_BASKET_SIZE:])
-    if not q:
-        return np.zeros(len(cand_ids), dtype=np.float64)
-    return np.asarray(
-        engine._basket_index.score_many(cand_ids, q, BasketSimilarity.COVERAGE),
-        dtype=np.float64,
-    )
-
-
-def _session_cooc_scores(engine: Engine, cand_ids: list[object], owned: np.ndarray) -> np.ndarray:
-    g = engine._session_cooc_graph
-    if g is None or g.n_edges == 0 or owned.size == 0:
-        return np.zeros(len(cand_ids), dtype=np.float64)
-    owned_idx = np.fromiter(
-        (g.item_index.get(o, -1) for o in owned.tolist()),
-        dtype=np.int64, count=owned.size,
-    )
-    owned_idx = owned_idx[owned_idx >= 0]
-    if owned_idx.size == 0:
-        return np.zeros(len(cand_ids), dtype=np.float64)
-    full = g.score_against_owned(owned_idx, exclude_indices={int(i) for i in owned_idx.tolist()})
-    cand_idx = np.fromiter(
-        (g.item_index.get(c, -1) for c in cand_ids),
-        dtype=np.int64, count=len(cand_ids),
-    )
-    valid = cand_idx >= 0
-    out = np.zeros(len(cand_ids), dtype=np.float64)
-    if valid.any():
-        out[valid] = full[cand_idx[valid]]
-    return out
-
-
-def _temporal_cooc_scores(engine: Engine, cand_ids: list[object], owned: np.ndarray) -> np.ndarray:
-    g = engine._temporal_graph
-    if g is None or g.n_edges == 0 or owned.size == 0:
-        return np.zeros(len(cand_ids), dtype=np.float64)
-    owned_idx = np.fromiter(
-        (g.item_index.get(o, -1) for o in owned.tolist()),
-        dtype=np.int64, count=owned.size,
-    )
-    owned_idx = owned_idx[owned_idx >= 0]
-    if owned_idx.size == 0:
-        return np.zeros(len(cand_ids), dtype=np.float64)
-    full = g.score_against_owned(owned_idx, exclude_indices={int(i) for i in owned_idx.tolist()})
-    cand_idx = np.fromiter(
-        (g.item_index.get(c, -1) for c in cand_ids),
-        dtype=np.int64, count=len(cand_ids),
-    )
-    valid = cand_idx >= 0
-    out = np.zeros(len(cand_ids), dtype=np.float64)
-    if valid.any():
-        out[valid] = full[cand_idx[valid]]
-    return out
-
-
-def _cooc_scores(engine: Engine, cand_ids: list[object], owned: np.ndarray) -> np.ndarray:
-    from kindling.engine import _cooccurrence_signal
-
-    return _cooccurrence_signal(cand_ids, owned, engine._item_graph)
 
 
 def _evaluate_scoring(

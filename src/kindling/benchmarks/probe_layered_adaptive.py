@@ -28,8 +28,10 @@ from kindling.benchmarks.comparison import _load_dataset
 from kindling.benchmarks.metrics import aggregate
 from kindling.benchmarks.probe_layered import (
     LayeredCell,
-    _cooc_scores,
     _evaluate_blend_baseline,
+)
+from kindling.blend.layer_scoring import (
+    _cooc_scores,
     _path_basket_scores,
     _session_cooc_scores,
     _temporal_cooc_scores,

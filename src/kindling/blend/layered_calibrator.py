@@ -145,12 +145,12 @@ def calibrate(
         against scenarios where the layered approach can't beat
         cooc but the calibrator's grid sweep still picks SOMETHING.
     """
-    from kindling.benchmarks.metrics import aggregate
-    from kindling.benchmarks.probe_layered import (
+    from kindling.blend.layer_scoring import (
         _cooc_scores,
         _path_basket_scores,
         _session_cooc_scores,
         _temporal_cooc_scores,
+        aggregate,
     )
     from kindling.retrieve.cooccurrence import CoOccurrenceRetriever
 
