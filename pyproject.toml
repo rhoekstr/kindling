@@ -4,14 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "kindling"
-version = "0.0.1.dev0"
+version = "0.2.0"
 description = "A hybrid recommender system that grows with your data"
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.11"
 authors = [{ name = "Robert Hoekstra", email = "rhoekstr@gmail.com" }]
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 3 - Alpha",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -77,13 +77,24 @@ ignore = [
     "PLR0913",   # too many args (common in recommenders)
     "PLR2004",   # magic-value comparison (common in tests/bench)
     "E501",      # long lines handled by formatter
+    "RUF001",    # ambiguous unicode in strings — intentional (→ ≤ § in docstrings)
+    "RUF002",    # ambiguous unicode in docstrings — intentional
+    "RUF003",    # ambiguous unicode in comments — intentional (engine annotations)
+    "PLC0415",   # import-outside-top-level — intentional lazy imports (optional/heavy deps)
+    "PLR0911",   # too many return statements (loader dispatch, channel gating)
+    "PLR0912",   # too many branches (same)
+    "PLR0915",   # too many statements (the engine fit path is inherently long)
+    "B905",      # zip() without strict= — numpy-aligned zips, lengths are invariant
+    "RUF059",    # unused unpacked variable — intentional `a, _ = f()` destructuring
+    "RUF005",    # iterable-concat style preference
+    "SIM108",    # if-else vs ternary style preference
+    "PLR1714",   # repeated-equality vs set style preference
+    "B007",      # unused loop control variable
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["PLR2004", "N802"]
+"tests/**" = ["PLR2004", "N802", "PT018"]  # PT018: composite asserts read fine in tests
 "src/kindling/benchmarks/**" = ["PLR2004"]
-"src/kindling/blend/outcome_builder.py" = ["PLR0915"]
-"src/kindling/engine.py" = ["PLR0915"]
 
 [tool.mypy]
 python_version = "3.11"

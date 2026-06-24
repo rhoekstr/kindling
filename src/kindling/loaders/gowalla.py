@@ -69,9 +69,7 @@ def _load_snap(path: Path, test_fraction: float) -> DatasetSplit:
             except ValueError:
                 continue
     if not rows:
-        raise GowallaDataNotAvailableError(
-            f"Parsed zero rows from {path}; file may be malformed."
-        )
+        raise GowallaDataNotAvailableError(f"Parsed zero rows from {path}; file may be malformed.")
     df = pd.DataFrame(rows, columns=["entity_id", "item_id", "timestamp_str"])
     df["timestamp"] = pd.to_datetime(df["timestamp_str"], errors="coerce", utc=True)
     df = df.dropna(subset=["timestamp"]).drop(columns=["timestamp_str"]).reset_index(drop=True)
@@ -80,11 +78,7 @@ def _load_snap(path: Path, test_fraction: float) -> DatasetSplit:
     df = df.sort_values(["entity_id", "timestamp"], kind="mergesort").reset_index(drop=True)
 
     # Chronological per-user split.
-    cutoff = (
-        df.groupby("entity_id")["timestamp"]
-        .quantile(1.0 - test_fraction)
-        .to_dict()
-    )
+    cutoff = df.groupby("entity_id")["timestamp"].quantile(1.0 - test_fraction).to_dict()
     train_mask = df["timestamp"] <= df["entity_id"].map(cutoff)
     train = df[train_mask].reset_index(drop=True)
     test = df[~train_mask].reset_index(drop=True)

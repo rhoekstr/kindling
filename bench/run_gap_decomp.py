@@ -14,6 +14,7 @@ Decomposition:
 
 Run: DATASETS=movielens-1m,amazon-beauty .venv/bin/python bench/run_gap_decomp.py
 """
+
 from __future__ import annotations
 
 import json
@@ -21,9 +22,9 @@ import os
 import time
 from pathlib import Path
 
+import kindling_core
 import numpy as np
 
-import kindling_core
 from kindling.benchmarks.comparison import _load_dataset
 from kindling.benchmarks.metrics import aggregate
 from kindling.benchmarks.parity import _build_eval_set
@@ -46,7 +47,8 @@ def engine_pool(engine: EngineV2, entity, owned: np.ndarray) -> list[int]:
         if base_vec.size < st.n_items:
             base_vec = np.concatenate([base_vec, np.zeros(st.n_items - base_vec.size)])
         scores = engine._blend_channels(
-            st, owned, base_vec, user_row=st.entity_to_user_idx.get(entity, -1))
+            st, owned, base_vec, user_row=st.entity_to_user_idx.get(entity, -1)
+        )
     elif (st.trend_z is not None and st.trend_alpha > 0.0) or (
         st.trans_data is not None and st.transition_alpha > 0.0
     ):
@@ -56,11 +58,17 @@ def engine_pool(engine: EngineV2, entity, owned: np.ndarray) -> list[int]:
             if e_ > s_:
                 scores[st.cooc_indices[s_:e_]] += st.cooc_data[s_:e_]
         scores = engine._blend_channels(
-            st, owned, scores, user_row=st.entity_to_user_idx.get(entity, -1))
+            st, owned, scores, user_row=st.entity_to_user_idx.get(entity, -1)
+        )
     else:
         cand_ids, _ = kindling_core.cooccurrence_retrieve(
-            st.cooc_data, st.cooc_indices, st.cooc_indptr,
-            owned_indices=owned.tolist(), budget=budget, include_owned=False)
+            st.cooc_data,
+            st.cooc_indices,
+            st.cooc_indptr,
+            owned_indices=owned.tolist(),
+            budget=budget,
+            include_owned=False,
+        )
         return [int(c) for c in cand_ids]
     scores[owned] = -np.inf
     b = min(budget, scores.size)
@@ -114,20 +122,34 @@ def run(loader: str) -> dict:
 
     def _m(per):
         r = aggregate(per, catalog_size=catalog, k=K)
-        return {"ndcg": round(r.ndcg_at_k, 4), "recall": round(r.recall_at_k, 4),
-                "mrr": round(r.mrr, 4), "hr": round(r.hit_rate, 3)}
+        return {
+            "ndcg": round(r.ndcg_at_k, 4),
+            "recall": round(r.recall_at_k, 4),
+            "mrr": round(r.mrr, 4),
+            "hr": round(r.hit_rate, 3),
+        }
 
-    out = {"loader": loader, "n_users": len(per_cur), "fit_s": round(time.perf_counter() - t0, 1),
-           "base": st.profile.get("base_scorer_used"),
-           "pop_floor": _m(per_pop), "current": _m(per_cur), "oracle_pool": _m(per_oracle),
-           "pool_recall_mean": round(float(np.mean(pool_recalls)), 4),
-           "pool_recall_median": round(float(np.median(pool_recalls)), 4)}
+    out = {
+        "loader": loader,
+        "n_users": len(per_cur),
+        "fit_s": round(time.perf_counter() - t0, 1),
+        "base": st.profile.get("base_scorer_used"),
+        "pop_floor": _m(per_pop),
+        "current": _m(per_cur),
+        "oracle_pool": _m(per_oracle),
+        "pool_recall_mean": round(float(np.mean(pool_recalls)), 4),
+        "pool_recall_median": round(float(np.median(pool_recalls)), 4),
+    }
     cur, orc, pop = out["current"]["ndcg"], out["oracle_pool"]["ndcg"], out["pop_floor"]["ndcg"]
     log(f"{loader} (base={out['base']}, n={out['n_users']}):")
-    log(f"  pop_floor={pop}  current={cur}  oracle_pool={orc}  pool_recall(med)={out['pool_recall_median']}")
-    log(f"  ranking headroom (oracle−current)={round(orc-cur,4)}  "
-        f"retrieval loss (1−pool_recall)={round(1-out['pool_recall_median'],4)}  "
-        f"value-add (current−pop)={round(cur-pop,4)}")
+    log(
+        f"  pop_floor={pop}  current={cur}  oracle_pool={orc}  pool_recall(med)={out['pool_recall_median']}"
+    )
+    log(
+        f"  ranking headroom (oracle−current)={round(orc - cur, 4)}  "
+        f"retrieval loss (1−pool_recall)={round(1 - out['pool_recall_median'], 4)}  "
+        f"value-add (current−pop)={round(cur - pop, 4)}"
+    )
     return out
 
 

@@ -75,7 +75,9 @@ def load(data_dir: str | Path, test_fraction: float = 0.1) -> DatasetSplit:
         base / "order_products__prior.csv",
         usecols=["order_id", "product_id", "add_to_cart_order"],
     )
-    products = pd.read_csv(base / "products.csv", usecols=["product_id", "product_name", "aisle_id"])
+    products = pd.read_csv(
+        base / "products.csv", usecols=["product_id", "product_name", "aisle_id"]
+    )
 
     # Join order -> (user, order_number) onto the product events.
     prior_orders = orders[orders["eval_set"] == "prior"]

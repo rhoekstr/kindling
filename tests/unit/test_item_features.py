@@ -80,9 +80,19 @@ def test_missing_metadata_rows_get_empty_features(meta, item_to_idx):
 
 def test_metadata_outside_catalog_dropped(meta, item_to_idx):
     extra = pd.concat(
-        [meta, pd.DataFrame({"item_id": ["zz"], "genres": ["Horror"],
-                             "brand": ["evil"], "price": [1.0],
-                             "blurb": ["scary"], "constant_col": ["x"]})],
+        [
+            meta,
+            pd.DataFrame(
+                {
+                    "item_id": ["zz"],
+                    "genres": ["Horror"],
+                    "brand": ["evil"],
+                    "price": [1.0],
+                    "blurb": ["scary"],
+                    "constant_col": ["x"],
+                }
+            ),
+        ],
         ignore_index=True,
     )
     feats = ItemFeatureExtractor(min_df=1).fit_transform(extra, item_to_idx, 4)

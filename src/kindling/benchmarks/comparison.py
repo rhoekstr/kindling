@@ -74,14 +74,19 @@ def _load_dataset(name: str, test_fraction: float) -> DatasetSplit:
     if name == "dunnhumby":
         return dunnhumby.load(cache / "dunnhumby", test_fraction=test_fraction)
     if name == "amazon-beauty":
-        return _load_amazon_5core(cache / "amazon-beauty", test_fraction=test_fraction, label="amazon-beauty")
+        return _load_amazon_5core(
+            cache / "amazon-beauty", test_fraction=test_fraction, label="amazon-beauty"
+        )
     if name == "amazon-book":
-        return _load_amazon_5core(cache / "amazon-book", test_fraction=test_fraction, label="amazon-book")
+        return _load_amazon_5core(
+            cache / "amazon-book", test_fraction=test_fraction, label="amazon-book"
+        )
     if name == "amazon-book-chrono":
         # Realistic-protocol tier for books: 2014 5-core reviews with a
         # chronological global split (vs the timestamp-less LightGCN
         # academic split that plain "amazon-book" falls back to).
         from kindling.loaders.amazon_chrono import load_amazon_chrono, load_amazon_meta
+
         book_dir = Path("~/.cache/kindling/amazon-book")
         train, test = load_amazon_chrono(
             book_dir / "reviews_Books_5.json.gz",
@@ -107,6 +112,7 @@ def _load_dataset(name: str, test_fraction: float) -> DatasetSplit:
         # global split. Cold items and one-shot users included — the
         # population 5-core academic preprocessing deletes.
         from kindling.loaders.steam import load_steam
+
         train, test, items = load_steam(test_fraction=test_fraction)
         return DatasetSplit(
             name="steam",
@@ -135,7 +141,9 @@ def _load_amazon_5core(data_dir: Path, test_fraction: float, label: str) -> Data
         meta_candidates = sorted(data_dir.glob("meta_*.jsonl*"))
         meta_file = meta_candidates[0] if meta_candidates else None
         split = amazon.load(
-            candidates[0], test_fraction=test_fraction, meta_file=meta_file,
+            candidates[0],
+            test_fraction=test_fraction,
+            meta_file=meta_file,
         )
         return DatasetSplit(
             name=label,

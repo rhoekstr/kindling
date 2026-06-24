@@ -10,6 +10,15 @@
 > this file in the same change. `bench/reports/` remains the deeper
 > chain-of-evidence; this is the synthesis.
 
+> **Consolidation note (v0.2.0).** The v1 engine and all retired
+> experiment code have been deleted; `from kindling import Engine` now
+> resolves to the v2 stack described here, and the regime gates below are
+> exposed at runtime via `engine.activation_plan`. The curated experiment
+> record (what was tried and why, incl. negatives) now lives in
+> [`EXPERIMENTS.md`](EXPERIMENTS.md); a clean shipped-system overview is in
+> [`PRODUCTION-SYSTEM.md`](PRODUCTION-SYSTEM.md). The code map in §6 below
+> predates the deletion and is retained as historical context.
+
 ---
 
 ## 1. What kindling is

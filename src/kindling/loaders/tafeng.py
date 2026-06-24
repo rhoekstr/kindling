@@ -71,28 +71,24 @@ def load(data_dir: str | Path, test_fraction: float = 0.1) -> DatasetSplit:
     df = df.dropna(subset=["timestamp", "CUSTOMER_ID", "PRODUCT_ID"]).reset_index(drop=True)
 
     # session = (customer, transaction_day) — the natural basket grouping.
-    df["session_id"] = (
-        df["CUSTOMER_ID"].astype(str)
-        + "_"
-        + df["timestamp"].dt.strftime("%Y%m%d")
-    )
+    df["session_id"] = df["CUSTOMER_ID"].astype(str) + "_" + df["timestamp"].dt.strftime("%Y%m%d")
 
-    canonical = pd.DataFrame(
-        {
-            "entity_id": df["CUSTOMER_ID"].astype("int64"),
-            "item_id": df["PRODUCT_ID"].astype("int64"),
-            "timestamp": df["timestamp"].to_numpy(),
-            "session_id": df["session_id"].to_numpy(),
-            "action_type": "purchase",
-        }
-    ).sort_values(["entity_id", "timestamp"], kind="mergesort").reset_index(drop=True)
+    canonical = (
+        pd.DataFrame(
+            {
+                "entity_id": df["CUSTOMER_ID"].astype("int64"),
+                "item_id": df["PRODUCT_ID"].astype("int64"),
+                "timestamp": df["timestamp"].to_numpy(),
+                "session_id": df["session_id"].to_numpy(),
+                "action_type": "purchase",
+            }
+        )
+        .sort_values(["entity_id", "timestamp"], kind="mergesort")
+        .reset_index(drop=True)
+    )
 
     # Chronological per-user split.
-    cutoff = (
-        canonical.groupby("entity_id")["timestamp"]
-        .quantile(1.0 - test_fraction)
-        .to_dict()
-    )
+    cutoff = canonical.groupby("entity_id")["timestamp"].quantile(1.0 - test_fraction).to_dict()
     train_mask = canonical["timestamp"] <= canonical["entity_id"].map(cutoff)
     train = canonical[train_mask].reset_index(drop=True)
     test = canonical[~train_mask].reset_index(drop=True)

@@ -66,9 +66,7 @@ def make_grocery(
         for session_n in range(n_sessions_per_entity):
             # Draw a basket: first two items drive the session theme.
             session_items: list[int] = []
-            session_cats = rng.choice(
-                n_categories, size=2, replace=False, p=profile
-            )
+            session_cats = rng.choice(n_categories, size=2, replace=False, p=profile)
             for _ in range(items_per_session):
                 cat = rng.choice(session_cats)
                 candidates = np.where(categories == cat)[0]

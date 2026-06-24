@@ -10,6 +10,7 @@ user_cf by design).
 Run: DATASET=movielens-1m .venv/bin/python bench/capture_channel_ablation.py
 Out: bench/reports/channel_ablation_<dataset>.json
 """
+
 from __future__ import annotations
 
 import json
@@ -26,8 +27,17 @@ _BASE = dict(persona_min_users=10**9, retrieval_budget=500, random_state=0)
 
 # (label, config-delta applied cumulatively over the previous arm)
 ARMS = [
-    ("raw_cooc_base", dict(base_scorer="cooc", trend_alpha=0.0, transition_alpha=0.0,
-                           last_item_alpha=0.0, user_cf_alpha=0.0, ease_use_weights="off")),
+    (
+        "raw_cooc_base",
+        dict(
+            base_scorer="cooc",
+            trend_alpha=0.0,
+            transition_alpha=0.0,
+            last_item_alpha=0.0,
+            user_cf_alpha=0.0,
+            ease_use_weights="off",
+        ),
+    ),
     ("ease_base", dict(base_scorer="ease")),
     ("+trend", dict(trend_alpha=0.5)),
     ("+last_item", dict(last_item_alpha=0.25)),
@@ -55,8 +65,10 @@ def main() -> None:
         eng = EngineV2(**cfg)
         eng.fit(train, item_metadata=split.items if has_meta else None)
         st = eng._state
-        per = [([r.item_id for r in eng.recommend(entity_id=e, n=10)], rel)
-               for e, rel in eval_set.items()]
+        per = [
+            ([r.item_id for r in eng.recommend(entity_id=e, n=10)], rel)
+            for e, rel in eval_set.items()
+        ]
         rep = aggregate(per, catalog_size=max(st.n_items, 1), k=10)
         p = st.profile
         row = {
@@ -69,8 +81,11 @@ def main() -> None:
             "fit_s": round(time.perf_counter() - t0, 1),
         }
         rows.append(row)
-        print(f"[{dataset}] {label:16s} ndcg@10={row['ndcg@10']:.4f} "
-              f"base={row['base_used']} trans={row['transition_active']}", flush=True)
+        print(
+            f"[{dataset}] {label:16s} ndcg@10={row['ndcg@10']:.4f} "
+            f"base={row['base_used']} trans={row['transition_active']}",
+            flush=True,
+        )
 
     out_path = Path("bench/reports") / f"channel_ablation_{dataset}.json"
     out_path.write_text(json.dumps({"dataset": dataset, "arms": rows}, indent=2))

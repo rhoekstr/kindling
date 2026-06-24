@@ -44,9 +44,7 @@ def load_amazon_chrono(
                 if not u or not i or not t:
                     continue
                 rows.append((u, i, float(t), float(d.get("overall") or 1.0)))
-        inter = pd.DataFrame(
-            rows, columns=["entity_id", "item_id", "timestamp", "rating"]
-        )
+        inter = pd.DataFrame(rows, columns=["entity_id", "item_id", "timestamp", "rating"])
         cache_dir.mkdir(parents=True, exist_ok=True)
         inter.to_parquet(cache)
     inter = inter.sort_values("timestamp", kind="mergesort").reset_index(drop=True)
@@ -88,20 +86,20 @@ def load_amazon_meta(
             rank = None
             if isinstance(sr, dict) and sr:
                 rank = min(v for v in sr.values() if isinstance(v, (int, float)))
-            rows.append({
-                "item_id": a,
-                "title": d.get("title"),
-                "brand": d.get("brand"),
-                "categories": flat,
-                "price": d.get("price") if isinstance(d.get("price"), (int, float)) else None,
-                "sales_rank": rank,
-            })
+            rows.append(
+                {
+                    "item_id": a,
+                    "title": d.get("title"),
+                    "brand": d.get("brand"),
+                    "categories": flat,
+                    "price": d.get("price") if isinstance(d.get("price"), (int, float)) else None,
+                    "sales_rank": rank,
+                }
+            )
     items = pd.DataFrame(rows).drop_duplicates(subset="item_id", keep="first")
     if catalog is not None:
         in_cat = items["item_id"].isin(catalog)
-        ext = items.loc[~in_cat].sort_values(
-            "sales_rank", na_position="last"
-        ).head(extension_top_n)
+        ext = items.loc[~in_cat].sort_values("sales_rank", na_position="last").head(extension_top_n)
         items = pd.concat([items.loc[in_cat], ext], ignore_index=True)
     cache_dir.mkdir(parents=True, exist_ok=True)
     items.to_parquet(cache)

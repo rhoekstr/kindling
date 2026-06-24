@@ -37,11 +37,16 @@ def test_raw_is_identity():
 def test_cosine_matches_hand_computation_and_is_symmetric():
     out = _apply("cosine").astype(np.float64)
     # nonzero order: (a,b),(a,c),(b,a),(b,c),(c,a),(c,b)
-    expected = np.array([
-        4 / np.sqrt(10 * 8), 1 / np.sqrt(10 * 4),
-        4 / np.sqrt(8 * 10), 2 / np.sqrt(8 * 4),
-        1 / np.sqrt(4 * 10), 2 / np.sqrt(4 * 8),
-    ])
+    expected = np.array(
+        [
+            4 / np.sqrt(10 * 8),
+            1 / np.sqrt(10 * 4),
+            4 / np.sqrt(8 * 10),
+            2 / np.sqrt(8 * 4),
+            1 / np.sqrt(4 * 10),
+            2 / np.sqrt(4 * 8),
+        ]
+    )
     np.testing.assert_allclose(out, expected, rtol=1e-5)
     # symmetry: w[a,b] == w[b,a], w[a,c] == w[c,a]
     assert out[0] == pytest.approx(out[2])
@@ -50,11 +55,16 @@ def test_cosine_matches_hand_computation_and_is_symmetric():
 
 def test_jaccard_matches_hand_computation():
     out = _apply("jaccard").astype(np.float64)
-    expected = np.array([
-        4 / (10 + 8 - 4), 1 / (10 + 4 - 1),
-        4 / (8 + 10 - 4), 2 / (8 + 4 - 2),
-        1 / (4 + 10 - 1), 2 / (4 + 8 - 2),
-    ])
+    expected = np.array(
+        [
+            4 / (10 + 8 - 4),
+            1 / (10 + 4 - 1),
+            4 / (8 + 10 - 4),
+            2 / (8 + 4 - 2),
+            1 / (4 + 10 - 1),
+            2 / (4 + 8 - 2),
+        ]
+    )
     np.testing.assert_allclose(out, expected, rtol=1e-5)
 
 
@@ -76,8 +86,12 @@ def test_transform_preserves_sparsity_pattern():
 # ── Wiring: applied only on the cooc path, never on the EASE path. ──────────
 def _grocery():
     return synthetic.make_grocery(
-        n_entities=120, n_items_per_category=8, n_categories=4,
-        n_sessions_per_entity=6, items_per_session=4, seed=0,
+        n_entities=120,
+        n_items_per_category=8,
+        n_categories=4,
+        n_sessions_per_entity=6,
+        items_per_session=4,
+        seed=0,
     ).train
 
 

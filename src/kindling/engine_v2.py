@@ -43,7 +43,6 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
-import scipy.sparse as sp
 
 from kindling._native import CORE_AVAILABLE, kindling_core
 from kindling.explain import Explanation
@@ -129,7 +128,7 @@ class V2FitState:
     # EASE base scorer: dense item-item weight matrix B (n_items × n_items,
     # f32, zero diagonal). None when the cooc base is active.
     ease_b: np.ndarray | None = None
-    base_scorer_used: str = "cooc"      # "cooc" | "ease"
+    base_scorer_used: str = "cooc"  # "cooc" | "ease"
     # Trend signal: z-normalized recent-window item popularity (length
     # n_items). None when timestamps are absent or trend_alpha == 0.
     trend_z: np.ndarray | None = None
@@ -166,16 +165,16 @@ class V2FitState:
     # User-user CF channel: item→user inverted CSR + per-user degree.
     # Otsuka-Ochiai k-NN over interaction vectors; gated to sparse-
     # history datasets. None when gated off.
-    uu_users_data: np.ndarray | None = None     # concatenated user ids
-    uu_users_indptr: np.ndarray | None = None   # per-item offsets
+    uu_users_data: np.ndarray | None = None  # concatenated user ids
+    uu_users_indptr: np.ndarray | None = None  # per-item offsets
     uu_user_deg: np.ndarray | None = None
     user_row_items: dict[int, np.ndarray] = field(default_factory=dict)
     user_cf_alpha: float = 0.0
     user_cf_k: int = 100
     # Rating-signal classification + resolved use_als decision.
-    signal_kind: str = "unknown"        # "binary" | "counts" | "ratings" | "forced_*"
-    als_ran: bool = False               # whether ALS actually ran in this fit
-    persona_method_used: str = "none"   # "hdbscan_factors" | "louvain_graph" | "none"
+    signal_kind: str = "unknown"  # "binary" | "counts" | "ratings" | "forced_*"
+    als_ran: bool = False  # whether ALS actually ran in this fit
+    persona_method_used: str = "none"  # "hdbscan_factors" | "louvain_graph" | "none"
     # Calibrated scoring config
     z_threshold: float = 2.5
     boost_multiplier: float = 3.0
@@ -500,19 +499,14 @@ class EngineV2:
         self.random_state = random_state
         if hdbscan_factor_method not in ("als", "svd"):
             raise ValueError(
-                f"hdbscan_factor_method must be 'als' or 'svd'; got "
-                f"{hdbscan_factor_method!r}"
+                f"hdbscan_factor_method must be 'als' or 'svd'; got {hdbscan_factor_method!r}"
             )
         self.hdbscan_factor_method = hdbscan_factor_method
         self.als_as_boost = als_as_boost
         if use_als not in ("auto", "force_on", "force_off"):
-            raise ValueError(
-                f"use_als must be 'auto', 'force_on', or 'force_off'; got {use_als!r}"
-            )
+            raise ValueError(f"use_als must be 'auto', 'force_on', or 'force_off'; got {use_als!r}")
         self.use_als = use_als
-        if persona_method not in (
-            "auto", "hdbscan_factors", "louvain_graph", "dc_sbm"
-        ):
+        if persona_method not in ("auto", "hdbscan_factors", "louvain_graph", "dc_sbm"):
             raise ValueError(
                 f"persona_method must be 'auto', 'hdbscan_factors', "
                 f"'louvain_graph', or 'dc_sbm'; got {persona_method!r}"
@@ -534,20 +528,16 @@ class EngineV2:
         self.louvain_min_edge_percentile = louvain_min_edge_percentile
         if not (0.0 <= louvain_user_trim_top < 0.5):
             raise ValueError(
-                f"louvain_user_trim_top must be in [0, 0.5); "
-                f"got {louvain_user_trim_top!r}"
+                f"louvain_user_trim_top must be in [0, 0.5); got {louvain_user_trim_top!r}"
             )
         if not (0.0 <= louvain_user_trim_bottom < 0.5):
             raise ValueError(
-                f"louvain_user_trim_bottom must be in [0, 0.5); "
-                f"got {louvain_user_trim_bottom!r}"
+                f"louvain_user_trim_bottom must be in [0, 0.5); got {louvain_user_trim_bottom!r}"
             )
         self.louvain_user_trim_top = louvain_user_trim_top
         self.louvain_user_trim_bottom = louvain_user_trim_bottom
         if louvain_resolution <= 0.0:
-            raise ValueError(
-                f"louvain_resolution must be > 0; got {louvain_resolution!r}"
-            )
+            raise ValueError(f"louvain_resolution must be > 0; got {louvain_resolution!r}")
         self.louvain_resolution = louvain_resolution
         if not (0.0 <= coherence_filter_percentile < 1.0):
             raise ValueError(
@@ -557,8 +547,7 @@ class EngineV2:
         self.coherence_filter_percentile = coherence_filter_percentile
         if coherence_min_persona_users < 0:
             raise ValueError(
-                f"coherence_min_persona_users must be >= 0; "
-                f"got {coherence_min_persona_users!r}"
+                f"coherence_min_persona_users must be >= 0; got {coherence_min_persona_users!r}"
             )
         self.coherence_min_persona_users = coherence_min_persona_users
         if not (0.0 < coherence_max_persona_fraction <= 1.0):
@@ -568,9 +557,7 @@ class EngineV2:
             )
         self.coherence_max_persona_fraction = coherence_max_persona_fraction
         if base_scorer not in ("auto", "cooc", "ease"):
-            raise ValueError(
-                f"base_scorer must be 'auto', 'cooc', or 'ease'; got {base_scorer!r}"
-            )
+            raise ValueError(f"base_scorer must be 'auto', 'cooc', or 'ease'; got {base_scorer!r}")
         self.base_scorer = base_scorer
         if ease_lambda is not None and ease_lambda <= 0.0:
             raise ValueError(f"ease_lambda must be > 0 or None (auto); got {ease_lambda!r}")
@@ -585,30 +572,24 @@ class EngineV2:
         self.trend_alpha = trend_alpha
         if not (0.0 < trend_window_fraction <= 1.0):
             raise ValueError(
-                f"trend_window_fraction must be in (0, 1]; "
-                f"got {trend_window_fraction!r}"
+                f"trend_window_fraction must be in (0, 1]; got {trend_window_fraction!r}"
             )
         self.trend_window_fraction = trend_window_fraction
         if transition_alpha < 0.0:
             raise ValueError(f"transition_alpha must be >= 0; got {transition_alpha!r}")
         self.transition_alpha = transition_alpha
         if transition_last_k < 1:
-            raise ValueError(
-                f"transition_last_k must be >= 1; got {transition_last_k!r}"
-            )
+            raise ValueError(f"transition_last_k must be >= 1; got {transition_last_k!r}")
         self.transition_last_k = transition_last_k
         if not (0.0 < transition_decay <= 1.0):
-            raise ValueError(
-                f"transition_decay must be in (0, 1]; got {transition_decay!r}"
-            )
+            raise ValueError(f"transition_decay must be in (0, 1]; got {transition_decay!r}")
         self.transition_decay = transition_decay
         if content_alpha < 0.0:
             raise ValueError(f"content_alpha must be >= 0; got {content_alpha!r}")
         self.content_alpha = content_alpha
         if content_warmth_threshold < 1:
             raise ValueError(
-                f"content_warmth_threshold must be >= 1; "
-                f"got {content_warmth_threshold!r}"
+                f"content_warmth_threshold must be >= 1; got {content_warmth_threshold!r}"
             )
         self.content_warmth_threshold = content_warmth_threshold
         self.open_catalog = bool(open_catalog)
@@ -617,14 +598,10 @@ class EngineV2:
             raise ValueError(f"cold_slots must be >= 0; got {cold_slots!r}")
         self.cold_slots = int(cold_slots)
         if cold_recency_beta < 0:
-            raise ValueError(
-                f"cold_recency_beta must be >= 0; got {cold_recency_beta!r}"
-            )
+            raise ValueError(f"cold_recency_beta must be >= 0; got {cold_recency_beta!r}")
         self.cold_recency_beta = float(cold_recency_beta)
         if cold_user_pop_prior < 0.0:
-            raise ValueError(
-                f"cold_user_pop_prior must be >= 0; got {cold_user_pop_prior!r}"
-            )
+            raise ValueError(f"cold_user_pop_prior must be >= 0; got {cold_user_pop_prior!r}")
         self.cold_user_pop_prior = float(cold_user_pop_prior)
         if last_item_alpha < 0.0:
             raise ValueError(f"last_item_alpha must be >= 0; got {last_item_alpha!r}")
@@ -636,21 +613,16 @@ class EngineV2:
             raise ValueError(f"user_cf_k must be >= 1; got {user_cf_k!r}")
         self.user_cf_k = user_cf_k
         if user_cf_history_gate < 0:
-            raise ValueError(
-                f"user_cf_history_gate must be >= 0; got {user_cf_history_gate!r}"
-            )
+            raise ValueError(f"user_cf_history_gate must be >= 0; got {user_cf_history_gate!r}")
         self.user_cf_history_gate = user_cf_history_gate
         if ease_use_weights not in ("auto", "on", "off"):
             raise ValueError(
-                f"ease_use_weights must be 'auto' | 'on' | 'off'; "
-                f"got {ease_use_weights!r}"
+                f"ease_use_weights must be 'auto' | 'on' | 'off'; got {ease_use_weights!r}"
             )
         self.ease_use_weights = ease_use_weights
         self.calibrate_base = bool(calibrate_base)
         if dc_sbm_max_passes < 1:
-            raise ValueError(
-                f"dc_sbm_max_passes must be >= 1; got {dc_sbm_max_passes!r}"
-            )
+            raise ValueError(f"dc_sbm_max_passes must be >= 1; got {dc_sbm_max_passes!r}")
         self.dc_sbm_max_passes = dc_sbm_max_passes
         if not (0.0 <= dc_sbm_min_internal_fraction < 1.0):
             raise ValueError(
@@ -660,8 +632,7 @@ class EngineV2:
         self.dc_sbm_min_internal_fraction = dc_sbm_min_internal_fraction
         if dc_sbm_warmstart_resolution <= 0.0:
             raise ValueError(
-                f"dc_sbm_warmstart_resolution must be > 0; "
-                f"got {dc_sbm_warmstart_resolution!r}"
+                f"dc_sbm_warmstart_resolution must be > 0; got {dc_sbm_warmstart_resolution!r}"
             )
         self.dc_sbm_warmstart_resolution = dc_sbm_warmstart_resolution
         if dc_sbm_init_mode not in ("louvain", "random_k", "auto"):
@@ -671,14 +642,10 @@ class EngineV2:
             )
         self.dc_sbm_init_mode = dc_sbm_init_mode
         if dc_sbm_random_k < 2:
-            raise ValueError(
-                f"dc_sbm_random_k must be >= 2; got {dc_sbm_random_k!r}"
-            )
+            raise ValueError(f"dc_sbm_random_k must be >= 2; got {dc_sbm_random_k!r}")
         self.dc_sbm_random_k = dc_sbm_random_k
         if graph_mf_role not in ("base", "boost"):
-            raise ValueError(
-                f"graph_mf_role must be 'base' or 'boost'; got {graph_mf_role!r}"
-            )
+            raise ValueError(f"graph_mf_role must be 'base' or 'boost'; got {graph_mf_role!r}")
         self.use_graph_mf = use_graph_mf
         self.graph_mf_role = graph_mf_role
         self.graph_mf_alpha_data = graph_mf_alpha_data
@@ -791,16 +758,18 @@ class EngineV2:
             t_hi, t_lo = float(np.max(ft)), float(np.min(ft))
             if t_hi > t_lo:
                 cut_t = t_hi - (t_hi - t_lo) * self.trend_window_fraction
-                counts = np.bincount(
-                    fi[ft >= cut_t], minlength=n_items
-                ).astype(np.float64)
+                counts = np.bincount(fi[ft >= cut_t], minlength=n_items).astype(np.float64)
                 if counts.std() > 0:
                     trend_z = (counts - counts.mean()) / counts.std()
         trans_csr = None
         if transition_gate_open and ft is not None:
             td, ti_, tp = kindling_core.build_directional_cooc(
-                fu, fi, np.ones(len(fu), dtype=np.float32),
-                n_sessions=n_users, n_items=n_items, timestamps=ft,
+                fu,
+                fi,
+                np.ones(len(fu), dtype=np.float32),
+                n_sessions=n_users,
+                n_items=n_items,
+                timestamps=ft,
             )
             trans_csr = (
                 np.asarray(td, dtype=np.float32),
@@ -816,14 +785,12 @@ class EngineV2:
             for j, item in enumerate(owned_list[::-1][: self.transition_last_k]):
                 s_, e_ = int(tp[item]), int(tp[item + 1])
                 if e_ > s_:
-                    v[ti_[s_:e_]] += (self.transition_decay ** j) * td[s_:e_]
+                    v[ti_[s_:e_]] += (self.transition_decay**j) * td[s_:e_]
             std = v.std()
             return (v - v.mean()) / std if std > 0 else None
 
         def _ndcg10(top: np.ndarray, rel: set[int]) -> float:
-            dcg = sum(
-                1.0 / np.log2(r + 2) for r, it in enumerate(top.tolist()) if it in rel
-            )
+            dcg = sum(1.0 / np.log2(r + 2) for r, it in enumerate(top.tolist()) if it in rel)
             ideal = sum(1.0 / np.log2(r + 2) for r in range(min(10, len(rel))))
             return dcg / ideal if ideal > 0 else 0.0
 
@@ -841,9 +808,7 @@ class EngineV2:
         results: list[dict[str, float]] = []
         for lam in lam_grid:
             b = np.asarray(
-                kindling_core.fit_ease_py(
-                    fu, fi, n_users=n_users, n_items=n_items, lambda_=lam
-                ),
+                kindling_core.fit_ease_py(fu, fi, n_users=n_users, n_items=n_items, lambda_=lam),
                 dtype=np.float32,
             )
             # Precompute per-user z(ease) + trans_z once per λ.
@@ -872,16 +837,19 @@ class EngineV2:
                         total += _ndcg10(top, rel)
                     mean_ndcg = total / len(per_user)
                     results.append(
-                        {"lambda": lam, "trend_alpha": ta,
-                         "transition_alpha": xa, "ndcg10": mean_ndcg}
+                        {
+                            "lambda": lam,
+                            "trend_alpha": ta,
+                            "transition_alpha": xa,
+                            "ndcg10": mean_ndcg,
+                        }
                     )
                     if mean_ndcg > best_score:
                         best_score = mean_ndcg
                         best = (lam, ta, xa)
         profile["base_calibration"] = {
             "n_cal_users": len(eligible),
-            "chosen": {"lambda": best[0], "trend_alpha": best[1],
-                       "transition_alpha": best[2]},
+            "chosen": {"lambda": best[0], "trend_alpha": best[1], "transition_alpha": best[2]},
             "internal_ndcg10": best_score,
             "grid": results,
         }
@@ -911,6 +879,7 @@ class EngineV2:
             return max(0, int(self.open_catalog_max_extension))
         try:
             import psutil
+
             total = psutil.virtual_memory().total
         except Exception:
             total = 8 * 1024**3  # conservative fallback when psutil absent
@@ -922,8 +891,7 @@ class EngineV2:
         # still ahead of this call → reserve its estimated peak first.
         ceiling = 0.80 * total
         interaction_peak = (
-            self._PEAK_BYTES_PER_OBS * n_obs
-            + self._PEAK_BYTES_PER_TRAIN_ITEM * n_train_items
+            self._PEAK_BYTES_PER_OBS * n_obs + self._PEAK_BYTES_PER_TRAIN_ITEM * n_train_items
         )
         headroom = ceiling - interaction_peak
         if headroom <= 0:
@@ -934,7 +902,7 @@ class EngineV2:
         self,
         interactions: pd.DataFrame,
         item_metadata: pd.DataFrame | None = None,
-    ) -> "EngineV2":
+    ) -> EngineV2:
         t0 = time.perf_counter()
         # Same contract as v1: validate → canonicalize → preprocess.
         schema = validate_interactions(interactions)
@@ -960,9 +928,7 @@ class EngineV2:
         n_users = len(entity_ids)
 
         item_idx = interactions["item_id"].map(item_to_idx).to_numpy(dtype=np.int64)
-        user_idx = (
-            interactions["entity_id"].map(entity_to_user_idx).to_numpy(dtype=np.int64)
-        )
+        user_idx = interactions["entity_id"].map(entity_to_user_idx).to_numpy(dtype=np.int64)
         # ── Open catalog: metadata-only items get catalog indices ≥
         # n_items. All interaction-derived structures (cooc, EASE,
         # transitions, personas, user-CF) stay in the train subspace
@@ -970,14 +936,8 @@ class EngineV2:
         # blend output) span the extension.
         n_items_ext = n_items
         extension_capped: dict | None = None
-        if (
-            self.open_catalog
-            and item_metadata is not None
-            and "item_id" in item_metadata.columns
-        ):
-            extra = pd.Index(
-                item_metadata["item_id"].dropna().unique()
-            ).difference(item_ids)
+        if self.open_catalog and item_metadata is not None and "item_id" in item_metadata.columns:
+            extra = pd.Index(item_metadata["item_id"].dropna().unique()).difference(item_ids)
             # Memory-aware cap. Extension items cost catalog-length-vector
             # slots + retained metadata rows but add NOTHING to the cooc
             # CSR (interaction structures live in [0, n_items); cooc uses
@@ -990,9 +950,7 @@ class EngineV2:
             # only the headroom under 80% of physical RAM on the extension.
             n_keep = len(extra)
             if n_keep:
-                cap = self._open_catalog_extension_cap(
-                    n_obs=len(user_idx), n_train_items=n_items
-                )
+                cap = self._open_catalog_extension_cap(n_obs=len(user_idx), n_train_items=n_items)
                 if n_keep > cap:
                     # `profile` doesn't exist yet — stash for write below.
                     extension_capped = {"requested": int(n_keep), "kept": int(cap)}
@@ -1057,10 +1015,6 @@ class EngineV2:
         cooc_data = np.asarray(cooc_data, dtype=np.float32)
         cooc_indices = np.asarray(cooc_indices, dtype=np.int32)
         cooc_indptr = np.asarray(cooc_indptr, dtype=np.int32)
-        # Keep a reference to the RAW co-counts: the cooc base transform below
-        # rebinds `cooc_data`, but embedding imputation (cold slots) needs the
-        # untransformed counts for its PPMI-SVD cooc embedding.
-        cooc_raw_data = cooc_data
 
         # ── EASE base (if selected). Closed-form inverse-Gram reweighting
         # of the co-occurrence signal; replaces raw-count cooc for both
@@ -1083,11 +1037,14 @@ class EngineV2:
         if ease_eligible:
             if self.calibrate_base:
                 t_cal = time.perf_counter()
-                eff_lambda, eff_trend_alpha, eff_trans_alpha = (
-                    self._calibrate_base_params(
-                        user_idx, item_idx, timestamps_col,
-                        n_users, n_items, transition_gate_open, profile,
-                    )
+                eff_lambda, eff_trend_alpha, eff_trans_alpha = self._calibrate_base_params(
+                    user_idx,
+                    item_idx,
+                    timestamps_col,
+                    n_users,
+                    n_items,
+                    transition_gate_open,
+                    profile,
                 )
                 profile["base_calibration_seconds"] = time.perf_counter() - t_cal
             else:
@@ -1108,8 +1065,10 @@ class EngineV2:
             t_ease = time.perf_counter()
             ease_b = np.asarray(
                 kindling_core.fit_ease_py(
-                    user_idx, item_idx,
-                    n_users=n_users, n_items=n_items,
+                    user_idx,
+                    item_idx,
+                    n_users=n_users,
+                    n_items=n_items,
                     lambda_=eff_lambda,
                     weights=ease_weights,
                 ),
@@ -1142,9 +1101,9 @@ class EngineV2:
             if t_hi > t_lo:
                 cut = t_hi - (t_hi - t_lo) * self.trend_window_fraction
                 recent_mask = timestamps_col >= cut
-                counts = np.bincount(
-                    item_idx[recent_mask], minlength=n_items_ext
-                ).astype(np.float64)
+                counts = np.bincount(item_idx[recent_mask], minlength=n_items_ext).astype(
+                    np.float64
+                )
                 std = counts.std()
                 if std > 0:
                     trend_z = (counts - counts.mean()) / std
@@ -1160,8 +1119,11 @@ class EngineV2:
         trans_indptr: np.ndarray | None = None
         if eff_trans_alpha > 0.0 and transition_gate_open:
             td, ti, tp = kindling_core.build_directional_cooc(
-                user_idx, item_idx, weights,
-                n_sessions=n_users, n_items=n_items,
+                user_idx,
+                item_idx,
+                weights,
+                n_sessions=n_users,
+                n_items=n_items,
                 timestamps=timestamps_col,
             )
             trans_data = np.asarray(td, dtype=np.float32)
@@ -1205,16 +1167,15 @@ class EngineV2:
         # metadata column whose values are majority-parseable datetimes;
         # recency = exp(−days_before_train_end / 180), 0 when unknown.
         cold_recency: np.ndarray | None = None
-        if (
-            self.cold_slots > 0 or self.cold_recency_beta > 0
-        ) and item_metadata is not None:
+        if (self.cold_slots > 0 or self.cold_recency_beta > 0) and item_metadata is not None:
             # `errors="coerce"` + scalar→Series so an out-of-range epoch
             # (bad/0/huge timestamp) yields NaT rather than raising.
             ref_end = None
             if timestamps_col is not None and len(timestamps_col):
                 _re = pd.to_datetime(
                     pd.Series([float(np.max(timestamps_col))]),
-                    unit="s", errors="coerce",
+                    unit="s",
+                    errors="coerce",
                 ).iloc[0]
                 ref_end = None if pd.isna(_re) else _re
             for col_name in item_metadata.columns:
@@ -1250,14 +1211,13 @@ class EngineV2:
         uu_users_indptr: np.ndarray | None = None
         uu_user_deg: np.ndarray | None = None
         user_counts_for_gate = np.bincount(user_idx, minlength=n_users)
-        median_history = float(
-            np.median(user_counts_for_gate[user_counts_for_gate > 0])
-        ) if (user_counts_for_gate > 0).any() else 0.0
-        profile["median_items_per_user"] = median_history
-        user_cf_open = (
-            self.user_cf_alpha > 0.0
-            and median_history <= self.user_cf_history_gate
+        median_history = (
+            float(np.median(user_counts_for_gate[user_counts_for_gate > 0]))
+            if (user_counts_for_gate > 0).any()
+            else 0.0
         )
+        profile["median_items_per_user"] = median_history
+        user_cf_open = self.user_cf_alpha > 0.0 and median_history <= self.user_cf_history_gate
         if user_cf_open:
             # Binarize (unique user-item pairs), bucket users by item.
             pair_key = user_idx.astype(np.int64) * n_items + item_idx.astype(np.int64)
@@ -1276,7 +1236,7 @@ class EngineV2:
             sorted_i = uu_i[u_order]
             bounds = np.searchsorted(sorted_u, np.arange(n_users + 1))
             user_row_items = {
-                u: sorted_i[bounds[u]:bounds[u + 1]]
+                u: sorted_i[bounds[u] : bounds[u + 1]]
                 for u in range(n_users)
                 if bounds[u + 1] > bounds[u]
             }
@@ -1296,7 +1256,8 @@ class EngineV2:
         persona_method = self.persona_method
         if persona_method == "auto":
             persona_method = (
-                "hdbscan_factors" if signal_kind == "ratings" or signal_kind == "forced_on"
+                "hdbscan_factors"
+                if signal_kind == "ratings" or signal_kind == "forced_on"
                 else "louvain_graph"
             )
         # ALS-as-boost requires item factors even if personas aren't on.
@@ -1304,9 +1265,8 @@ class EngineV2:
         item_factors_for_boost: np.ndarray | None = None
         user_factors: np.ndarray | None = None
         need_factors = (
-            (personas_enabled and persona_method == "hdbscan_factors")
-            or self.als_as_boost
-        )
+            personas_enabled and persona_method == "hdbscan_factors"
+        ) or self.als_as_boost
         if need_factors:
             user_factors, item_factors = self._fit_factors(
                 user_idx, item_idx, weights, n_users, n_items
@@ -1350,27 +1310,23 @@ class EngineV2:
                 active = user_counts[user_counts > 0]
                 if active.size > 0:
                     lo_thr = np.percentile(active, lo * 100.0) if lo > 0 else 0.0
-                    hi_thr = (
-                        np.percentile(active, (1.0 - hi) * 100.0)
-                        if hi > 0 else float("inf")
-                    )
+                    hi_thr = np.percentile(active, (1.0 - hi) * 100.0) if hi > 0 else float("inf")
                     keep_user = (user_counts > lo_thr) & (user_counts <= hi_thr)
                     keep_row = keep_user[user_idx]
                     trim_user_idx = user_idx[keep_row]
                     trim_item_idx = item_idx[keep_row]
                     trim_weights = weights[keep_row]
                 else:
-                    trim_user_idx, trim_item_idx, trim_weights = (
-                        user_idx, item_idx, weights
-                    )
+                    trim_user_idx, trim_item_idx, trim_weights = (user_idx, item_idx, weights)
             else:
-                trim_user_idx, trim_item_idx, trim_weights = (
-                    user_idx, item_idx, weights
-                )
+                trim_user_idx, trim_item_idx, trim_weights = (user_idx, item_idx, weights)
             # Build user-user projected graph + run Louvain.
             uu_data, uu_indices, uu_indptr = kindling_core.build_user_user_graph(
-                trim_user_idx, trim_item_idx, trim_weights,
-                n_users=n_users, n_items=n_items,
+                trim_user_idx,
+                trim_item_idx,
+                trim_weights,
+                n_users=n_users,
+                n_items=n_items,
                 max_users_per_item=self.louvain_max_users_per_item,
                 seed=self.random_state,
                 weight_transform=self.louvain_weight_transform,
@@ -1381,7 +1337,9 @@ class EngineV2:
             uu_indptr = np.asarray(uu_indptr, dtype=np.int32)
             assignments, n_personas_actual, modularity, _passes, noise_frac = (
                 kindling_core.fit_louvain_py(
-                    uu_data, uu_indices, uu_indptr,
+                    uu_data,
+                    uu_indices,
+                    uu_indptr,
                     min_community_size=self.louvain_min_community_size,
                     max_passes=30,
                     modularity_tol=1e-6,
@@ -1404,26 +1362,22 @@ class EngineV2:
                 active = user_counts[user_counts > 0]
                 if active.size > 0:
                     lo_thr = np.percentile(active, lo * 100.0) if lo > 0 else 0.0
-                    hi_thr = (
-                        np.percentile(active, (1.0 - hi) * 100.0)
-                        if hi > 0 else float("inf")
-                    )
+                    hi_thr = np.percentile(active, (1.0 - hi) * 100.0) if hi > 0 else float("inf")
                     keep_user = (user_counts > lo_thr) & (user_counts <= hi_thr)
                     keep_row = keep_user[user_idx]
                     trim_user_idx = user_idx[keep_row]
                     trim_item_idx = item_idx[keep_row]
                     trim_weights = weights[keep_row]
                 else:
-                    trim_user_idx, trim_item_idx, trim_weights = (
-                        user_idx, item_idx, weights
-                    )
+                    trim_user_idx, trim_item_idx, trim_weights = (user_idx, item_idx, weights)
             else:
-                trim_user_idx, trim_item_idx, trim_weights = (
-                    user_idx, item_idx, weights
-                )
+                trim_user_idx, trim_item_idx, trim_weights = (user_idx, item_idx, weights)
             uu_data, uu_indices, uu_indptr = kindling_core.build_user_user_graph(
-                trim_user_idx, trim_item_idx, trim_weights,
-                n_users=n_users, n_items=n_items,
+                trim_user_idx,
+                trim_item_idx,
+                trim_weights,
+                n_users=n_users,
+                n_items=n_items,
                 max_users_per_item=self.louvain_max_users_per_item,
                 seed=self.random_state,
                 weight_transform=self.louvain_weight_transform,
@@ -1440,14 +1394,14 @@ class EngineV2:
             init_mode = self.dc_sbm_init_mode
             louv_init: np.ndarray | None = None
             if init_mode in ("louvain", "auto"):
-                louv_assign, _louv_n, _modularity, _passes, _noise = (
-                    kindling_core.fit_louvain_py(
-                        uu_data, uu_indices, uu_indptr,
-                        min_community_size=self.louvain_min_community_size,
-                        max_passes=10,
-                        modularity_tol=1e-6,
-                        resolution=self.dc_sbm_warmstart_resolution,
-                    )
+                louv_assign, _louv_n, _modularity, _passes, _noise = kindling_core.fit_louvain_py(
+                    uu_data,
+                    uu_indices,
+                    uu_indptr,
+                    min_community_size=self.louvain_min_community_size,
+                    max_passes=10,
+                    modularity_tol=1e-6,
+                    resolution=self.dc_sbm_warmstart_resolution,
                 )
                 louv_init = np.asarray(louv_assign, dtype=np.int64)
                 positives = louv_init[louv_init >= 0]
@@ -1463,14 +1417,14 @@ class EngineV2:
             else:
                 profile["dc_sbm_init_mode_used"] = "louvain"
             assert louv_init is not None
-            assignments, n_blocks, sbm_passes, sbm_noise_frac = (
-                kindling_core.fit_dcsbm_py(
-                    uu_data, uu_indices, uu_indptr,
-                    init_assignments=louv_init,
-                    max_passes=self.dc_sbm_max_passes,
-                    min_internal_fraction=self.dc_sbm_min_internal_fraction,
-                    move_threshold_pct=0.01,
-                )
+            assignments, n_blocks, sbm_passes, sbm_noise_frac = kindling_core.fit_dcsbm_py(
+                uu_data,
+                uu_indices,
+                uu_indptr,
+                init_assignments=louv_init,
+                max_passes=self.dc_sbm_max_passes,
+                min_internal_fraction=self.dc_sbm_min_internal_fraction,
+                move_threshold_pct=0.01,
             )
             assignments = np.asarray(assignments, dtype=np.int64)
             n_personas_actual = n_blocks
@@ -1502,7 +1456,9 @@ class EngineV2:
             # base scores.
             coherence_scores = np.asarray(
                 kindling_core.compute_persona_coherence_py(
-                    cooc_data, cooc_indices, cooc_indptr,
+                    cooc_data,
+                    cooc_indices,
+                    cooc_indptr,
                     distinctive_items=persona_distinctive,
                 ),
                 dtype=np.float64,
@@ -1529,9 +1485,9 @@ class EngineV2:
                 valid_mask = size_ok & (coherence_scores > 0.0)
                 if valid_mask.any():
                     valid_coh = coherence_scores[valid_mask]
-                    threshold = float(np.percentile(
-                        valid_coh, self.coherence_filter_percentile * 100.0
-                    ))
+                    threshold = float(
+                        np.percentile(valid_coh, self.coherence_filter_percentile * 100.0)
+                    )
                     keep_persona = size_ok & (coherence_scores >= threshold)
                 else:
                     # No persona passes size + coherence → keep none.
@@ -1548,25 +1504,21 @@ class EngineV2:
                 profile["persona_coherence"]["filter_threshold"] = (
                     threshold if valid_mask.any() else 0.0
                 )
-                profile["persona_coherence"]["filter_percentile"] = (
-                    self.coherence_filter_percentile
-                )
+                profile["persona_coherence"]["filter_percentile"] = self.coherence_filter_percentile
 
-            pc_data, pc_indices, pc_indptr, _pc_sizes = (
-                kindling_core.build_persona_cooccurrence(
-                    user_idx,
-                    item_idx,
-                    weights,
-                    user_to_persona=assignments.tolist(),
-                    n_users=n_users,
-                    n_items=n_items,
-                    n_personas=n_personas_actual,
-                    kernel=plan["kernel"],
-                    alpha=plan["alpha"],
-                    half_life_days=plan["half_life_days"],
-                    timestamps=timestamps_col,
-                    min_persona_users=5,
-                )
+            pc_data, pc_indices, pc_indptr, _pc_sizes = kindling_core.build_persona_cooccurrence(
+                user_idx,
+                item_idx,
+                weights,
+                user_to_persona=assignments.tolist(),
+                n_users=n_users,
+                n_items=n_items,
+                n_personas=n_personas_actual,
+                kernel=plan["kernel"],
+                alpha=plan["alpha"],
+                half_life_days=plan["half_life_days"],
+                timestamps=timestamps_col,
+                min_persona_users=5,
             )
             persona_cooc_data = [np.asarray(d, dtype=np.float32) for d in pc_data]
             persona_cooc_indices = [np.asarray(i, dtype=np.int32) for i in pc_indices]
@@ -1585,8 +1537,7 @@ class EngineV2:
         boost_layers_size_ok = n_items <= 100_000
         if not boost_layers_size_ok:
             profile["boost_layers_skipped"] = (
-                f"catalog too large ({n_items} items > 100k): "
-                "duplicate adjacency builds gated off"
+                f"catalog too large ({n_items} items > 100k): duplicate adjacency builds gated off"
             )
         boost_adj: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
         # temporal_cooccurrence is just cooc with hybrid_temporal kernel — only
@@ -1597,8 +1548,11 @@ class EngineV2:
             and timestamps_col is not None
         ):
             td, ti, tp = kindling_core.build_cooccurrence(
-                user_idx, item_idx, weights,
-                n_users=n_users, n_items=n_items,
+                user_idx,
+                item_idx,
+                weights,
+                n_users=n_users,
+                n_items=n_items,
                 kernel="hybrid_temporal",
                 alpha=1.0,
                 half_life_days=plan["half_life_days"],
@@ -1617,12 +1571,13 @@ class EngineV2:
         ):
             session_ids = pd.Index(interactions["session_id"].unique())
             session_to_idx = {s: i for i, s in enumerate(session_ids)}
-            session_idx = (
-                interactions["session_id"].map(session_to_idx).to_numpy(dtype=np.int64)
-            )
+            session_idx = interactions["session_id"].map(session_to_idx).to_numpy(dtype=np.int64)
             sd, si, spt = kindling_core.build_session_cooccurrence(
-                session_idx, item_idx, weights,
-                n_sessions=len(session_ids), n_items=n_items,
+                session_idx,
+                item_idx,
+                weights,
+                n_sessions=len(session_ids),
+                n_items=n_items,
                 kernel="pure_count",
             )
             boost_adj["session_cooccurrence"] = (
@@ -1645,15 +1600,25 @@ class EngineV2:
         gmf_data_graph_kind = "none"
         if self.use_graph_mf:
             data_graph, gmf_data_graph_kind = self._build_data_graph(
-                interactions, item_to_idx, item_idx, n_items, cooc_data,
-                cooc_indices, cooc_indptr,
+                interactions,
+                item_to_idx,
+                item_idx,
+                n_items,
+                cooc_data,
+                cooc_indices,
+                cooc_indptr,
             )
             hier_graph = self._build_hierarchy_graph(
-                item_metadata, item_to_idx, n_items,
+                item_metadata,
+                item_to_idx,
+                n_items,
             )
             gmf_u, gmf_i, gmf_iters, gmf_deltas = kindling_core.fit_graph_mf_py(
-                user_idx, item_idx, weights,
-                n_users=n_users, n_items=n_items,
+                user_idx,
+                item_idx,
+                weights,
+                n_users=n_users,
+                n_items=n_items,
                 dim=self.graph_mf_dim,
                 n_iters=self.graph_mf_n_iters,
                 alpha_data=self.graph_mf_alpha_data,
@@ -1681,9 +1646,7 @@ class EngineV2:
         basket_index: BasketIndex | None = None
         try:
             sess_inf = infer_sessions(interactions)
-            sessions = list(
-                sessions_from_interactions(interactions, sess_inf.session_ids)
-            )
+            sessions = list(sessions_from_interactions(interactions, sess_inf.session_ids))
             if sessions:
                 tail_index = build_tail_index(sessions)
                 # Skip basket_index when sessions are too shallow — it's
@@ -1694,6 +1657,7 @@ class EngineV2:
                     basket_index = build_basket_index(sessions)
         except Exception as exc:  # pragma: no cover — defensive; sessions are optional
             import warnings
+
             warnings.warn(
                 f"path-family fit skipped ({exc!r}); v2 falls back to cooc-only retrieval.",
                 RuntimeWarning,
@@ -1766,7 +1730,7 @@ class EngineV2:
         return self
 
     @property
-    def activation_plan(self) -> "ActivationPlan":
+    def activation_plan(self) -> ActivationPlan:
         """Which layers were activated for this dataset, and why.
 
         A self-explaining record of the regime-based gating (base scorer,
@@ -1791,9 +1755,7 @@ class EngineV2:
             return []
         return self._recommend_core(owned, entity_id, n)
 
-    def recommend_for_items(
-        self, seed_item_ids: object, n: int = 10
-    ) -> list[RecommendationV2]:
+    def recommend_for_items(self, seed_item_ids: object, n: int = 10) -> list[RecommendationV2]:
         """Serve a NEW / anonymous user from ad-hoc seed items — no per-user
         training, no stored history required. The closed-form base (EASE/cooc)
         scores from *any* seed set, so a brand-new user who just interacted
@@ -1838,7 +1800,8 @@ class EngineV2:
         top = top[np.argsort(-scores[top], kind="stable")]
         return [
             RecommendationV2(
-                item_id=st.item_ids[int(c)], score=float(scores[c]),
+                item_id=st.item_ids[int(c)],
+                score=float(scores[c]),
                 base_kind="cold_popularity",
             )
             for c in top
@@ -1869,11 +1832,11 @@ class EngineV2:
             base_vec = st.ease_b[owned].sum(axis=0, dtype=np.float64)
             if base_vec.size < st.n_items:
                 # Open-catalog extension items: no EASE evidence → 0.
-                base_vec = np.concatenate(
-                    [base_vec, np.zeros(st.n_items - base_vec.size)]
-                )
+                base_vec = np.concatenate([base_vec, np.zeros(st.n_items - base_vec.size)])
             ease_scores_full = self._blend_channels(
-                st, owned, base_vec,
+                st,
+                owned,
+                base_vec,
                 user_row=st.entity_to_user_idx.get(entity_id, -1),
             )
             ease_scores_full = ease_scores_full + pop_addend
@@ -1900,7 +1863,9 @@ class EngineV2:
                 if e_ > s_:
                     cooc_full[st.cooc_indices[s_:e_]] += st.cooc_data[s_:e_]
             ease_scores_full = self._blend_channels(
-                st, owned, cooc_full,
+                st,
+                owned,
+                cooc_full,
                 user_row=st.entity_to_user_idx.get(entity_id, -1),
             )
             ease_scores_full = ease_scores_full + pop_addend
@@ -1912,7 +1877,9 @@ class EngineV2:
             base_kind = "cooc_fused"
         else:
             cand_ids, _scores = kindling_core.cooccurrence_retrieve(
-                st.cooc_data, st.cooc_indices, st.cooc_indptr,
+                st.cooc_data,
+                st.cooc_indices,
+                st.cooc_indptr,
                 owned_indices=owned.tolist(),
                 budget=self.retrieval_budget,
                 include_owned=False,
@@ -1933,7 +1900,8 @@ class EngineV2:
         # ── 3. Layered scoring.
         layer_specs = self._build_layer_specs(entity_id, owned, cand_ids)
         composite = kindling_core.layered_score_py(
-            base, layer_specs,
+            base,
+            layer_specs,
             z_threshold=st.z_threshold,
             boost_multiplier=st.boost_multiplier,
         )
@@ -1949,11 +1917,13 @@ class EngineV2:
             if composite[idx] <= 0.0 and base_kind not in ("ease", "cooc_fused"):
                 continue
             cid = cand_ids[idx]
-            out.append(RecommendationV2(
-                item_id=st.item_ids[cid],
-                score=float(composite[idx]),
-                base_kind=base_kind,
-            ))
+            out.append(
+                RecommendationV2(
+                    item_id=st.item_ids[cid],
+                    score=float(composite[idx]),
+                    base_kind=base_kind,
+                )
+            )
 
         # ── Reserved cold slots ("new releases shelf"). Cold items can
         # never out-z the warm army in one blended ranking no matter the
@@ -1993,11 +1963,13 @@ class EngineV2:
             if cold_picks:
                 out = out[: max(n - len(cold_picks), 0)]
                 for i in cold_picks:
-                    out.append(RecommendationV2(
-                        item_id=st.item_ids[i],
-                        score=float(cs[i]),
-                        base_kind="cold_content",
-                    ))
+                    out.append(
+                        RecommendationV2(
+                            item_id=st.item_ids[i],
+                            score=float(cs[i]),
+                            base_kind="cold_content",
+                        )
+                    )
         return out
 
     # ------------------------------------------------------------------
@@ -2027,11 +1999,7 @@ class EngineV2:
             and st.content_features.n_features > 0
         )
         last_on = st.ease_b is not None and st.last_item_alpha > 0.0 and owned.size > 0
-        uu_on = (
-            st.uu_users_data is not None
-            and st.user_cf_alpha > 0.0
-            and owned.size > 0
-        )
+        uu_on = st.uu_users_data is not None and st.user_cf_alpha > 0.0 and owned.size > 0
         if not (trend_on or trans_on or content_on or last_on or uu_on):
             return scores_full
         std = scores_full.std()
@@ -2054,9 +2022,7 @@ class EngineV2:
                 counts[user_row] = 0.0
             nz = np.nonzero(counts)[0]
             if nz.size > 0:
-                sims = counts[nz] / (
-                    np.sqrt(st.uu_user_deg[nz]) * np.sqrt(max(owned.size, 1))
-                )
+                sims = counts[nz] / (np.sqrt(st.uu_user_deg[nz]) * np.sqrt(max(owned.size, 1)))
                 if nz.size > st.user_cf_k:
                     keep = np.argpartition(-sims, st.user_cf_k)[: st.user_cf_k]
                 else:
@@ -2079,9 +2045,7 @@ class EngineV2:
         if last_on:
             last_row = st.ease_b[int(owned[-1])].astype(np.float64)
             if last_row.size < st.n_items:
-                last_row = np.concatenate(
-                    [last_row, np.zeros(st.n_items - last_row.size)]
-                )
+                last_row = np.concatenate([last_row, np.zeros(st.n_items - last_row.size)])
             l_std = last_row.std()
             if l_std > 0:
                 scores_full = scores_full + st.last_item_alpha * (
@@ -2094,11 +2058,7 @@ class EngineV2:
             c_std = cs.std()
             if c_std > 0:
                 cz = (cs - cs.mean()) / c_std
-                coldness = (
-                    st.content_coldness
-                    if st.content_coldness is not None
-                    else 1.0
-                )
+                coldness = st.content_coldness if st.content_coldness is not None else 1.0
                 scores_full = scores_full + st.content_alpha * coldness * cz
         if trans_on:
             trans = np.zeros(st.n_items, dtype=np.float64)
@@ -2107,14 +2067,12 @@ class EngineV2:
                 s_ = int(st.trans_indptr[item])
                 e_ = int(st.trans_indptr[item + 1])
                 if e_ > s_:
-                    trans[st.trans_indices[s_:e_]] += (
-                        st.transition_decay ** j
-                    ) * st.trans_data[s_:e_]
+                    trans[st.trans_indices[s_:e_]] += (st.transition_decay**j) * st.trans_data[
+                        s_:e_
+                    ]
             t_std = trans.std()
             if t_std > 0:
-                scores_full = scores_full + st.transition_alpha * (
-                    (trans - trans.mean()) / t_std
-                )
+                scores_full = scores_full + st.transition_alpha * ((trans - trans.mean()) / t_std)
         return scores_full
 
     def _compute_base(
@@ -2151,7 +2109,9 @@ class EngineV2:
         if cluster_id >= 0 and cluster_id < len(st.persona_distinctive):
             distinctive = st.persona_distinctive[cluster_id]
             use_persona = kindling_core.should_use_persona_base(
-                cluster_id, owned.tolist(), distinctive,
+                cluster_id,
+                owned.tolist(),
+                distinctive,
                 threshold=st.persona_fit_threshold,
             )
         if use_persona and cluster_id < len(st.persona_cooc_data):
@@ -2164,7 +2124,9 @@ class EngineV2:
             )
             return "persona_cooc", np.asarray(base)
         base = kindling_core.cooccurrence_signal(
-            st.cooc_data, st.cooc_indices, st.cooc_indptr,
+            st.cooc_data,
+            st.cooc_indices,
+            st.cooc_indptr,
             owned_indices=owned.tolist(),
             candidate_indices=cand_ids,
         )
@@ -2201,7 +2163,9 @@ class EngineV2:
                 continue
             data, indices, indptr = adj
             scores = kindling_core.cooccurrence_signal(
-                data, indices, indptr,
+                data,
+                indices,
+                indptr,
                 owned_indices=owned.tolist(),
                 candidate_indices=cand_ids,
             )
@@ -2214,9 +2178,7 @@ class EngineV2:
                 # Use the most recent ~50 items as the query basket.
                 query_basket = frozenset(history[-50:])
                 cand_external = [st.item_ids[ci] for ci in cand_ids]
-                basket_scores = st.basket_index.score_many(
-                    cand_external, query_basket=query_basket
-                )
+                basket_scores = st.basket_index.score_many(cand_external, query_basket=query_basket)
                 out.append((np.asarray(basket_scores, dtype=np.float64), "nonzero"))
 
         # GR-MF-as-boost (dense, candidate-pool z-mode). Mirrors the
@@ -2239,10 +2201,7 @@ class EngineV2:
         # score(c) = user_factor[entity] · item_factor[c]. Fires when
         # the user-item dot product stands out z-significantly across
         # the retrieved pool.
-        if (
-            st.als_user_factors is not None
-            and st.als_item_factors is not None
-        ):
+        if st.als_user_factors is not None and st.als_item_factors is not None:
             user_idx_int = st.entity_to_user_idx.get(entity_id, -1)
             if 0 <= user_idx_int < st.als_user_factors.shape[0]:
                 u_vec = st.als_user_factors[user_idx_int]
@@ -2363,11 +2322,7 @@ class EngineV2:
         if "session_id" in interactions.columns:
             session_ids = pd.Index(interactions["session_id"].unique())
             session_to_idx = {s: i for i, s in enumerate(session_ids)}
-            sidx = (
-                interactions["session_id"]
-                .map(session_to_idx)
-                .to_numpy(dtype=np.int64)
-            )
+            sidx = interactions["session_id"].map(session_to_idx).to_numpy(dtype=np.int64)
             n_sessions = len(session_ids)
             kind = "directional_explicit"
 
@@ -2382,6 +2337,7 @@ class EngineV2:
                     kind = "directional_inferred"
             except Exception as exc:  # pragma: no cover — defensive
                 import warnings
+
                 warnings.warn(
                     f"session inference failed ({exc!r}); "
                     "falling back to co-ownership graph for graph_mf",
@@ -2397,7 +2353,9 @@ class EngineV2:
             )
             ws = np.ones(len(interactions), dtype=np.float32)
             d_data, d_indices, d_indptr = kindling_core.build_directional_cooc(
-                sidx, item_idx, ws,
+                sidx,
+                item_idx,
+                ws,
                 n_sessions=n_sessions,
                 n_items=n_items,
                 timestamps=ts,
@@ -2443,10 +2401,15 @@ class EngineV2:
         k = min(n_factors, max(2, min(n_users, n_items) - 1))
         if self.hdbscan_factor_method == "als":
             user_factors, item_factors, _losses = kindling_core.fit_als_py(
-                user_idx, item_idx, weights,
-                n_users=n_users, n_items=n_items,
-                n_factors=k, n_iters=5,
-                alpha=40.0, regularization=0.01,
+                user_idx,
+                item_idx,
+                weights,
+                n_users=n_users,
+                n_items=n_items,
+                n_factors=k,
+                n_iters=5,
+                alpha=40.0,
+                regularization=0.01,
                 seed=self.random_state,
             )
             return (
@@ -2455,9 +2418,14 @@ class EngineV2:
             )
         # SVD path.
         user_factors = kindling_core.truncated_svd_py(
-            user_idx, item_idx, weights,
-            n_users=n_users, n_items=n_items,
-            n_factors=k, n_oversample=10, n_power_iters=1,
+            user_idx,
+            item_idx,
+            weights,
+            n_users=n_users,
+            n_items=n_items,
+            n_factors=k,
+            n_oversample=10,
+            n_power_iters=1,
             seed=self.random_state,
         )
         user_factors = np.asarray(user_factors, dtype=np.float64)
@@ -2465,10 +2433,15 @@ class EngineV2:
         if self.als_as_boost:
             # Pay for ALS only if we actually need item factors for boost.
             _u_als, item_factors_als, _losses = kindling_core.fit_als_py(
-                user_idx, item_idx, weights,
-                n_users=n_users, n_items=n_items,
-                n_factors=k, n_iters=5,
-                alpha=40.0, regularization=0.01,
+                user_idx,
+                item_idx,
+                weights,
+                n_users=n_users,
+                n_items=n_items,
+                n_factors=k,
+                n_iters=5,
+                alpha=40.0,
+                regularization=0.01,
                 seed=self.random_state,
             )
             item_factors = np.asarray(item_factors_als, dtype=np.float64)
@@ -2482,9 +2455,7 @@ class EngineV2:
         n_items: int,
     ) -> dict[str, Any]:
         density = (
-            float(len(interactions)) / max(n_users * n_items, 1)
-            if n_users and n_items
-            else 0.0
+            float(len(interactions)) / max(n_users * n_items, 1) if n_users and n_items else 0.0
         )
         has_timestamps = "timestamp" in interactions.columns
         has_sessions = "session_id" in interactions.columns
@@ -2536,8 +2507,10 @@ class EngineV2:
         # Default ~30 days for moderate density; longer for sparser data.
         half_life_days = 30.0
         # Kernel choice.
-        kernel = "pure_count" if profile["rating_burst_detected"] else (
-            "hybrid_temporal" if profile["has_timestamps"] else "pure_count"
+        kernel = (
+            "pure_count"
+            if profile["rating_burst_detected"]
+            else ("hybrid_temporal" if profile["has_timestamps"] else "pure_count")
         )
         # Personas enabled with adequate user count.
         personas_enabled = profile["n_users"] >= self.persona_min_users

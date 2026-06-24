@@ -164,5 +164,3 @@ def aggregate(
         n_entities_evaluated=len(precisions),
         k=k,
     )
-
-

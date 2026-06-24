@@ -26,9 +26,9 @@ import sys
 import time
 from pathlib import Path
 
+import kindling_core
 import numpy as np
 
-import kindling_core
 from kindling.benchmarks.metrics import aggregate
 from kindling.benchmarks.parity import _build_eval_set
 from kindling.engine_v2 import EngineV2
@@ -90,7 +90,9 @@ def run(loader: str, max_eval_users: int = 500, k: int = 10, seed: int = 0) -> d
 
         # ── candidate pool (same retrieval the engine used).
         cand_ids, _ = kindling_core.cooccurrence_retrieve(
-            st.cooc_data, st.cooc_indices, st.cooc_indptr,
+            st.cooc_data,
+            st.cooc_indices,
+            st.cooc_indptr,
             owned_indices=owned.tolist(),
             budget=engine.retrieval_budget,
             include_owned=False,

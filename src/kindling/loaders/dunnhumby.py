@@ -67,21 +67,21 @@ def load(data_dir: str | Path, test_fraction: float = 0.1) -> DatasetSplit:
         minutes = pd.Series([0] * len(df))
     timestamps = base_date + pd.to_timedelta(days, unit="D") + pd.to_timedelta(minutes, unit="min")
 
-    canonical = pd.DataFrame(
-        {
-            "entity_id": df["HOUSEHOLD_KEY"].astype("int64"),
-            "item_id": df["PRODUCT_ID"].astype("int64"),
-            "timestamp": timestamps.to_numpy(),
-            "session_id": df["BASKET_ID"].astype("int64").to_numpy(),
-            "action_type": "purchase",
-        }
-    ).sort_values(["entity_id", "timestamp"], kind="mergesort").reset_index(drop=True)
-
-    cutoff = (
-        canonical.groupby("entity_id")["timestamp"]
-        .quantile(1.0 - test_fraction)
-        .to_dict()
+    canonical = (
+        pd.DataFrame(
+            {
+                "entity_id": df["HOUSEHOLD_KEY"].astype("int64"),
+                "item_id": df["PRODUCT_ID"].astype("int64"),
+                "timestamp": timestamps.to_numpy(),
+                "session_id": df["BASKET_ID"].astype("int64").to_numpy(),
+                "action_type": "purchase",
+            }
+        )
+        .sort_values(["entity_id", "timestamp"], kind="mergesort")
+        .reset_index(drop=True)
     )
+
+    cutoff = canonical.groupby("entity_id")["timestamp"].quantile(1.0 - test_fraction).to_dict()
     train_mask = canonical["timestamp"] <= canonical["entity_id"].map(cutoff)
     train = canonical[train_mask].reset_index(drop=True)
     test = canonical[~train_mask].reset_index(drop=True)

@@ -75,12 +75,21 @@ def test_cold_slots_surface_metadata_only_items():
     rows = []
     for u in range(150):
         for it in rng.choice(40, size=int(rng.integers(4, 12)), replace=False):
-            rows.append({"entity_id": u, "item_id": int(it),
-                         "timestamp": pd.Timestamp("2024-01-01") + pd.Timedelta(days=int(it))})
+            rows.append(
+                {
+                    "entity_id": u,
+                    "item_id": int(it),
+                    "timestamp": pd.Timestamp("2024-01-01") + pd.Timedelta(days=int(it)),
+                }
+            )
     train = pd.DataFrame(rows)
-    meta = pd.DataFrame({"item_id": list(range(50)),
-                         "title": [f"item {i}" for i in range(50)],
-                         "genre": ["a" if i % 2 else "b" for i in range(50)]})
+    meta = pd.DataFrame(
+        {
+            "item_id": list(range(50)),
+            "title": [f"item {i}" for i in range(50)],
+            "genre": ["a" if i % 2 else "b" for i in range(50)],
+        }
+    )
     eng = Engine(persona_min_users=10**9, cold_slots=1, open_catalog=True, random_state=0)
     eng.fit(train, item_metadata=meta)
     recs = eng.recommend(entity_id=5, n=10)

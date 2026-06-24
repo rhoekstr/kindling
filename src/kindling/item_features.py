@@ -50,13 +50,13 @@ class ColumnSpec:
 class ItemFeatures:
     """Sparse item × feature matrix in CSR form (engine item index space)."""
 
-    data: np.ndarray          # f32
-    indices: np.ndarray       # i32
-    indptr: np.ndarray        # i32, length n_items + 1
+    data: np.ndarray  # f32
+    indices: np.ndarray  # i32
+    indptr: np.ndarray  # i32, length n_items + 1
     n_features: int
     feature_names: list[str]
     specs: list[ColumnSpec] = field(default_factory=list)
-    coverage: float = 0.0     # fraction of catalog items with ≥1 feature
+    coverage: float = 0.0  # fraction of catalog items with ≥1 feature
 
     @property
     def n_items(self) -> int:
@@ -95,9 +95,7 @@ class ItemFeatureExtractor:
         self.numeric_bins = numeric_bins
         self.min_df = min_df
         self.max_df_fraction = max_df_fraction
-        self.categorical_max_cardinality_fraction = (
-            categorical_max_cardinality_fraction
-        )
+        self.categorical_max_cardinality_fraction = categorical_max_cardinality_fraction
 
     # ── column-role inference ──────────────────────────────────────
 
@@ -160,8 +158,7 @@ class ItemFeatureExtractor:
 
         if item_id_column not in items.columns:
             raise ValueError(
-                f"metadata frame has no {item_id_column!r} column; "
-                f"got {list(items.columns)}"
+                f"metadata frame has no {item_id_column!r} column; got {list(items.columns)}"
             )
         # Keep only catalog rows; first metadata row wins on duplicates.
         meta = items.drop_duplicates(subset=item_id_column, keep="first")
@@ -188,9 +185,7 @@ class ItemFeatureExtractor:
                 ok = vals.notna().to_numpy()
                 if ok.sum() >= 2:
                     arr = vals.to_numpy(dtype=np.float64)
-                    qs = np.nanquantile(
-                        arr, np.linspace(0, 1, self.numeric_bins + 1)[1:-1]
-                    )
+                    qs = np.nanquantile(arr, np.linspace(0, 1, self.numeric_bins + 1)[1:-1])
                     bins = np.searchsorted(np.unique(qs), arr[ok])
                     bin_fids: dict[int, int] = {}
                     for r, b in zip(row_idx[ok], bins):
@@ -202,10 +197,7 @@ class ItemFeatureExtractor:
 
             elif kind in ("categorical", "multi_categorical"):
                 if kind == "categorical":
-                    parts_per_row = [
-                        [str(v).strip().lower()] if pd.notna(v) else []
-                        for v in col
-                    ]
+                    parts_per_row = [[str(v).strip().lower()] if pd.notna(v) else [] for v in col]
                 elif detail == "list":
                     parts_per_row = [
                         [str(p).strip().lower() for p in v]
@@ -231,22 +223,15 @@ class ItemFeatureExtractor:
 
             elif kind == "text":
                 token_rows = [
-                    set(_TOKEN_RE.findall(str(v).lower())) if pd.notna(v) else set()
-                    for v in col
+                    set(_TOKEN_RE.findall(str(v).lower())) if pd.notna(v) else set() for v in col
                 ]
                 df_counts: dict[str, int] = {}
                 for toks in token_rows:
                     for t in toks:
                         df_counts[t] = df_counts.get(t, 0) + 1
                 max_df = int(self.max_df_fraction * n_meta)
-                eligible = {
-                    t: c
-                    for t, c in df_counts.items()
-                    if self.min_df <= c <= max_df
-                }
-                kept = sorted(
-                    eligible, key=lambda t: (-eligible[t], t)
-                )[: self.max_text_features]
+                eligible = {t: c for t, c in df_counts.items() if self.min_df <= c <= max_df}
+                kept = sorted(eligible, key=lambda t: (-eligible[t], t))[: self.max_text_features]
                 vocab = {t: _add_feature(f"{col_name}:{t}") for t in kept}
                 for r, toks in zip(row_idx, token_rows):
                     for t in toks:
@@ -295,16 +280,8 @@ class ItemFeatureExtractor:
                 covered += 1
             indptr[r + 1] = indptr[r] + len(feats)
         return ItemFeatures(
-            data=(
-                np.concatenate(data_out)
-                if data_out
-                else np.array([], dtype=np.float32)
-            ),
-            indices=(
-                np.concatenate(indices_out)
-                if indices_out
-                else np.array([], dtype=np.int32)
-            ),
+            data=(np.concatenate(data_out) if data_out else np.array([], dtype=np.float32)),
+            indices=(np.concatenate(indices_out) if indices_out else np.array([], dtype=np.int32)),
             indptr=indptr,
             n_features=n_features,
             feature_names=feature_names,
@@ -342,8 +319,6 @@ def content_scores(
     # reduceat quirks: empty rows copy the next element, and a start
     # equal to nnz (trailing empty rows) is out of bounds — clip, then
     # zero all empty rows.
-    scores = np.add.reduceat(
-        contrib, np.minimum(starts, contrib.size - 1), dtype=np.float64
-    )
+    scores = np.add.reduceat(contrib, np.minimum(starts, contrib.size - 1), dtype=np.float64)
     scores[empty] = 0.0
     return scores

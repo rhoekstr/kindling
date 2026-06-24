@@ -11,6 +11,7 @@ Run:  DATASET=movielens-1m .venv/bin/python bench/verify.py
 
 Reference NDCG@10: ml1m 0.2931 · beauty 0.0343 · steam 0.0660 · book 0.0318
 """
+
 from __future__ import annotations
 
 import json

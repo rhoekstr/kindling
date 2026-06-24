@@ -29,7 +29,7 @@ class LayerActivation:
     name: str
     active: bool
     weight: float | None  # blend weight when active (None for structural layers)
-    reason: str           # the gate condition + the regime fact that drove it
+    reason: str  # the gate condition + the regime fact that drove it
 
 
 @dataclass(frozen=True)
@@ -45,7 +45,7 @@ class ActivationPlan:
     rating_burst: bool
     rating_weighted: bool
     # Base scorer
-    base_scorer: str          # "ease" | "wilson_cooc" | "cooc"
+    base_scorer: str  # "ease" | "wilson_cooc" | "cooc"
     ease_lambda: float | None
     # Layers + cold-start
     channels: list[LayerActivation]
@@ -94,29 +94,37 @@ def build_activation_plan(engine: Any, profile: dict[str, Any]) -> ActivationPla
 
     channels = [
         LayerActivation(
-            "trend", has_ts, profile.get("trend_alpha"),
-            "recent-window popularity; needs timestamps"
-            + ("" if has_ts else " (absent → off)"),
+            "trend",
+            has_ts,
+            profile.get("trend_alpha"),
+            "recent-window popularity; needs timestamps" + ("" if has_ts else " (absent → off)"),
         ),
         LayerActivation(
-            "last_item", on_ease, getattr(engine, "last_item_alpha", 0.25) if on_ease else None,
+            "last_item",
+            on_ease,
+            getattr(engine, "last_item_alpha", 0.25) if on_ease else None,
             "EASE row of the newest item; reads structure not order (not burst-gated)"
             + ("" if on_ease else " — needs EASE base"),
         ),
         LayerActivation(
-            "transitions", bool(profile.get("transition_channel_active", False)),
+            "transitions",
+            bool(profile.get("transition_channel_active", False)),
             profile.get("transition_alpha") if profile.get("transition_channel_active") else None,
             "directional last-k cooc; needs timestamps AND not rating-burst"
             + (" (burst detected → off)" if burst else ""),
         ),
         LayerActivation(
-            "user_cf", bool(profile.get("user_cf_channel_active", False)),
-            getattr(engine, "user_cf_alpha", 1.0) if profile.get("user_cf_channel_active") else None,
+            "user_cf",
+            bool(profile.get("user_cf_channel_active", False)),
+            getattr(engine, "user_cf_alpha", 1.0)
+            if profile.get("user_cf_channel_active")
+            else None,
             f"k-NN user neighbours; sparse-history only (median {med_hist:.0f} "
             f"{'<=' if med_hist <= gate else '>'} gate {gate})",
         ),
         LayerActivation(
-            "content", bool(profile.get("content_channel_active", False)),
+            "content",
+            bool(profile.get("content_channel_active", False)),
             None,
             "item-metadata cosine, cold-gated; opt-in (default off on warm protocols)",
         ),

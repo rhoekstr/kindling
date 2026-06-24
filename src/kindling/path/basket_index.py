@@ -156,7 +156,7 @@ class BasketIndex:
         query_basket: frozenset[object] | set[object] | tuple[object, ...],
         similarity: BasketSimilarity = BasketSimilarity.COVERAGE,
         scan_cap: int | None = None,
-        rng: "np.random.Generator | None" = None,
+        rng: np.random.Generator | None = None,
     ) -> np.ndarray:
         """Vectorized basket signal for a list of candidates.
 
@@ -375,7 +375,9 @@ def build_basket_index(
         for obs in observations:
             baseline = next_item_weight_sum.get(obs.next_item, 0.0) + eps
             new_weight = obs.weight * mean_baseline / baseline
-            rewritten.append(_Observation(basket=obs.basket, next_item=obs.next_item, weight=new_weight))
+            rewritten.append(
+                _Observation(basket=obs.basket, next_item=obs.next_item, weight=new_weight)
+            )
         observations = rewritten
 
     # IDF with log-smoothing: log(1 + N / df). The "+1" keeps singletons
