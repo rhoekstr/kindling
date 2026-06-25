@@ -28,7 +28,10 @@ pub mod signals;
 pub mod loaders;
 
 /// Module entry point. Each submodule registers its functions here.
+/// Exposed to Python as `kindling._core` (packaged inside the wheel); the
+/// Rust fn keeps its descriptive name via the pyo3 `name` override.
 #[pymodule]
+#[pyo3(name = "_core")]
 fn kindling_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Phase markers — every submodule's `register` is a no-op until the
     // corresponding phase lands. This keeps the crate buildable from

@@ -435,15 +435,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "kindling-native"
-version = "0.0.1"
-dependencies = [
- "numpy",
- "pyo3",
- "rustc-hash 2.1.2",
-]
-
-[[package]]
 name = "libc"
 version = "0.2.186"
 source = "registry+https://github.com/rust-lang/crates.io-index"

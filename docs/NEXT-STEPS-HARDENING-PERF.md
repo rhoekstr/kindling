@@ -9,6 +9,29 @@ state observed during the consolidation, prioritized, and phased so the
 Legend — effort: S (<1d) · M (1–3d) · L (>3d). Each item lists why, the
 acceptance criterion, and dependencies.
 
+## Status (2026-06-24)
+
+All of Phases A–C landed on branch `hardening`:
+
+| Item | Status |
+|---|---|
+| A1 ship Rust core in wheel | **DONE** — unified maturin build; clean-venv install works |
+| A2 CI regression gate | **DONE** — `check_gate.py` + CI `gate` job |
+| A3 persistence | **DONE** — `Engine.save/load` (versioned pickle) |
+| A4 single Rust crate | **DONE** — v1 `kindling_native` deleted |
+| B1 large-catalog memory | **PARTIAL** — fixed the cap (real RAM via `os.sysconf` + OS-reserve); the streaming cooc-build (the real book-OOM fix) is **deferred** (Rust, unverifiable on 24 GB) |
+| B2 retrieval-first latency | **DEFERRED (measured)** — latency is 7 ms @124 k items; the refactor only matters >200 k items, which B1 gates |
+| B3 perf smoke | **DONE** — `bench/perf_smoke.py` |
+| C1 mypy strict | **DONE** — 0 errors; CI mypy blocking |
+| C2 edge-case robustness | **DONE** — already robust; locked in with tests |
+| C3 coverage + golden anchor | **DONE** — golden-output regression test |
+
+**Remaining follow-ups** (not done this run): the streaming/sparse cooc
+build (B1's real fix), retrieval-first serving (B2, when a >200 k-item
+memory-feasible catalog exists), a portable npz/Arrow persistence format
+(A3 is pickle today), and the Rust tail/basket/path fast-path port (A4
+left those on the Python fallback).
+
 ---
 
 ## Phase A — Foundational hardening (makes it actually shippable)

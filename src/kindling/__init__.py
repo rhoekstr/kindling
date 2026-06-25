@@ -5,10 +5,17 @@ auto-gated z-normalized channels, Rust core). See ``docs/REFERENCE.md`` for
 the architecture and ``docs/EXPERIMENTS.md`` for the experiment record.
 """
 
+from importlib.metadata import PackageNotFoundError, version
+
 from kindling.activation import ActivationPlan, LayerActivation
 from kindling.engine_v2 import EngineV2 as Engine
 from kindling.engine_v2 import RecommendationV2 as Recommendation
 from kindling.explain import Explanation
+
+try:
+    __version__ = version("kindling")
+except PackageNotFoundError:  # pragma: no cover - source tree / not installed
+    __version__ = "0.0.0+unknown"
 
 __all__ = [
     "ActivationPlan",
@@ -17,4 +24,3 @@ __all__ = [
     "LayerActivation",
     "Recommendation",
 ]
-__version__ = "0.0.1.dev0"

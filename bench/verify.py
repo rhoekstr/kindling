@@ -43,18 +43,22 @@ def _log(msg: str) -> None:
     print(f"[{time.strftime('%H:%M:%S')}] {msg}", flush=True)
 
 
-def main() -> None:
-    dataset = os.environ.get("DATASET", "movielens-1m")
+def evaluate(dataset: str, *, quiet: bool = False) -> dict:
+    """Fit the documented default config for ``dataset`` and return metrics.
+
+    Importable by the CI regression gate (``bench/check_gate.py``).
+    """
     extra = _CONFIG.get(dataset, {})
 
     t0 = time.perf_counter()
     split = _load_dataset(dataset, test_fraction=0.1)
     train, test = split.train, split.test
-    _log(
-        f"{dataset}: loaded {time.perf_counter() - t0:.0f}s  "
-        f"train {len(train):,}  users {train.entity_id.nunique():,}  "
-        f"items {train.item_id.nunique():,}"
-    )
+    if not quiet:
+        _log(
+            f"{dataset}: loaded {time.perf_counter() - t0:.0f}s  "
+            f"train {len(train):,}  users {train.entity_id.nunique():,}  "
+            f"items {train.item_id.nunique():,}"
+        )
     eval_set = _build_eval_set(train, test, max_users=500, seed=0)
     has_meta = getattr(split, "items", None) is not None
     cfg = {**_BASE, **extra}
@@ -67,7 +71,8 @@ def main() -> None:
     fit_s = time.perf_counter() - t0
     st = engine._state
     base = st.profile.get("base_scorer_used", "?")
-    _log(f"fit {fit_s:.0f}s  base={base}  n_items={st.n_items:,}")
+    if not quiet:
+        _log(f"fit {fit_s:.0f}s  base={base}  n_items={st.n_items:,}")
 
     per = []
     for entity, rel in eval_set.items():
@@ -75,7 +80,7 @@ def main() -> None:
         per.append(([r.item_id for r in recs], rel))
     rep = aggregate(per, catalog_size=max(st.n_items, 1), k=10)
 
-    out = {
+    return {
         "dataset": dataset,
         "config": {k: v for k, v in cfg.items() if k != "random_state"},
         "base_scorer": base,
@@ -86,6 +91,10 @@ def main() -> None:
         "mrr": round(float(rep.mrr), 4),
         "hr@10": round(float(rep.hit_rate), 4),
     }
+
+
+def main() -> None:
+    out = evaluate(os.environ.get("DATASET", "movielens-1m"))
     print("RESULT " + json.dumps(out), flush=True)
 
 

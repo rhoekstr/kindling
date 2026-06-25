@@ -37,7 +37,9 @@ isn't available.
 
 from __future__ import annotations
 
+import os
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -55,6 +57,8 @@ from kindling.path.tail_index import TailIndex, build_tail_index
 from kindling.preprocess import preprocess_interactions, weights_of
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from kindling.activation import ActivationPlan
 
 
@@ -866,30 +870,36 @@ class EngineV2:
     # recommend over n_items_ext) + a retained metadata row. Generous;
     # tuned so the book OOM (357k train + 200k ext) caps to a safe size.
     _EXTENSION_BYTES_PER_ITEM = 30_000
+    # Fixed headroom reserved for the OS + Python runtime working set. The
+    # jetsam/OOM wall sits below 100% of physical RAM because the kernel and
+    # other processes need resident memory; on a loaded 24 GB box a fit
+    # estimated at ~19 GB (80%) was OOM-killed. Reserving an absolute floor
+    # (not just a percentage) makes the cap fail safe on smaller machines:
+    # ceiling = min(0.80·total, total − reserve), so it only ever tightens.
+    _OS_RESERVE_BYTES = 6 * 1024**3
 
     def _open_catalog_extension_cap(self, n_obs: int, n_train_items: int) -> int:
         """Max metadata-only extension items that fit under the RAM budget.
 
-        Reserves the estimated interaction-fit peak, then spends the
-        remaining headroom (under 80% of physical RAM) on the extension.
-        Returns 0 when the interaction fit alone already exceeds budget —
-        the engine then runs catalog-only rather than risking an OOM.
+        Reserves the estimated interaction-fit peak plus an OS/runtime
+        floor, then spends the remaining headroom on the extension. Returns
+        0 when the interaction fit alone already exceeds budget — the engine
+        then runs catalog-only rather than risking an OOM.
         """
         if self.open_catalog_max_extension is not None:
             return max(0, int(self.open_catalog_max_extension))
+        # Physical RAM via POSIX sysconf (Linux/macOS) — no third-party dep.
+        # Conservative 8 GB fallback where sysconf is unavailable (e.g. Windows).
         try:
-            import psutil
-
-            total = psutil.virtual_memory().total
-        except Exception:
-            total = 8 * 1024**3  # conservative fallback when psutil absent
-        # Budget against 80% of PHYSICAL RAM, not currently-available:
-        # macOS swap absorbed the 17.4 GB catalog-only book fit even with
-        # ~11 GB free, so the jetsam wall sits near physical, not avail.
-        # 0.80×24 GB ≈ 20.6 GB lands between the 17.4 GB that survived and
-        # the ~23 GB (357k+200k ext) that died. The interaction fit is
-        # still ahead of this call → reserve its estimated peak first.
-        ceiling = 0.80 * total
+            total = os.sysconf("SC_PHYS_PAGES") * os.sysconf("SC_PAGE_SIZE")
+        except (ValueError, OSError, AttributeError):
+            total = 8 * 1024**3
+        # Budget against PHYSICAL RAM (macOS swap absorbs some overrun, so
+        # the wall sits near physical, not `available`), but take the more
+        # conservative of 80% and (total − OS reserve). On 24 GB the latter
+        # (~18 GB) is tighter than 0.80×24 (~19.2 GB), which is what the
+        # book OOM showed was needed.
+        ceiling = min(0.80 * total, float(total - self._OS_RESERVE_BYTES))
         interaction_peak = (
             self._PEAK_BYTES_PER_OBS * n_obs + self._PEAK_BYTES_PER_TRAIN_ITEM * n_train_items
         )
@@ -935,7 +945,7 @@ class EngineV2:
         # [0, n_items); only catalog-length vectors (trend, content,
         # blend output) span the extension.
         n_items_ext = n_items
-        extension_capped: dict | None = None
+        extension_capped: dict[str, object] | None = None
         if self.open_catalog and item_metadata is not None and "item_id" in item_metadata.columns:
             extra = pd.Index(item_metadata["item_id"].dropna().unique()).difference(item_ids)
             # Memory-aware cap. Extension items cost catalog-length-vector
@@ -1744,6 +1754,23 @@ class EngineV2:
         return build_activation_plan(self, self._state.profile)
 
     # ------------------------------------------------------------------
+    # persistence
+    # ------------------------------------------------------------------
+
+    def save(self, path: str | Path) -> None:
+        """Persist this fitted engine to ``path``. See ``kindling.persist``."""
+        from kindling.persist import save_engine
+
+        save_engine(self, path)
+
+    @classmethod
+    def load(cls, path: str | Path) -> EngineV2:
+        """Load an engine previously written by :meth:`save`."""
+        from kindling.persist import load_engine
+
+        return load_engine(path)
+
+    # ------------------------------------------------------------------
     # recommend
     # ------------------------------------------------------------------
 
@@ -1755,7 +1782,9 @@ class EngineV2:
             return []
         return self._recommend_core(owned, entity_id, n)
 
-    def recommend_for_items(self, seed_item_ids: object, n: int = 10) -> list[RecommendationV2]:
+    def recommend_for_items(
+        self, seed_item_ids: Iterable[object], n: int = 10
+    ) -> list[RecommendationV2]:
         """Serve a NEW / anonymous user from ad-hoc seed items — no per-user
         training, no stored history required. The closed-form base (EASE/cooc)
         scores from *any* seed set, so a brand-new user who just interacted
@@ -2006,11 +2035,15 @@ class EngineV2:
         if std > 0:
             scores_full = (scores_full - scores_full.mean()) / std
         if trend_on:
+            assert st.trend_z is not None  # narrowed by trend_on
             scores_full = scores_full + st.trend_alpha * st.trend_z
         if uu_on:
             # Otsuka-Ochiai k-NN: overlap counts via the inverted index,
             # normalized by sqrt(deg_u · deg_v); top-k neighbors vote
             # for their items, weighted by similarity.
+            assert st.uu_user_deg is not None
+            assert st.uu_users_indptr is not None
+            assert st.uu_users_data is not None
             n_users_total = st.uu_user_deg.shape[0]
             counts = np.zeros(n_users_total, dtype=np.float64)
             for i in owned.tolist():
@@ -2043,6 +2076,7 @@ class EngineV2:
                         (uu_vec - uu_vec.mean()) / u_std
                     )
         if last_on:
+            assert st.ease_b is not None  # narrowed by last_on
             last_row = st.ease_b[int(owned[-1])].astype(np.float64)
             if last_row.size < st.n_items:
                 last_row = np.concatenate([last_row, np.zeros(st.n_items - last_row.size)])
@@ -2061,6 +2095,9 @@ class EngineV2:
                 coldness = st.content_coldness if st.content_coldness is not None else 1.0
                 scores_full = scores_full + st.content_alpha * coldness * cz
         if trans_on:
+            assert st.trans_indptr is not None
+            assert st.trans_indices is not None
+            assert st.trans_data is not None
             trans = np.zeros(st.n_items, dtype=np.float64)
             recent = owned[::-1][: st.transition_last_k]
             for j, item in enumerate(recent):
@@ -2274,11 +2311,11 @@ class EngineV2:
         out_indices: list[int] = []
         out_indptr: list[int] = [0]
         for i in range(n_items):
-            row = rows_acc.get(i, [])
-            row.sort(key=lambda t: t[0])
+            acc_row: list[tuple[int, float]] = rows_acc.get(i, [])
+            acc_row.sort(key=lambda t: t[0])
             # Dedup (a brand member could appear multiple times if duplicated).
             seen: set[int] = set()
-            for j, w in row:
+            for j, w in acc_row:
                 if j in seen:
                     continue
                 seen.add(j)
@@ -2429,7 +2466,7 @@ class EngineV2:
             seed=self.random_state,
         )
         user_factors = np.asarray(user_factors, dtype=np.float64)
-        item_factors: np.ndarray | None = None
+        item_factors = None
         if self.als_as_boost:
             # Pay for ALS only if we actually need item factors for boost.
             _u_als, item_factors_als, _losses = kindling_core.fit_als_py(

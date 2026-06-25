@@ -32,7 +32,6 @@ from typing import cast
 
 import numpy as np
 
-from kindling._native import NATIVE_AVAILABLE, kindling_native
 from kindling.lifecycle.decay import DecayProtocol, NoDecay
 from kindling.path._sessions import SessionSequence
 from kindling.path.tail_index import _session_weight
@@ -96,21 +95,6 @@ class PathTree:
             if not row:
                 continue
             total = self.row_totals.get(prefix, 0.0) or 1.0
-            if (
-                NATIVE_AVAILABLE
-                and kindling_native is not None
-                and all(isinstance(c, int | np.integer) for c in cand_list)
-                and all(isinstance(k, int | np.integer) for k in row)
-            ):
-                row_items: list[tuple[int, float]] = [
-                    (int(k), v)  # type: ignore[call-overload]
-                    for k, v in row.items()
-                ]
-                cand_ints: list[int] = [int(c) for c in cand_list]  # type: ignore[call-overload]
-                return np.asarray(
-                    kindling_native.path_tree_score_many(row_items, float(total), cand_ints),
-                    dtype=np.float64,
-                )
             return np.array([row.get(c, 0.0) / total for c in cand_list], dtype=np.float64)
         return np.zeros(len(cand_list), dtype=np.float64)
 

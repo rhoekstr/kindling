@@ -1,42 +1,34 @@
-"""Optional Rust extension imports.
+"""Rust core import.
 
-Two extensions live alongside each other during the v1→v2 migration:
+The (PyO3) Rust extension owns the numeric kernels — EASE, cooccurrence,
+directional cooc, layered scoring, retrieval. The v2 engine requires it;
+there is no pure-Python fallback. Call sites check ``CORE_AVAILABLE``
+before dereferencing ``kindling_core`` so that ``import kindling`` still
+succeeds on a partial install (with a clear error at ``fit`` time rather
+than at import).
 
-- ``kindling_native`` — legacy hot-path crate (cooc/path_family/dpp_kernel/
-  dedup/personas). Used by the v1 Engine path. Will be deleted after the
-  v2 cutover.
-- ``kindling_core`` — v2 Rust core. Owns signals/clustering/scoring/
-  retrieval/repeat/loaders. Used by the v2 Engine path
-  (``Engine(use_v2_core=True)``).
-
-Either or both may be missing on a given install; call sites must check
-``NATIVE_AVAILABLE`` (v1) or ``CORE_AVAILABLE`` (v2) before dereferencing.
-The pure-Python fallback only exists for the v1 path; v2 requires the
-``kindling_core`` wheel.
+The extension is packaged inside the wheel as ``kindling._core``. The
+legacy top-level ``kindling_core`` import is kept as a fallback so a
+dev environment with the standalone extension installed keeps working.
 """
 
 from __future__ import annotations
 
 try:
-    import kindling_native  # type: ignore[import-untyped]
-
-    NATIVE_AVAILABLE = True
-except ImportError:  # pragma: no cover - platform-specific
-    kindling_native = None
-    NATIVE_AVAILABLE = False
-
-try:
-    import kindling_core  # type: ignore[import-untyped]
+    from kindling import _core as kindling_core  # type: ignore[attr-defined]  # packaged ext
 
     CORE_AVAILABLE = True
-except ImportError:  # pragma: no cover - platform-specific
-    kindling_core = None
-    CORE_AVAILABLE = False
+except ImportError:  # pragma: no cover - dev / partial install
+    try:
+        import kindling_core  # standalone dev extension
+
+        CORE_AVAILABLE = True
+    except ImportError:
+        kindling_core = None
+        CORE_AVAILABLE = False
 
 
 __all__ = [
     "CORE_AVAILABLE",
-    "NATIVE_AVAILABLE",
     "kindling_core",
-    "kindling_native",
 ]

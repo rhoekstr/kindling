@@ -1,0 +1,21 @@
+# Allow undefined symbols at link time on macOS so the unified maturin
+# build (invoked from the repo root, with manifest-path into native/) can
+# link the pyo3 cdylib without a Python development toolchain. The
+# undefined symbols are Python ABI calls, resolved at runtime when the
+# extension is loaded into a Python process.
+#
+# This mirrors native/.cargo/config.toml, which cargo only discovers when
+# building *from* native/ — maturin runs cargo from the repo root, so the
+# flags must also live here. Per-target, so Linux/CI builds are unaffected.
+
+[target.x86_64-apple-darwin]
+rustflags = [
+    "-C", "link-arg=-undefined",
+    "-C", "link-arg=dynamic_lookup",
+]
+
+[target.aarch64-apple-darwin]
+rustflags = [
+    "-C", "link-arg=-undefined",
+    "-C", "link-arg=dynamic_lookup",
+]
