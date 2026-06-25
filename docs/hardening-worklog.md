@@ -62,3 +62,19 @@ by the data**. Deferred with this rationale; spec retained in NEXT-STEPS B2.
   floor (`ceiling = min(0.80·total, total − 6 GB)`) so it fails safe
   (smaller extension / catalog-only) on constrained machines instead of
   OOMing. 8 unit tests (`test_extension_cap.py`).
+
+### A3 / C2 / C3 / B3 — DONE
+- **A3 `71a8007`** — `Engine.save/load` (versioned pickle + JSON header).
+  fit→save→load recommends identically; rejects bad files/versions. 6 tests.
+- **C2/C3 `9af1bb1`** — edge-case robustness already solid (empty/NaN →
+  clear errors; degenerate cases degrade gracefully) → locked with tests;
+  golden-output regression anchor (replaces the deleted v1↔v2 differential).
+- **B3 `bf19a34`** — `bench/perf_smoke.py` (fit + serve-latency envelope).
+
+### Final state — all of A–C landed
+9 commits on `hardening`. **Suite 121 → 145; ruff+format+mypy all clean.**
+Final wheel `kindling-0.2.0-cp311-abi3` installs in a clean venv and does
+fit/recommend/save/load identically. Deferred (documented in NEXT-STEPS):
+streaming cooc build (B1's real OOM fix), retrieval-first serving (B2),
+portable persistence format, Rust path fast-path port. Pushing + opening a
+new hardening PR.
