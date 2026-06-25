@@ -18,6 +18,7 @@
 use pyo3::prelude::*;
 
 pub mod cluster;
+pub mod engine;
 pub mod persona;
 pub mod repeat;
 pub mod retrieve;
@@ -37,6 +38,7 @@ fn kindling_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // corresponding phase lands. This keeps the crate buildable from
     // Phase 0 onward.
     signals::register(m)?;
+    engine::register(m)?;
     cluster::register(m)?;
     persona::register(m)?;
     score::register(m)?;

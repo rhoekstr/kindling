@@ -102,7 +102,9 @@ the gate), full-library + PyO3 the target. Differential harness: `bench/rust_par
 | cooc, directional cooc, EASE (faer), cosine, metadata-kNN | ✅ already Rust |
 | **cooc weight transform (wilson/cosine/jaccard)** | ✅ ported, **byte-exact** (this branch) |
 | ⇒ the whole **base build** (cooc/EASE + transform) | ✅ Rust-capable |
-| channel fit (trend_z, item_popularity, transitions, user-CF, last-item) | ⬜ next |
+| **channel fit (trend_z, popularity, user-CF CSR)** | ✅ ported, **parity** (this branch) |
+| transitions (directional cooc) | ✅ already Rust kernel |
+| last-item (recommend-time EASE row) | — (no fit-state) |
 | native `EngineState` assembly | ⬜ |
 | recommend (`_blend_channels` z-blend + retrieval + cold-slots) | ⬜ |
 | persistence (bincode/rkyv) | ⬜ |

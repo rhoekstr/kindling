@@ -45,7 +45,55 @@ def check_metadata_knn() -> bool:
     return len(ei) > 0
 
 
+def check_fit_channels() -> bool:
+    """Rust fit_channels (popularity / trend_z / user-CF CSR) vs Python EngineState."""
+    import pandas as pd
+
+    from kindling import Engine
+    from kindling.benchmarks.comparison import _load_dataset
+    from kindling.ingest.contract import canonicalize, validate_interactions
+    from kindling.preprocess import preprocess_interactions
+
+    def recon(train: pd.DataFrame):  # reproduce the engine's preprocessed arrays
+        sch = validate_interactions(train)
+        c = canonicalize(train, sch)
+        c, _ = preprocess_interactions(c, use_ratings=None)
+        i2i = {it: i for i, it in enumerate(pd.Index(c["item_id"].unique()))}
+        e2u = {e: i for i, e in enumerate(pd.Index(c["entity_id"].unique()))}
+        ui = c["entity_id"].map(e2u).to_numpy(np.int64)
+        ii = c["item_id"].map(i2i).to_numpy(np.int64)
+        ts = c["timestamp"].to_numpy(np.float64) if "timestamp" in c.columns else None
+        return ui, ii, ts, len(e2u), len(i2i)
+
+    ok = True
+    for ds, cfg in [("movielens-1m", {}), ("amazon-beauty", {"ease_lambda": 250.0})]:
+        split = _load_dataset(ds, 0.1)
+        eng = Engine(random_state=0, **cfg).fit(
+            split.train, item_metadata=getattr(split, "items", None)
+        )
+        st = eng._state
+        ui, ii, ts, nu, ni = recon(split.train)
+        wt, wu = st.trend_z is not None, st.uu_users_data is not None
+        pop, trend, uud, uui, uudeg = kindling_core.fit_channels(
+            ui, ii, ts, nu, ni, st.n_items, eng.trend_window_fraction, wt, wu
+        )
+        c = {"popularity": np.array_equal(np.asarray(pop), st.item_popularity.astype(np.float64))}
+        if wt:
+            c["trend_z"] = bool(np.allclose(np.asarray(trend), st.trend_z, atol=1e-8))
+        if wu:
+            c["uu_data"] = np.array_equal(np.asarray(uud, np.int64), st.uu_users_data.astype(np.int64))
+            c["uu_indptr"] = np.array_equal(np.asarray(uui, np.int64), st.uu_users_indptr.astype(np.int64))
+            c["uu_deg"] = np.array_equal(np.asarray(uudeg), st.uu_user_deg.astype(np.float64))
+        print(f"  fit_channels[{ds}] {c}")
+        ok = ok and all(c.values())
+    return ok
+
+
 if __name__ == "__main__":
-    results = {"cooc_transform": check_cooc_transform(), "metadata_knn": check_metadata_knn()}
+    results = {
+        "cooc_transform": check_cooc_transform(),
+        "metadata_knn": check_metadata_knn(),
+        "fit_channels": check_fit_channels(),
+    }
     print("\nPARITY:", "ALL PASS" if all(results.values()) else "FAIL", results)
     raise SystemExit(0 if all(results.values()) else 1)
