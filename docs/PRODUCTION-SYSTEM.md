@@ -39,10 +39,15 @@ sub-millisecond time.
 | **Cold-item serving** | reserved `cold_slots` + open-catalog: metadata-only items ranked by content similarity + release recency |
 | **Rust core** | EASE Cholesky (faer), cooccurrence, directional cooc, layered scoring, retrieval |
 | **Loaders** | movielens, amazon (+chrono), steam, instacart, dunnhumby, tafeng, gowalla, yelp, retailrocket, synthetic |
+| **Eval harness** (`kindling.harness`) | the realistic-tier benchmark, packaged: fit → eval-by-warmth → report on a built-in dataset or your own CSV, vs popularity / item-kNN / ALS / BPR — see [HARNESS.md](HARNESS.md) |
+| **Serving harness** (`kindling.serving`) | `create_app()` → FastAPI surface (`/recommend`, `/recommend_for_items`, `/recommend/batch`); optional `serve` extra, lazy-imported |
+| **CLI** (`kindling`) | `bench` / `fit` / `serve` / `version` console command |
+| **Persistence** | `Engine.save` / `Engine.load` — versioned header |
 | **Verification harness** | `bench/verify.py` (4-dataset regression gate) + `run_gap_decomp.py` (the floor/oracle/pool-recall diagnostic) |
 
-The core is **40 Python modules** (down from ~130 pre-consolidation): the
-validated stack and a minimal CI harness, nothing else.
+The core is the validated stack plus its packaged tooling (eval, serving, CLI,
+persistence) — and a minimal CI harness, nothing else. `pip install kindling`
+yields one abi3-py311 wheel carrying both the Python package and the Rust core.
 
 ## 3. Value-add — and where it has none
 

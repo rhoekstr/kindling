@@ -17,9 +17,14 @@ last-item, transitions, user-CF), with a Rust core for the numerics.
 ## Install
 
 ```bash
-pip install -e ".[dev]"      # dev tooling
-pip install -e ".[dev,bench]"  # + benchmark harness
+pip install kindling              # the engine — one wheel, Rust core included
+pip install 'kindling[serve]'     # + the HTTP serving harness (FastAPI)
+pip install 'kindling[baselines]' # + ALS/BPR/item-kNN for the eval harness
 ```
+
+A single wheel ships the pure-Python package **and** the `kindling._core` Rust
+extension — numpy / pandas / scipy are the only runtime deps. From a checkout,
+`pip install -e ".[dev]"` gets the lint / type-check / test tooling.
 
 ## Quickstart
 
@@ -43,6 +48,25 @@ falls back to popularity:
 ```python
 engine.recommend_for_items(item_ids=[101, 205], n=10)   # personalized from seeds
 engine.recommend_for_items(item_ids=[], n=10)           # → popularity fallback
+```
+
+## Prove it, then serve it
+
+The `kindling` command wraps the same realistic-tier benchmark the project
+validates itself with, plus a fit/serve path — see [`docs/HARNESS.md`](docs/HARNESS.md).
+
+```bash
+# Does it beat popularity (and ALS/BPR/item-kNN) on YOUR data, by warmth bucket?
+kindling bench --data interactions.csv --all-baselines
+
+# Fit, save, and serve over HTTP (POST /recommend, /recommend_for_items, /batch).
+kindling fit   --data interactions.csv --out engine.kindling
+kindling serve --model engine.kindling --port 8000
+```
+
+```python
+from kindling.serving import create_app
+app = create_app(engine)   # a FastAPI app — mount it, add auth, deploy it
 ```
 
 ## Intelligent activation
@@ -72,11 +96,14 @@ record — including the negative results, which are half the value — is in
 ## Project layout
 
 ```
-src/kindling/      library source (engine, channels, Rust bindings, loaders)
+src/kindling/          library source (engine, channels, Rust bindings, loaders)
+  harness/             eval harness (reusable realistic-tier benchmark)
+  serving/             FastAPI serving app
+  cli.py               the `kindling` console command
 native/kindling_core/  Rust numeric core (EASE, cooccurrence, layered scoring)
-bench/             regression gate (bench/verify.py) + frozen reports
-docs/              REFERENCE.md (architecture) · EXPERIMENTS.md (record)
-tests/             unit, property, integration
+bench/                 regression gate (bench/verify.py) + frozen reports
+docs/                  REFERENCE.md (architecture) · EXPERIMENTS.md (record) · HARNESS.md
+tests/                 unit, property, integration
 ```
 
 ## License
