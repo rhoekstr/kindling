@@ -165,7 +165,7 @@ class ItemFeatureExtractor:
         row_idx = meta[item_id_column].map(item_to_idx)
         keep = row_idx.notna()
         meta = meta.loc[keep]
-        row_idx = row_idx.loc[keep].astype(np.int64).to_numpy()
+        row_idx = row_idx.loc[keep].astype(np.int64).to_numpy()  # type: ignore[assignment]
         n_meta = len(meta)
 
         def _add_feature(name: str) -> int:

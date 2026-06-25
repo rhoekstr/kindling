@@ -45,7 +45,7 @@ def _build_eval_set(
     step = max(1, len(eligible) // max_users)
     sampled = eligible[::step][:max_users]
     out: dict[object, set[object]] = {}
-    for u in sampled:
+    for u in sampled:  # type: ignore[assignment]
         held = test_users_to_items[u] - train_users_to_items.get(u, set())
         out[u] = held
     return out

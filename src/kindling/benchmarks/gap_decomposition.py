@@ -34,7 +34,7 @@ from kindling.benchmarks.parity import _build_eval_set
 from kindling.engine_v2 import EngineV2
 
 
-def run(loader: str, max_eval_users: int = 500, k: int = 10, seed: int = 0) -> dict:
+def run(loader: str, max_eval_users: int = 500, k: int = 10, seed: int = 0) -> dict[str, object]:
     from kindling.benchmarks.comparison import _load_dataset
 
     split = _load_dataset(loader, test_fraction=0.1)
@@ -115,7 +115,7 @@ def run(loader: str, max_eval_users: int = 500, k: int = 10, seed: int = 0) -> d
                         break
         per_oracle.append((oracle_top, relevant))
 
-    def _m(per):
+    def _m(per: list[tuple[list[object], set[object]]]) -> dict[str, float]:
         rep = aggregate(per, catalog_size=catalog, k=k)
         return {
             "ndcg_at_k": rep.ndcg_at_k,

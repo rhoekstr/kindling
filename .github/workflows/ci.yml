@@ -22,10 +22,7 @@ jobs:
       - run: pip install -e ".[dev]"
       - run: ruff check .
       - run: ruff format --check .
-      # mypy has pre-existing strict-mode errors in engine_v2 — tracked by C1.
-      # Non-blocking until that lands, then drop continue-on-error.
       - run: mypy
-        continue-on-error: true
 
   test:
     runs-on: ${{ matrix.os }}

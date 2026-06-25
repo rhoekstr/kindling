@@ -114,6 +114,9 @@ plugins = []
 [[tool.mypy.overrides]]
 module = [
     "scipy.*",
+    "psutil",
+    "kindling_core",        # PyO3 Rust extension — no py.typed stubs
+    "kindling._core",
 ]
 ignore_missing_imports = true
 

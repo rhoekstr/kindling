@@ -107,7 +107,9 @@ def build_item_graph(interactions: pd.DataFrame) -> ItemGraph:
     pairs = interactions[["entity_id", "item_id"]].copy()
     pairs["_w"] = weights
     # Max weight per (entity, item) - handles duplicates and rating upgrades.
-    pairs = pairs.groupby(["entity_id", "item_id"], sort=False, as_index=False)["_w"].max()
+    pairs = pairs.groupby(  # type: ignore[assignment]
+        ["entity_id", "item_id"], sort=False, as_index=False
+    )["_w"].max()
     # Drop pairs with zero weight - ratings below threshold contribute
     # nothing to positive signals (cost graph handles them as negatives).
     pairs = pairs[pairs["_w"] > 0.0]

@@ -15,12 +15,12 @@ dev environment with the standalone extension installed keeps working.
 from __future__ import annotations
 
 try:
-    from kindling import _core as kindling_core  # packaged in the wheel
+    from kindling import _core as kindling_core  # type: ignore[attr-defined]  # packaged ext
 
     CORE_AVAILABLE = True
 except ImportError:  # pragma: no cover - dev / partial install
     try:
-        import kindling_core  # type: ignore[import-untyped]  # standalone dev extension
+        import kindling_core  # standalone dev extension
 
         CORE_AVAILABLE = True
     except ImportError:

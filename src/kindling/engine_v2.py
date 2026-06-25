@@ -38,6 +38,7 @@ isn't available.
 from __future__ import annotations
 
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -935,7 +936,7 @@ class EngineV2:
         # [0, n_items); only catalog-length vectors (trend, content,
         # blend output) span the extension.
         n_items_ext = n_items
-        extension_capped: dict | None = None
+        extension_capped: dict[str, object] | None = None
         if self.open_catalog and item_metadata is not None and "item_id" in item_metadata.columns:
             extra = pd.Index(item_metadata["item_id"].dropna().unique()).difference(item_ids)
             # Memory-aware cap. Extension items cost catalog-length-vector
@@ -1755,7 +1756,9 @@ class EngineV2:
             return []
         return self._recommend_core(owned, entity_id, n)
 
-    def recommend_for_items(self, seed_item_ids: object, n: int = 10) -> list[RecommendationV2]:
+    def recommend_for_items(
+        self, seed_item_ids: Iterable[object], n: int = 10
+    ) -> list[RecommendationV2]:
         """Serve a NEW / anonymous user from ad-hoc seed items — no per-user
         training, no stored history required. The closed-form base (EASE/cooc)
         scores from *any* seed set, so a brand-new user who just interacted
@@ -2006,11 +2009,15 @@ class EngineV2:
         if std > 0:
             scores_full = (scores_full - scores_full.mean()) / std
         if trend_on:
+            assert st.trend_z is not None  # narrowed by trend_on
             scores_full = scores_full + st.trend_alpha * st.trend_z
         if uu_on:
             # Otsuka-Ochiai k-NN: overlap counts via the inverted index,
             # normalized by sqrt(deg_u · deg_v); top-k neighbors vote
             # for their items, weighted by similarity.
+            assert st.uu_user_deg is not None
+            assert st.uu_users_indptr is not None
+            assert st.uu_users_data is not None
             n_users_total = st.uu_user_deg.shape[0]
             counts = np.zeros(n_users_total, dtype=np.float64)
             for i in owned.tolist():
@@ -2043,6 +2050,7 @@ class EngineV2:
                         (uu_vec - uu_vec.mean()) / u_std
                     )
         if last_on:
+            assert st.ease_b is not None  # narrowed by last_on
             last_row = st.ease_b[int(owned[-1])].astype(np.float64)
             if last_row.size < st.n_items:
                 last_row = np.concatenate([last_row, np.zeros(st.n_items - last_row.size)])
@@ -2061,6 +2069,9 @@ class EngineV2:
                 coldness = st.content_coldness if st.content_coldness is not None else 1.0
                 scores_full = scores_full + st.content_alpha * coldness * cz
         if trans_on:
+            assert st.trans_indptr is not None
+            assert st.trans_indices is not None
+            assert st.trans_data is not None
             trans = np.zeros(st.n_items, dtype=np.float64)
             recent = owned[::-1][: st.transition_last_k]
             for j, item in enumerate(recent):
@@ -2274,11 +2285,11 @@ class EngineV2:
         out_indices: list[int] = []
         out_indptr: list[int] = [0]
         for i in range(n_items):
-            row = rows_acc.get(i, [])
-            row.sort(key=lambda t: t[0])
+            acc_row: list[tuple[int, float]] = rows_acc.get(i, [])
+            acc_row.sort(key=lambda t: t[0])
             # Dedup (a brand member could appear multiple times if duplicated).
             seen: set[int] = set()
-            for j, w in row:
+            for j, w in acc_row:
                 if j in seen:
                     continue
                 seen.add(j)
@@ -2429,7 +2440,7 @@ class EngineV2:
             seed=self.random_state,
         )
         user_factors = np.asarray(user_factors, dtype=np.float64)
-        item_factors: np.ndarray | None = None
+        item_factors = None
         if self.als_as_boost:
             # Pay for ALS only if we actually need item factors for boost.
             _u_als, item_factors_als, _losses = kindling_core.fit_als_py(

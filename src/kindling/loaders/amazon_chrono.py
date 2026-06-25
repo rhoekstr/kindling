@@ -55,7 +55,7 @@ def load_amazon_chrono(
 def load_amazon_meta(
     meta_path: str | Path,
     cache_dir: str | Path,
-    catalog: set | None = None,
+    catalog: set[object] | None = None,
     extension_top_n: int = 200_000,
 ) -> pd.DataFrame:
     """Parse 2014 SNAP metadata (Python-literal lines) into an items frame.
