@@ -48,6 +48,26 @@ jobs:
           name: coverage-${{ matrix.os }}-py${{ matrix.python }}
           path: coverage.xml
 
+  # Regression gate: fail if NDCG@10 drops below the gates.toml baseline.
+  # movielens-1m only (CI-feasible, cached); steam/book are local validation.
+  gate:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@stable
+      - run: pip install -e ".[dev,bench]"
+      - name: Cache MovieLens-1M
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/kindling
+          key: movielens-1m-v1
+      - name: NDCG regression gate (movielens-1m)
+        run: python bench/check_gate.py
+
   # Build distributable wheels (abi3-py311: one wheel per platform covers
   # py3.11+) so a release actually ships a working engine.
   wheels:
