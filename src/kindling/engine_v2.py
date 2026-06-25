@@ -57,6 +57,8 @@ from kindling.path.tail_index import TailIndex, build_tail_index
 from kindling.preprocess import preprocess_interactions, weights_of
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from kindling.activation import ActivationPlan
 
 
@@ -1750,6 +1752,23 @@ class EngineV2:
         from kindling.activation import build_activation_plan
 
         return build_activation_plan(self, self._state.profile)
+
+    # ------------------------------------------------------------------
+    # persistence
+    # ------------------------------------------------------------------
+
+    def save(self, path: str | Path) -> None:
+        """Persist this fitted engine to ``path``. See ``kindling.persist``."""
+        from kindling.persist import save_engine
+
+        save_engine(self, path)
+
+    @classmethod
+    def load(cls, path: str | Path) -> EngineV2:
+        """Load an engine previously written by :meth:`save`."""
+        from kindling.persist import load_engine
+
+        return load_engine(path)
 
     # ------------------------------------------------------------------
     # recommend
