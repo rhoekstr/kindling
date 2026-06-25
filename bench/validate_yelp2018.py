@@ -41,7 +41,7 @@ def main() -> None:
     eval_users = [u for u in test_by_u.index if u in train_users][:N_EVAL]
 
     t0 = time.perf_counter()
-    eng = Engine(persona_min_users=10**9, random_state=0, retrieval_budget=1000)
+    eng = Engine(random_state=0, retrieval_budget=1000)
     eng.fit(train)
     fit_s = time.perf_counter() - t0
 

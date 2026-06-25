@@ -21,7 +21,7 @@ def ratings():
 
 
 def _fit(split, **kw):
-    eng = Engine(persona_min_users=10**9, random_state=0, **kw)
+    eng = Engine(random_state=0, **kw)
     eng.fit(split.train)
     return eng
 
@@ -90,7 +90,7 @@ def test_cold_slots_surface_metadata_only_items():
             "genre": ["a" if i % 2 else "b" for i in range(50)],
         }
     )
-    eng = Engine(persona_min_users=10**9, cold_slots=1, open_catalog=True, random_state=0)
+    eng = Engine(cold_slots=1, open_catalog=True, random_state=0)
     eng.fit(train, item_metadata=meta)
     recs = eng.recommend(entity_id=5, n=10)
     assert len(recs) == 10

@@ -16,7 +16,7 @@ from kindling.ingest.contract import InteractionContractError
 
 
 def _engine():
-    return Engine(persona_min_users=10**9, random_state=0)
+    return Engine(random_state=0)
 
 
 def _df():

@@ -21,9 +21,9 @@ from pathlib import Path
 from kindling.benchmarks.comparison import _load_dataset
 from kindling.benchmarks.metrics import aggregate
 from kindling.benchmarks.parity import _build_eval_set
-from kindling.engine_v2 import EngineV2
+from kindling.engine import Engine
 
-_BASE = dict(persona_min_users=10**9, retrieval_budget=500, random_state=0)
+_BASE = dict(retrieval_budget=500, random_state=0)
 
 # (label, config-delta applied cumulatively over the previous arm)
 ARMS = [
@@ -62,7 +62,7 @@ def main() -> None:
     for label, delta in ARMS:
         cfg = {**cfg, **delta}
         t0 = time.perf_counter()
-        eng = EngineV2(**cfg)
+        eng = Engine(**cfg)
         eng.fit(train, item_metadata=split.items if has_meta else None)
         st = eng._state
         per = [

@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from kindling.engine_v2 import EngineV2
+from kindling.engine import Engine
 
 
 def _genre_data(seed: int = 0, per_genre: int = 25, n_users: int = 800):
@@ -27,9 +27,7 @@ def _genre_data(seed: int = 0, per_genre: int = 25, n_users: int = 800):
 def engine():
     # pop-shrinkage off: these tests verify the pure seed->neighbor mechanism;
     # shrinkage toward popularity is exercised separately below.
-    return EngineV2(persona_min_users=10**9, random_state=0, cold_user_pop_prior=0.0).fit(
-        _genre_data()
-    )
+    return Engine(random_state=0, cold_user_pop_prior=0.0).fit(_genre_data())
 
 
 def test_new_user_from_seeds_is_personalized(engine):
@@ -79,12 +77,12 @@ def test_known_entity_recommend_unchanged(engine):
 
 def test_recommend_for_items_requires_fit():
     with pytest.raises(RuntimeError, match="not fitted"):
-        EngineV2().recommend_for_items(["x"], n=5)
+        Engine().recommend_for_items(["x"], n=5)
 
 
 def test_invalid_pop_prior_rejected():
     with pytest.raises(ValueError, match="cold_user_pop_prior"):
-        EngineV2(cold_user_pop_prior=-1.0)
+        Engine(cold_user_pop_prior=-1.0)
 
 
 def test_pop_shrinkage_surfaces_popular_items_when_seeds_thin():
@@ -104,8 +102,8 @@ def test_pop_shrinkage_surfaces_popular_items_when_seeds_thin():
             rows.append((1000 + u, it))
     data = pd.DataFrame(rows, columns=["entity_id", "item_id"])
 
-    raw = EngineV2(persona_min_users=10**9, cold_user_pop_prior=0.0).fit(data)
-    shrunk = EngineV2(persona_min_users=10**9, cold_user_pop_prior=8.0).fit(data)
+    raw = Engine(cold_user_pop_prior=0.0).fit(data)
+    shrunk = Engine(cold_user_pop_prior=8.0).fit(data)
     raw_recs = {r.item_id for r in raw.recommend_for_items(["q0"], n=5)}
     shrunk_recs = {r.item_id for r in shrunk.recommend_for_items(["q0"], n=5)}
     # raw stays in the niche neighborhood; shrinkage pulls in popular items.

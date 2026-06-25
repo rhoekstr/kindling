@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from kindling.engine_v2 import EngineV2
+from kindling.engine import Engine
 from kindling.graph.cooc_transform import apply_cooc_transform, resolve_cooc_transform
 from kindling.loaders import synthetic
 
@@ -96,7 +96,7 @@ def _grocery():
 
 
 def test_cooc_path_applies_transform():
-    eng = EngineV2(base_scorer="cooc", cooc_base_transform="wilson").fit(_grocery())
+    eng = Engine(base_scorer="cooc", cooc_base_transform="wilson").fit(_grocery())
     prof = eng._state.profile
     assert prof["base_scorer_used"] == "cooc"
     assert prof["cooc_base_transform"] == "wilson"
@@ -104,7 +104,7 @@ def test_cooc_path_applies_transform():
 
 
 def test_cooc_path_raw_override_skips_transform():
-    eng = EngineV2(base_scorer="cooc", cooc_base_transform="raw").fit(_grocery())
+    eng = Engine(base_scorer="cooc", cooc_base_transform="raw").fit(_grocery())
     prof = eng._state.profile
     assert prof["base_scorer_used"] == "cooc"
     assert "cooc_base_transform" not in prof
@@ -112,7 +112,7 @@ def test_cooc_path_raw_override_skips_transform():
 
 def test_ease_path_never_transforms_even_when_requested():
     # Small catalog (<= ease_max_items) → EASE base; cooc weights untouched.
-    eng = EngineV2(base_scorer="auto", cooc_base_transform="wilson").fit(_grocery())
+    eng = Engine(base_scorer="auto", cooc_base_transform="wilson").fit(_grocery())
     prof = eng._state.profile
     assert prof["base_scorer_used"] == "ease"
     assert "cooc_base_transform" not in prof

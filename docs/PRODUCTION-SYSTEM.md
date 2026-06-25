@@ -31,7 +31,7 @@ sub-millisecond time.
 
 | Component | What it does |
 |---|---|
-| **`Engine`** (`engine_v2`) | fit + `recommend` + `recommend_for_items`; the single public entry point |
+| **`Engine`** (`engine`) | fit + `recommend` + `recommend_for_items`; the single public entry point |
 | **Base scorer** | rating-weighted **EASE** (catalogs ≤ 20k items) or **wilson-cooc** (above), auto-selected |
 | **Channels** | trend (timestamps), last-item (EASE structure), transitions (sequential, non-burst), user-CF (sparse history) — z-normalized, additive |
 | **Activation detection** | `engine.activation_plan` — the inspectable regime → layer-decisions record (§4) |

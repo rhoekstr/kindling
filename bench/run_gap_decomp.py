@@ -28,7 +28,7 @@ import numpy as np
 from kindling.benchmarks.comparison import _load_dataset
 from kindling.benchmarks.metrics import aggregate
 from kindling.benchmarks.parity import _build_eval_set
-from kindling.engine_v2 import EngineV2
+from kindling.engine import Engine
 
 K = 10
 REPORT = Path(__file__).parent / "reports" / "gap_decomp_current.json"
@@ -38,7 +38,7 @@ def log(m: str) -> None:
     print(f"[{time.strftime('%H:%M:%S')}] {m}", flush=True)
 
 
-def engine_pool(engine: EngineV2, entity, owned: np.ndarray) -> list[int]:
+def engine_pool(engine: Engine, entity, owned: np.ndarray) -> list[int]:
     """The candidate pool recommend() actually retrieves, for this entity."""
     st = engine._state
     budget = engine.retrieval_budget
@@ -81,7 +81,7 @@ def run(loader: str) -> dict:
     split = _load_dataset(loader, test_fraction=0.1)
     train, test = split.train, split.test
     eval_set = _build_eval_set(train, test, max_users=500, seed=0)
-    engine = EngineV2(persona_min_users=10_000_000, retrieval_budget=500, random_state=0)
+    engine = Engine(retrieval_budget=500, random_state=0)
     t0 = time.perf_counter()
     engine.fit(train)
     st = engine._state

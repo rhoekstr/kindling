@@ -297,6 +297,6 @@ synthesis, not as a frozen artifact):
   is corroborated by `persona_method_*` / `signal_ablation_*_persona`; the
   exact count is REFERENCE prose.
 
-**Historical PRDs** (archived, not operative): `kindling_PRD_v08.docx`
-(original vision), `force-projection-recommender-benchmark-prd.md` (FPR,
-result negative). Move to `docs/archive/` during consolidation.
+**Historical PRDs** (archived under `docs/archive/`, not operative):
+`kindling_PRD_v08.docx` (original vision) and
+`force-projection-recommender-benchmark-prd.md` (FPR, result negative).

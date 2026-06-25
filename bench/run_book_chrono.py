@@ -5,7 +5,7 @@ import time
 from kindling.benchmarks.comparison import _load_dataset
 from kindling.benchmarks.metrics import aggregate
 from kindling.benchmarks.parity import _build_eval_set
-from kindling.engine_v2 import EngineV2
+from kindling.engine import Engine
 
 
 def log(msg):
@@ -27,8 +27,7 @@ has_meta = split.items is not None
 if has_meta:
     log(f"metadata: {len(split.items):,} items (catalog + salesRank-capped extension)")
 t0 = time.perf_counter()
-e = EngineV2(
-    persona_min_users=10_000_000,
+e = Engine(
     retrieval_budget=500,
     random_state=0,
     cold_slots=1 if has_meta else 0,

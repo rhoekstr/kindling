@@ -1,6 +1,6 @@
 """Save / load a fitted engine.
 
-A fitted :class:`~kindling.engine_v2.EngineV2` is serialized with a small
+A fitted :class:`~kindling.engine.Engine` is serialized with a small
 JSON header (a magic marker, a format version, and the kindling version)
 followed by a pickle of the engine. The header lets ``load`` reject an
 incompatible format *before* unpickling, and warn on a kindling-version
@@ -24,13 +24,13 @@ from typing import TYPE_CHECKING, Any, cast
 from kindling import __version__
 
 if TYPE_CHECKING:
-    from kindling.engine_v2 import EngineV2
+    from kindling.engine import Engine
 
 _MAGIC = "kindling-engine"
 FORMAT_VERSION = 1
 
 
-def save_engine(engine: EngineV2, path: str | Path) -> None:
+def save_engine(engine: Engine, path: str | Path) -> None:
     """Serialize a fitted engine to ``path`` (header line + pickle)."""
     if getattr(engine, "_state", None) is None:
         raise RuntimeError("Engine is not fitted; nothing to save.")
@@ -46,7 +46,7 @@ def save_engine(engine: EngineV2, path: str | Path) -> None:
         pickle.dump(engine, fh, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-def load_engine(path: str | Path) -> EngineV2:
+def load_engine(path: str | Path) -> Engine:
     """Load an engine saved by :func:`save_engine`.
 
     Raises ``ValueError`` on an unrecognized or incompatible format;
@@ -73,4 +73,4 @@ def load_engine(path: str | Path) -> EngineV2:
                 f"{__version__}; pickle compatibility is best-effort.",
                 stacklevel=2,
             )
-        return cast("EngineV2", pickle.load(fh))
+        return cast("Engine", pickle.load(fh))

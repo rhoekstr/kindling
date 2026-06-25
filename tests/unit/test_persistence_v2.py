@@ -14,7 +14,7 @@ from kindling.persist import FORMAT_VERSION, load_engine
 @pytest.fixture
 def fitted(tmp_path):
     s = synthetic.make_ratings(n_entities=120, n_items=80, seed=0)
-    e = Engine(persona_min_users=10**9, random_state=0)
+    e = Engine(random_state=0)
     e.fit(s.train)
     return e, s, tmp_path
 
