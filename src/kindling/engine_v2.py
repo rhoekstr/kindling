@@ -37,6 +37,7 @@ isn't available.
 
 from __future__ import annotations
 
+import os
 import time
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -867,30 +868,36 @@ class EngineV2:
     # recommend over n_items_ext) + a retained metadata row. Generous;
     # tuned so the book OOM (357k train + 200k ext) caps to a safe size.
     _EXTENSION_BYTES_PER_ITEM = 30_000
+    # Fixed headroom reserved for the OS + Python runtime working set. The
+    # jetsam/OOM wall sits below 100% of physical RAM because the kernel and
+    # other processes need resident memory; on a loaded 24 GB box a fit
+    # estimated at ~19 GB (80%) was OOM-killed. Reserving an absolute floor
+    # (not just a percentage) makes the cap fail safe on smaller machines:
+    # ceiling = min(0.80·total, total − reserve), so it only ever tightens.
+    _OS_RESERVE_BYTES = 6 * 1024**3
 
     def _open_catalog_extension_cap(self, n_obs: int, n_train_items: int) -> int:
         """Max metadata-only extension items that fit under the RAM budget.
 
-        Reserves the estimated interaction-fit peak, then spends the
-        remaining headroom (under 80% of physical RAM) on the extension.
-        Returns 0 when the interaction fit alone already exceeds budget —
-        the engine then runs catalog-only rather than risking an OOM.
+        Reserves the estimated interaction-fit peak plus an OS/runtime
+        floor, then spends the remaining headroom on the extension. Returns
+        0 when the interaction fit alone already exceeds budget — the engine
+        then runs catalog-only rather than risking an OOM.
         """
         if self.open_catalog_max_extension is not None:
             return max(0, int(self.open_catalog_max_extension))
+        # Physical RAM via POSIX sysconf (Linux/macOS) — no third-party dep.
+        # Conservative 8 GB fallback where sysconf is unavailable (e.g. Windows).
         try:
-            import psutil
-
-            total = psutil.virtual_memory().total
-        except Exception:
-            total = 8 * 1024**3  # conservative fallback when psutil absent
-        # Budget against 80% of PHYSICAL RAM, not currently-available:
-        # macOS swap absorbed the 17.4 GB catalog-only book fit even with
-        # ~11 GB free, so the jetsam wall sits near physical, not avail.
-        # 0.80×24 GB ≈ 20.6 GB lands between the 17.4 GB that survived and
-        # the ~23 GB (357k+200k ext) that died. The interaction fit is
-        # still ahead of this call → reserve its estimated peak first.
-        ceiling = 0.80 * total
+            total = os.sysconf("SC_PHYS_PAGES") * os.sysconf("SC_PAGE_SIZE")
+        except (ValueError, OSError, AttributeError):
+            total = 8 * 1024**3
+        # Budget against PHYSICAL RAM (macOS swap absorbs some overrun, so
+        # the wall sits near physical, not `available`), but take the more
+        # conservative of 80% and (total − OS reserve). On 24 GB the latter
+        # (~18 GB) is tighter than 0.80×24 (~19.2 GB), which is what the
+        # book OOM showed was needed.
+        ceiling = min(0.80 * total, float(total - self._OS_RESERVE_BYTES))
         interaction_peak = (
             self._PEAK_BYTES_PER_OBS * n_obs + self._PEAK_BYTES_PER_TRAIN_ITEM * n_train_items
         )

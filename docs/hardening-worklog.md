@@ -26,3 +26,39 @@ Governs: [NEXT-STEPS-HARDENING-PERF.md](NEXT-STEPS-HARDENING-PERF.md).
   `path/tail_index.py` still references `kindling_native` but has a clean
   Python fallback → A4 (delete v1 crate) is safe; the Rust tail fast-path
   becomes a P-perf follow-up.
+
+### Done & committed
+- **A4 `9bfcbd1`** — deleted v1 `kindling_native` crate; path modules use
+  their Python fallbacks (Rust tail fast-path = P-perf follow-up); cargo
+  workspace = one crate. ml1m 0.2928, 121 tests.
+- **A1 `d925ac4`** — unified maturin build: one `pip install` ships
+  `kindling` + `kindling._core`. Built + installed the wheel in a clean venv
+  → fit/recommend/activation_plan all work. Root `.cargo/config.toml` for the
+  macOS link flags; dual-import shim keeps dev venv working; CI fixed
+  (master trigger, Rust toolchain, wheels+sdist jobs); dynamic __version__.
+- **A2 `d4f4c7a`** — `bench/check_gate.py` enforces the NDCG gate; new CI
+  `gate` job on ml1m. ml1m PASSes; simulated 9% drop FAILs.
+- **C1 `795a85e`** — mypy strict clean (26→0); CI mypy now blocking. The
+  full lint gate (ruff+format+mypy) is green. ml1m 0.2928, 121 tests.
+
+### B2 (retrieval-first latency) — MEASURED → deferred (data-grounded)
+Measured recommend latency: ml1m (3.9k items) **0.8ms p50/1.9 p95**; beauty
+(124k items) **6.8ms p50/9.0 p95** — sublinear, well under 10ms. The
+full-catalog-scoring "cliff" only appears at 500k+ items (book), which OOMs
+anyway and is gated by B1. So the retrieval-first refactor (medium-risk, and
+only verifiable in the >200k regime that's memory-blocked) is **not justified
+by the data**. Deferred with this rationale; spec retained in NEXT-STEPS B2.
+
+### B1 (large-catalog memory) — root-caused; safe win shipped, real fix spec'd
+- **Root cause of the book OOM**: the cooc-build peak dominates —
+  `~39.8 KB/train-item × 357k ≈ 14 GB` (+ obs term) = ~17.4 GB interaction
+  fit, before any extension. The cap only bounds the *extension*, not this
+  floor. The real fix is a streaming/sparse cooc build (Rust) — substantial
+  and unverifiable on this 24 GB box; spec'd as the B1 follow-up.
+- **Bug found + fixed (verifiable)**: the cap detected RAM via `import
+  psutil`, but **psutil isn't installed (not even a declared dep)** → it
+  silently used an 8 GB fallback. Switched to `os.sysconf` (POSIX physical
+  RAM, no dependency) so the cap actually works; added a 6 GB OS-reserve
+  floor (`ceiling = min(0.80·total, total − 6 GB)`) so it fails safe
+  (smaller extension / catalog-only) on constrained machines instead of
+  OOMing. 8 unit tests (`test_extension_cap.py`).
