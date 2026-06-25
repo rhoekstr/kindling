@@ -91,3 +91,28 @@ Pure-Rust CLI (`kindling bench/fit/serve`) + an `axum` server mirroring
 Full-window H&M (565k users) fits and serves on this box without thrashing;
 the four reference numbers reproduce within tolerance; fit and batch-eval are
 materially faster; the Python API is unchanged.
+
+## Status (rust-engine-port branch)
+
+Parity-first (reproduce the current engine exactly; the 4 reference numbers are
+the gate), full-library + PyO3 the target. Differential harness: `bench/rust_parity.py`.
+
+| piece | state |
+|---|---|
+| cooc, directional cooc, EASE (faer), cosine, metadata-kNN | ✅ already Rust |
+| **cooc weight transform (wilson/cosine/jaccard)** | ✅ ported, **byte-exact** (this branch) |
+| ⇒ the whole **base build** (cooc/EASE + transform) | ✅ Rust-capable |
+| channel fit (trend_z, item_popularity, transitions, user-CF, last-item) | ⬜ next |
+| native `EngineState` assembly | ⬜ |
+| recommend (`_blend_channels` z-blend + retrieval + cold-slots) | ⬜ |
+| persistence (bincode/rkyv) | ⬜ |
+| ingestion (drop pandas — the memory win) | ⬜ |
+| PyO3 `Engine` + full 4-dataset parity | ⬜ |
+
+**Honest scope note:** the engine is ~1563 lines of orchestration over a large
+`EngineState`; a full exact-parity Rust library is a multi-run effort, not a
+single pass. This branch establishes the foundation — the base build is now
+fully Rust-capable and the parity harness is the gate — with the remaining
+phases above to follow, each parity-gated. The split that keeps parity cheap:
+Python retains ingest + preprocess + activation-plan (resolve config); Rust
+takes resolved arrays+config → fit (state) → recommend.
