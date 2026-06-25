@@ -1,0 +1,81 @@
+name: Release
+
+# Build the platform wheels + sdist and publish to PyPI on a version tag.
+#
+# Publishing uses PyPI Trusted Publishing (OIDC) — no API token in secrets.
+# Before the first real release, configure a trusted publisher for the
+# `kindling` project on PyPI (Owner: rhoekstr, repo: kindling, workflow:
+# release.yml, environment: pypi). Until a tag is pushed this workflow only
+# builds artifacts; `workflow_dispatch` builds without publishing for a dry run.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  wheels:
+    name: wheel-${{ matrix.platform.target }}-${{ matrix.platform.runner }}
+    runs-on: ${{ matrix.platform.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - { runner: ubuntu-latest, target: x86_64, manylinux: auto }
+          - { runner: ubuntu-latest, target: aarch64, manylinux: auto }
+          - { runner: macos-14, target: aarch64, manylinux: "" }
+          - { runner: macos-13, target: x86_64, manylinux: "" }
+          - { runner: windows-latest, target: x64, manylinux: "" }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.platform.target }}
+          args: --release --out dist
+          manylinux: ${{ matrix.platform.manylinux }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.platform.runner }}-${{ matrix.platform.target }}
+          path: dist
+
+  sdist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-sdist
+          path: dist
+
+  publish:
+    name: publish to PyPI
+    needs: [wheels, sdist]
+    runs-on: ubuntu-latest
+    # Only publish on an actual version tag; dry-run dispatches just build.
+    if: startsWith(github.ref, 'refs/tags/v')
+    environment:
+      name: pypi
+      url: https://pypi.org/p/kindling
+    permissions:
+      id-token: write   # OIDC token for Trusted Publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: dist-*
+          merge-multiple: true
+      - name: List artifacts
+        run: ls -l dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist

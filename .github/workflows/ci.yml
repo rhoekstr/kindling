@@ -19,7 +19,7 @@ jobs:
         with:
           python-version: "3.12"
       - uses: dtolnay/rust-toolchain@stable
-      - run: pip install -e ".[dev]"
+      - run: pip install -e ".[dev,serve]"   # serve: so mypy type-checks the FastAPI surface
       - run: ruff check .
       - run: ruff format --check .
       - run: mypy
@@ -37,7 +37,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - uses: dtolnay/rust-toolchain@stable
-      - run: pip install -e ".[dev,bench]"
+      - run: pip install -e ".[dev,bench,serve]"   # serve: exercises the serving tests
       - run: pytest -v --cov=kindling --cov-report=xml
       - uses: actions/upload-artifact@v4
         if: always()
@@ -91,9 +91,9 @@ jobs:
         shell: bash
         run: |
           python -m venv /tmp/wheeltest
-          /tmp/wheeltest/bin/pip install --find-links dist --no-index kindling || \
-            /tmp/wheeltest/bin/pip install dist/*.whl
-          /tmp/wheeltest/bin/python -c "import kindling, pandas as pd; from kindling._native import CORE_AVAILABLE; assert CORE_AVAILABLE; e=kindling.Engine(); print('wheel OK')"
+          /tmp/wheeltest/bin/pip install dist/*.whl
+          # Run from a temp dir so the installed wheel is imported, not ./src.
+          (cd /tmp && /tmp/wheeltest/bin/python "$GITHUB_WORKSPACE/scripts/smoke.py")
       - uses: actions/upload-artifact@v4
         with:
           name: wheels-${{ matrix.platform.runner }}-${{ matrix.platform.target }}
