@@ -67,6 +67,9 @@ strip = true
 line-length = 100
 target-version = "py311"
 src = ["src", "tests"]
+# Reproduction / investigation scripts for the smoothing work — kept for
+# provenance, not held to lint/format standards.
+extend-exclude = ["bench/experiments", "bench/run_graft_revisit.py"]
 
 [tool.ruff.lint]
 select = [
@@ -116,6 +119,7 @@ module = [
     "scipy.*",
     "kindling_core",        # PyO3 Rust extension — no py.typed stubs
     "kindling._core",
+    "sklearn.*",            # optional metadata-smoothing dose fit — no stubs
 ]
 ignore_missing_imports = true
 

@@ -1,0 +1,46 @@
+import sys; sys.path.insert(0,"bench")
+import numpy as np, pandas as pd, scipy.sparse as sp
+from run_graft_revisit import load
+from kindling._native import kindling_core
+from kindling.graph.cooc_transform import apply_cooc_transform
+from kindling.graph.metadata_smoothing import smoothing_graph
+from kindling.item_features import ItemFeatureExtractor
+from kindling.benchmarks.metrics import aggregate
+from kindling.benchmarks.parity import _build_eval_set
+train,test,items=load("h-and-m")
+rng=np.random.default_rng(0); keep=set(rng.choice(train.entity_id.unique(),50000,replace=False).tolist())
+train=train[train.entity_id.isin(keep)].copy(); test=test[test.entity_id.isin(keep)].copy()
+ii=pd.Index(train.item_id.unique()); i2i={it:i for i,it in enumerate(ii)}; n=len(ii)
+uidx=pd.factorize(train.entity_id)[0].astype(np.int64); iidx=train.item_id.map(i2i).to_numpy().astype(np.int64)
+nu=int(uidx.max())+1; w=np.ones(len(iidx),np.float32); counts=np.bincount(iidx,minlength=n).astype(np.float64)
+d,a,p=kindling_core.build_cooccurrence(uidx,iidx,w,n_users=nu,n_items=n,kernel='pure_count')
+d=apply_cooc_transform(np.asarray(d,np.float32),np.asarray(a,np.int32),np.asarray(p,np.int32),counts,nu,'wilson')
+C=sp.csr_matrix((d,np.asarray(a,np.int32),np.asarray(p,np.int32)),shape=(n,n))
+feat=ItemFeatureExtractor().fit_transform(items,i2i,n); F=sp.csr_matrix((feat.data,feat.indices,feat.indptr),shape=(n,feat.n_features))
+M,_=smoothing_graph(F,lambda ei,ej:np.asarray(C[ei,ej]).ravel(),n,topk=20,cap=0.1,base_max=float(C.data.max()))
+CM=(C+M).tocsr()
+COLD=10; hot=(counts>COLD).astype(np.float64)        # hot-item mask
+Chot=(sp.diags(hot) @ C).tocsr()                     # cooc with cold candidate-rows zeroed
+es=_build_eval_set(train,test,max_users=800,seed=0); owned={u:set(g.item_id) for u,g in train.groupby('entity_id')}
+ht=lambda x:"coldI" if (x in i2i and counts[i2i[x]]<=COLD) else "warmI"
+def evf(score,tag):
+    per={"all":[],"coldI":[],"warmI":[]}
+    for u,rel in es.items():
+        ow=np.array([i2i[i] for i in owned.get(u,()) if i in i2i])
+        if ow.size==0: continue
+        sc=score(ow).copy(); sc[ow]=-1e9
+        top=np.argpartition(-sc,12)[:12]; top=top[np.argsort(-sc[top])]; recs=[int(t) for t in top]
+        rs={i2i[x] for x in rel if x in i2i}; per["all"].append((recs,rs))
+        for x in rel:
+            if x in i2i: per[ht(x)].append((recs,{i2i[x]}))
+    o=f"{tag:<30}"
+    for b in ["all","coldI","warmI"]:
+        r=aggregate(per[b],catalog_size=n,k=12) if per[b] else None
+        o+=f" {b}:{r.ndcg_at_k:.4f}/{r.recall_at_k:.4f}" if r else ""
+    print(o,flush=True)
+print(f"H&M 50k items={n} hot_items(>{COLD})={int(hot.sum())}  [ndcg/recall@12]\n")
+evf(lambda ow: np.asarray(C[:,ow].sum(1)).ravel(), "plain cooc")
+evf(lambda ow: np.asarray(CM[:,ow].sum(1)).ravel(), "smoothed-all (base)")
+for al in [0.5,1.0,2.0]:
+    evf(lambda ow,al=al: np.asarray(CM[:,ow].sum(1)).ravel()+al*np.asarray(Chot[:,ow].sum(1)).ravel(), f"smoothed-all + hot-cooc({al})")
+print("\nDONE",flush=True)

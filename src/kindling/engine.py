@@ -232,6 +232,19 @@ class Engine:
         # catalog — the channel is inert there regardless.
         content_alpha: float = 0.0,
         content_warmth_threshold: int = 20,
+        # Metadata smoothing (default off): augment the active base item-item
+        # matrix (cooc or EASE) with a metadata-kNN graph whose edge weights are
+        # the fitted prediction of the base's own weight from metadata
+        # similarity. Self-scaling (per base) and self-gating (dead metadata ⇒
+        # no-op). 'auto' picks the link from the data (poisson for repeat/count,
+        # logistic for no-repeat binary). See graph/metadata_smoothing.py.
+        metadata_smoothing: str = "off",
+        metadata_smoothing_family: str = "auto",
+        metadata_smoothing_topk: int = 20,
+        # Dose: edge weight = sim · cap · base_max (a fixed fraction of the
+        # base's strongest edge). Empirical optimum ~0.05–0.1, dataset-
+        # dependent; the grounded prediction (cap=0) under-doses badly.
+        metadata_smoothing_cap: float = 0.1,
         # Open catalog: when item_metadata is provided, extend the
         # recommendable catalog with metadata-only items (items that
         # never appear in train). Interaction channels score them zero
@@ -348,6 +361,25 @@ class Engine:
         if content_alpha < 0.0:
             raise ValueError(f"content_alpha must be >= 0; got {content_alpha!r}")
         self.content_alpha = content_alpha
+        if metadata_smoothing not in ("off", "on", "auto", "cooc", "ease"):
+            raise ValueError(
+                f"metadata_smoothing must be off|on|auto|cooc|ease; got {metadata_smoothing!r}"
+            )
+        self.metadata_smoothing = metadata_smoothing
+        if metadata_smoothing_family not in ("auto", "ols", "poisson", "logistic"):
+            raise ValueError(
+                "metadata_smoothing_family must be auto|ols|poisson|logistic; "
+                f"got {metadata_smoothing_family!r}"
+            )
+        self.metadata_smoothing_family = metadata_smoothing_family
+        if metadata_smoothing_topk < 1:
+            raise ValueError(
+                f"metadata_smoothing_topk must be >= 1; got {metadata_smoothing_topk!r}"
+            )
+        self.metadata_smoothing_topk = metadata_smoothing_topk
+        if metadata_smoothing_cap < 0.0:
+            raise ValueError(f"metadata_smoothing_cap must be >= 0; got {metadata_smoothing_cap!r}")
+        self.metadata_smoothing_cap = metadata_smoothing_cap
         if content_warmth_threshold < 1:
             raise ValueError(
                 f"content_warmth_threshold must be >= 1; got {content_warmth_threshold!r}"
@@ -692,7 +724,10 @@ class Engine:
         # no signal and silently no-ops).
         content_features = None
         content_coldness: np.ndarray | None = None
-        if (self.content_alpha > 0.0 or self.cold_slots > 0) and item_metadata is not None:
+        _need_features = (
+            self.content_alpha > 0.0 or self.cold_slots > 0 or self.metadata_smoothing != "off"
+        )
+        if _need_features and item_metadata is not None:
             from kindling.item_features import ItemFeatureExtractor
 
             content_features = ItemFeatureExtractor().fit_transform(
@@ -710,6 +745,67 @@ class Engine:
             ]
         else:
             profile["content_channel_active"] = False
+
+        # ── Metadata smoothing of the active base (optional, default off).
+        # Augment the base item-item matrix (cooc CSR or EASE) with a
+        # metadata-kNN graph whose weights are the fitted prediction of the
+        # base's own weight from metadata similarity. Self-scaling per base,
+        # self-gating on dead metadata. Fit-time cost scales with the catalog.
+        if (
+            self.metadata_smoothing != "off"
+            and content_features is not None
+            and content_features.n_features > 0
+        ):
+            import scipy.sparse as _sp
+
+            from kindling.graph.metadata_smoothing import smoothing_graph
+
+            target_base = "ease" if base_scorer_used == "ease" else "cooc"
+            if self.metadata_smoothing in ("on", "auto") or self.metadata_smoothing == target_base:
+                feat = _sp.csr_matrix(
+                    (content_features.data, content_features.indices, content_features.indptr),
+                    shape=(n_items_ext, content_features.n_features),
+                )[:n_items]
+                is_repeat = signal_kind == "counts"
+                t_sm = time.perf_counter()
+                sm_cap = self.metadata_smoothing_cap
+                if target_base == "ease" and ease_b is not None:
+                    eb = ease_b
+                    m_sm, sm_info = smoothing_graph(
+                        feat,
+                        lambda ei, ej: eb[ei, ej],
+                        n_items,
+                        topk=self.metadata_smoothing_topk,
+                        family=self.metadata_smoothing_family,
+                        is_repeat=is_repeat,
+                        cap=sm_cap,
+                        base_max=float(eb.max()) if eb.size else 0.0,
+                    )
+                    if sm_info["applied"]:
+                        mco = m_sm.tocoo()
+                        ease_b[mco.row, mco.col] += mco.data.astype(np.float32)
+                else:
+                    cooc_csr = _sp.csr_matrix(
+                        (cooc_data, cooc_indices, cooc_indptr), shape=(n_items, n_items)
+                    )
+                    m_sm, sm_info = smoothing_graph(
+                        feat,
+                        lambda ei, ej: np.asarray(cooc_csr[ei, ej]).ravel(),
+                        n_items,
+                        topk=self.metadata_smoothing_topk,
+                        family=self.metadata_smoothing_family,
+                        is_repeat=is_repeat,
+                        cap=sm_cap,
+                        base_max=float(cooc_data.max()) if cooc_data.size else 0.0,
+                    )
+                    if sm_info["applied"]:
+                        aug = (cooc_csr + m_sm).tocsr()
+                        cooc_data = aug.data.astype(np.float32)
+                        cooc_indices = aug.indices.astype(np.int32)
+                        cooc_indptr = aug.indptr.astype(np.int32)
+                sm_info["base"] = target_base
+                sm_info["seconds"] = round(time.perf_counter() - t_sm, 2)
+                profile["metadata_smoothing"] = sm_info
 
         # ── Cold-slot release recency (schema-inferred). Find the first
         # metadata column whose values are majority-parseable datetimes;

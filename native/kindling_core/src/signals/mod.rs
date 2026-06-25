@@ -18,6 +18,7 @@ pub mod ease;
 pub mod graph_mf;
 pub mod interaction_network;
 pub mod lightgcn;
+pub mod metadata_knn;
 pub mod path_family;
 pub mod persona_cooccurrence;
 pub mod session_cooccurrence;
@@ -33,6 +34,7 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     graph_mf::register(m)?;
     interaction_network::register(m)?;
     lightgcn::register(m)?;
+    metadata_knn::register(m)?;
     path_family::register(m)?;
     persona_cooccurrence::register(m)?;
     session_cooccurrence::register(m)?;
