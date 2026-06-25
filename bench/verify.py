@@ -23,9 +23,8 @@ from kindling.benchmarks.comparison import _load_dataset
 from kindling.benchmarks.metrics import aggregate
 from kindling.benchmarks.parity import _build_eval_set
 
-# Documented per-dataset config (REFERENCE §3.3 / §5). persona_min_users is
-# pinned high to disable the (dead, to-be-deleted) persona path.
-_BASE = dict(persona_min_users=10**9, retrieval_budget=500, random_state=0)
+# Documented per-dataset config (REFERENCE §3.3 / §5).
+_BASE = dict(retrieval_budget=500, random_state=0)
 _CONFIG = {
     "movielens-1m": {},
     "amazon-beauty": {"ease_lambda": 250.0},

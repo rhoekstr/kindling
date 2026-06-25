@@ -49,7 +49,7 @@ def main() -> None:
     pop_order = train["item_id"].value_counts().index.tolist()
 
     t0 = time.perf_counter()
-    eng = Engine(persona_min_users=10**9, random_state=0, open_catalog=False)
+    eng = Engine(random_state=0, open_catalog=False)
     eng.fit(train)
     fit_s = time.perf_counter() - t0
     n_items = eng._state.n_items

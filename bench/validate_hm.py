@@ -111,7 +111,7 @@ def main() -> None:
 
     models: dict[str, object] = {}
     t = time.perf_counter()
-    eng = Engine(persona_min_users=10**9, random_state=0, open_catalog=False)
+    eng = Engine(random_state=0, open_catalog=False)
     eng.fit(train, item_metadata=articles)
     print(
         f"fit kindling {time.perf_counter() - t:.0f}s  base={eng.activation_plan.base_scorer}  "

@@ -8,7 +8,7 @@ from kindling.loaders import synthetic
 
 def _plan(**fit_kw):
     s = synthetic.make_ratings(n_entities=150, n_items=90, ratings_per_entity=25, seed=0)
-    e = Engine(persona_min_users=10**9, random_state=0, **fit_kw)
+    e = Engine(random_state=0, **fit_kw)
     e.fit(s.train)
     return e.activation_plan
 

@@ -44,7 +44,6 @@ def run(loader: str, max_eval_users: int = 500, k: int = 10, seed: int = 0) -> d
         raise RuntimeError("eval set empty")
 
     engine = Engine(
-        persona_min_users=10_000_000,  # personas off — isolate cooc base
         retrieval_budget=500,
         random_state=seed,
     )

@@ -32,7 +32,7 @@ def main() -> int:
         n_entities=N_ENTITIES, n_items=N_ITEMS, ratings_per_entity=20, seed=0
     )
     t0 = time.perf_counter()
-    engine = Engine(persona_min_users=10**9, random_state=0)
+    engine = Engine(random_state=0)
     engine.fit(split.train)
     fit_s = time.perf_counter() - t0
 

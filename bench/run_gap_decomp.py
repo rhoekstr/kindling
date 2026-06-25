@@ -81,7 +81,7 @@ def run(loader: str) -> dict:
     split = _load_dataset(loader, test_fraction=0.1)
     train, test = split.train, split.test
     eval_set = _build_eval_set(train, test, max_users=500, seed=0)
-    engine = Engine(persona_min_users=10_000_000, retrieval_budget=500, random_state=0)
+    engine = Engine(retrieval_budget=500, random_state=0)
     t0 = time.perf_counter()
     engine.fit(train)
     st = engine._state

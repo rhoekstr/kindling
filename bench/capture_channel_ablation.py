@@ -23,7 +23,7 @@ from kindling.benchmarks.metrics import aggregate
 from kindling.benchmarks.parity import _build_eval_set
 from kindling.engine import Engine
 
-_BASE = dict(persona_min_users=10**9, retrieval_budget=500, random_state=0)
+_BASE = dict(retrieval_budget=500, random_state=0)
 
 # (label, config-delta applied cumulatively over the previous arm)
 ARMS = [

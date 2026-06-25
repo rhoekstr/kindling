@@ -19,7 +19,7 @@ _PAGE = 4096
 
 
 def _engine(**kw):
-    return Engine(persona_min_users=10**9, random_state=0, **kw)
+    return Engine(random_state=0, **kw)
 
 
 def _patch_total(monkeypatch, total_bytes: int) -> None:

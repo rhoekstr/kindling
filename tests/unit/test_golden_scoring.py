@@ -23,7 +23,7 @@ GOLDEN = {
 @pytest.fixture(scope="module")
 def engine():
     s = synthetic.make_ratings(n_entities=60, n_items=40, ratings_per_entity=15, seed=7)
-    e = Engine(persona_min_users=10**9, random_state=0)
+    e = Engine(random_state=0)
     e.fit(s.train)
     return e
 

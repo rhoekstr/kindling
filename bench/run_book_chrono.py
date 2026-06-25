@@ -28,7 +28,6 @@ if has_meta:
     log(f"metadata: {len(split.items):,} items (catalog + salesRank-capped extension)")
 t0 = time.perf_counter()
 e = Engine(
-    persona_min_users=10_000_000,
     retrieval_budget=500,
     random_state=0,
     cold_slots=1 if has_meta else 0,
