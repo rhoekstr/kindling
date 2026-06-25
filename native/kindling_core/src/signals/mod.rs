@@ -11,6 +11,7 @@
 use pyo3::prelude::*;
 
 pub mod als;
+pub mod cooc_transform;
 pub mod cooccurrence;
 pub mod cosine;
 pub mod directional_cooc;
@@ -27,6 +28,7 @@ pub mod svd;
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     als::register(m)?;
+    cooc_transform::register(m)?;
     cooccurrence::register(m)?;
     cosine::register(m)?;
     directional_cooc::register(m)?;
