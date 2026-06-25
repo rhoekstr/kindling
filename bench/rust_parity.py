@@ -89,11 +89,45 @@ def check_fit_channels() -> bool:
     return ok
 
 
+def check_recommend_ml1m() -> bool:
+    """Rust recommend_ease_blend (EASE base + trend + last-item) vs Python
+    _recommend_core, on ml1m — the clean path (no boost layers / user-CF /
+    content / cold-slots, so layered-score is identity). Exact rec-list match
+    across a sample of users is the gate for the 0.2928 reference number.
+    """
+    from kindling import Engine
+    from kindling.benchmarks.comparison import _load_dataset
+
+    split = _load_dataset("movielens-1m", 0.1)
+    eng = Engine(random_state=0).fit(split.train)
+    st = eng._state
+    assert st.base_scorer_used == "ease" and not st.enabled_boost_layers
+    tz = (
+        st.trend_z[: st.n_items].astype(np.float64)
+        if st.trend_z is not None
+        else np.zeros(0, np.float64)
+    )
+    ents = [e for e, ow in st.owned_by_entity.items() if ow.size > 0][:300]
+    mism = 0
+    for ent in ents:
+        owned = st.owned_by_entity[ent].astype(np.int64)
+        py = [r.item_id for r in eng._recommend_core(owned, ent, 10)]
+        idx, _sc = kindling_core.recommend_ease_blend(
+            np.ascontiguousarray(st.ease_b, np.float32),
+            tz, owned, float(st.trend_alpha), float(st.last_item_alpha), 10,
+        )
+        rs = [st.item_ids[i] for i in idx]
+        mism += int(py != rs)
+    print(f"  recommend_ml1m users={len(ents)} mismatches={mism}")
+    return mism == 0
+
+
 if __name__ == "__main__":
     results = {
         "cooc_transform": check_cooc_transform(),
         "metadata_knn": check_metadata_knn(),
         "fit_channels": check_fit_channels(),
+        "recommend_ml1m": check_recommend_ml1m(),
     }
     print("\nPARITY:", "ALL PASS" if all(results.values()) else "FAIL", results)
     raise SystemExit(0 if all(results.values()) else 1)

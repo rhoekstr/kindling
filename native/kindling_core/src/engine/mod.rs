@@ -9,8 +9,10 @@
 use pyo3::prelude::*;
 
 pub mod channels;
+pub mod recommend;
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     channels::register(m)?;
+    recommend::register(m)?;
     Ok(())
 }
