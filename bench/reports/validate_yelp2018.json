@@ -1,0 +1,32 @@
+{
+  "dataset": "yelp2018",
+  "kindling": {
+    "recall@20": 0.0549,
+    "ndcg@20": 0.0459,
+    "fit_seconds": 55.6,
+    "base": "wilson_cooc",
+    "n_eval": 5000
+  },
+  "published": {
+    "BPR-MF": {
+      "recall@20": 0.0549,
+      "ndcg@20": 0.0445
+    },
+    "Mult-VAE": {
+      "recall@20": 0.0584,
+      "ndcg@20": 0.045
+    },
+    "NGCF": {
+      "recall@20": 0.0579,
+      "ndcg@20": 0.0477
+    },
+    "LightGCN": {
+      "recall@20": 0.0649,
+      "ndcg@20": 0.053
+    }
+  },
+  "kindling_beats_on_ndcg": [
+    "BPR-MF",
+    "Mult-VAE"
+  ]
+}
