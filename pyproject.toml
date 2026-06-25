@@ -1,6 +1,6 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["maturin>=1.7,<2.0"]
+build-backend = "maturin"
 
 [project]
 name = "kindling"
@@ -49,11 +49,18 @@ personas = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/awrylabs/kindling"
-Issues = "https://github.com/awrylabs/kindling/issues"
+Homepage = "https://github.com/rhoekstr/kindling"
+Issues = "https://github.com/rhoekstr/kindling/issues"
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/kindling"]
+[tool.maturin]
+# Mixed Python/Rust: ship the pure-Python `kindling` package (from src/)
+# AND the `kindling_core` Rust extension in a single wheel, so
+# `pip install kindling` yields a working engine (the v2 engine requires
+# the Rust core — there is no Python fallback).
+python-source = "src"
+module-name = "kindling._core"
+manifest-path = "native/kindling_core/Cargo.toml"
+strip = true
 
 
 [tool.ruff]
