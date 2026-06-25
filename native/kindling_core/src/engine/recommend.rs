@@ -99,7 +99,149 @@ fn recommend_ease_blend(
     Ok((items, scores))
 }
 
+/// Full channel blend — port of `_blend_channels` (engine.py). Base-agnostic:
+/// `base_vec` is the raw (pre-z-norm) full-catalog base (EASE sum or cooc
+/// accumulation); returns the blended full-catalog score vector. Covers the
+/// trend / user-CF / last-item / transitions channels (content is off in every
+/// reference dataset and is not ported here — guarded by alpha == 0).
+///
+/// Channel state is passed as numpy arrays; an inactive channel is signalled by
+/// alpha == 0 and/or an empty array. `user_row_items` is a CSR
+/// (`uri_data`/`uri_indptr`, indexed by user row) of each user's owned items,
+/// for neighbor voting.
+#[pyfunction]
+#[pyo3(signature = (
+    base_vec, owned, n_items,
+    trend_z, trend_alpha,
+    last_row, last_item_alpha,
+    trans_data, trans_indices, trans_indptr, transition_alpha, transition_last_k, transition_decay,
+    uu_data, uu_indptr, uu_deg, uri_data, uri_indptr, user_cf_alpha, user_cf_k, user_row, n_users,
+))]
+#[allow(clippy::too_many_arguments)]
+fn blend_channels(
+    base_vec: numpy::PyReadonlyArray1<'_, f64>,
+    owned: numpy::PyReadonlyArray1<'_, i64>,
+    n_items: usize,
+    trend_z: numpy::PyReadonlyArray1<'_, f64>,
+    trend_alpha: f64,
+    last_row: numpy::PyReadonlyArray1<'_, f64>,
+    last_item_alpha: f64,
+    trans_data: numpy::PyReadonlyArray1<'_, f64>,
+    trans_indices: numpy::PyReadonlyArray1<'_, i32>,
+    trans_indptr: numpy::PyReadonlyArray1<'_, i64>,
+    transition_alpha: f64,
+    transition_last_k: usize,
+    transition_decay: f64,
+    uu_data: numpy::PyReadonlyArray1<'_, i64>,
+    uu_indptr: numpy::PyReadonlyArray1<'_, i64>,
+    uu_deg: numpy::PyReadonlyArray1<'_, f64>,
+    uri_data: numpy::PyReadonlyArray1<'_, i64>,
+    uri_indptr: numpy::PyReadonlyArray1<'_, i64>,
+    user_cf_alpha: f64,
+    user_cf_k: usize,
+    user_row: i64,
+    n_users: usize,
+) -> PyResult<Vec<f64>> {
+    let owned = owned.as_slice()?;
+    let tz = trend_z.as_slice()?;
+    let lr = last_row.as_slice()?;
+    let mut score: Vec<f64> = base_vec.as_slice()?.to_vec();
+
+    let trend_on = trend_alpha > 0.0 && tz.len() == n_items;
+    let last_on = last_item_alpha > 0.0 && lr.len() == n_items && !owned.is_empty();
+    let uu_ip = uu_indptr.as_slice()?;
+    let uu_on = user_cf_alpha > 0.0 && !uu_ip.is_empty() && !owned.is_empty();
+    let tr_ip = trans_indptr.as_slice()?;
+    let trans_on = transition_alpha > 0.0 && !tr_ip.is_empty();
+    if !(trend_on || last_on || uu_on || trans_on) {
+        return Ok(score);
+    }
+
+    // z-normalize base (population).
+    {
+        let nn = n_items as f64;
+        let mean = score.iter().sum::<f64>() / nn;
+        let std = (score.iter().map(|x| (x - mean) * (x - mean)).sum::<f64>() / nn).sqrt();
+        if std > 0.0 {
+            for s in score.iter_mut() {
+                *s = (*s - mean) / std;
+            }
+        }
+    }
+    // trend (pre-z-normed at fit).
+    if trend_on {
+        for (s, &x) in score.iter_mut().zip(tz) {
+            *s += trend_alpha * x;
+        }
+    }
+    // user-CF: Otsuka-Ochiai k-NN over the inverted index.
+    if uu_on {
+        let uu_d = uu_data.as_slice()?;
+        let deg = uu_deg.as_slice()?;
+        let uri_d = uri_data.as_slice()?;
+        let uri_ip = uri_indptr.as_slice()?;
+        let mut counts = vec![0f64; n_users];
+        for &i in owned {
+            let i = i as usize;
+            for &u in &uu_d[uu_ip[i] as usize..uu_ip[i + 1] as usize] {
+                counts[u as usize] += 1.0;
+            }
+        }
+        if user_row >= 0 && (user_row as usize) < n_users {
+            counts[user_row as usize] = 0.0;
+        }
+        let denom = (owned.len().max(1) as f64).sqrt();
+        let nz: Vec<usize> = (0..n_users).filter(|&u| counts[u] != 0.0).collect();
+        if !nz.is_empty() {
+            let sims: Vec<f64> = nz.iter().map(|&u| counts[u] / (deg[u].sqrt() * denom)).collect();
+            // Deterministic top-k: similarity desc, ties broken by ascending
+            // position (== ascending user row, since nz is ascending). Matches
+            // the Python `argsort(-sims, kind="stable")[:k]` byte-for-byte.
+            let mut order: Vec<usize> = (0..nz.len()).collect();
+            if nz.len() > user_cf_k {
+                order.select_nth_unstable_by(user_cf_k, |&a, &b| {
+                    sims[b]
+                        .partial_cmp(&sims[a])
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                        .then(a.cmp(&b))
+                });
+                order.truncate(user_cf_k);
+            }
+            let mut uu_vec = vec![0f64; n_items];
+            for &o in &order {
+                let v = nz[o];
+                let sim = sims[o];
+                for &it in &uri_d[uri_ip[v] as usize..uri_ip[v + 1] as usize] {
+                    uu_vec[it as usize] += sim;
+                }
+            }
+            z_in_place(&mut score, user_cf_alpha, &uu_vec);
+        }
+    }
+    // last-item.
+    if last_on {
+        z_in_place(&mut score, last_item_alpha, lr);
+    }
+    // transitions: decay-weighted over the most-recent items.
+    if trans_on {
+        let td = trans_data.as_slice()?;
+        let ti = trans_indices.as_slice()?;
+        let mut trans = vec![0f64; n_items];
+        for (j, &item) in owned.iter().rev().take(transition_last_k).enumerate() {
+            let item = item as usize;
+            // float pow (not powi) to byte-match numpy's `decay ** j`.
+            let w = transition_decay.powf(j as f64);
+            for k in tr_ip[item] as usize..tr_ip[item + 1] as usize {
+                trans[ti[k] as usize] += w * td[k];
+            }
+        }
+        z_in_place(&mut score, transition_alpha, &trans);
+    }
+    Ok(score)
+}
+
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(recommend_ease_blend, m)?)?;
+    m.add_function(wrap_pyfunction!(blend_channels, m)?)?;
     Ok(())
 }

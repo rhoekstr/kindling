@@ -1341,8 +1341,14 @@ class Engine:
             nz = np.nonzero(counts)[0]
             if nz.size > 0:
                 sims = counts[nz] / (np.sqrt(st.uu_user_deg[nz]) * np.sqrt(max(owned.size, 1)))
+                # Deterministic top-k: similarity desc, ties broken by
+                # ascending user row (nz is ascending, and a stable sort
+                # preserves that order among equal sims). argpartition's tie
+                # order is unspecified and not portable, so it cannot be
+                # byte-matched by the Rust core; a stable secondary key makes
+                # the neighbor set reproducible across implementations.
                 if nz.size > st.user_cf_k:
-                    keep = np.argpartition(-sims, st.user_cf_k)[: st.user_cf_k]
+                    keep = np.argsort(-sims, kind="stable")[: st.user_cf_k]
                 else:
                     keep = np.arange(nz.size)
                 # Neighbors vote: accumulate their item sets. Inverted

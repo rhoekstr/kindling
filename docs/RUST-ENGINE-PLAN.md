@@ -105,8 +105,10 @@ the gate), full-library + PyO3 the target. Differential harness: `bench/rust_par
 | **channel fit (trend_z, popularity, user-CF CSR)** | ✅ ported, **parity** (this branch) |
 | transitions (directional cooc) | ✅ already Rust kernel |
 | last-item (recommend-time EASE row) | — (no fit-state) |
+| **recommend blend** — `_blend_channels` (base z-norm + trend + user-CF + last-item + transitions) | ✅ ported, **ranking-exact** (this branch) |
+| **ml1m recommend** (EASE base + trend + last-item, no boost/cold) | ✅ ported, **byte-exact** 300/300 (this branch) |
+| recommend remainder — cooc-base accumulation, temporal-cooc boost layer wiring, cold-slots, top-N orchestration | ⬜ |
 | native `EngineState` assembly | ⬜ |
-| recommend (`_blend_channels` z-blend + retrieval + cold-slots) | ⬜ |
 | persistence (bincode/rkyv) | ⬜ |
 | ingestion (drop pandas — the memory win) | ⬜ |
 | PyO3 `Engine` + full 4-dataset parity | ⬜ |
