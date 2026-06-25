@@ -1,0 +1,38 @@
+{
+  "dataset": "retailrocket",
+  "metric": "ndcg@20",
+  "buckets": {
+    "1-4": {
+      "n": 6888,
+      "kindling": 0.0263,
+      "popularity": 0.0039,
+      "item-kNN": 0.0139,
+      "ALS": 0.0107,
+      "BPR": 0.0049
+    },
+    "5-19": {
+      "n": 916,
+      "kindling": 0.0261,
+      "popularity": 0.0027,
+      "item-kNN": 0.0112,
+      "ALS": 0.0079,
+      "BPR": 0.0104
+    },
+    "20+": {
+      "n": 196,
+      "kindling": 0.0196,
+      "popularity": 0.0036,
+      "item-kNN": 0.0054,
+      "ALS": 0.0156,
+      "BPR": 0.0107
+    },
+    "all": {
+      "n": 8000,
+      "kindling": 0.0261,
+      "popularity": 0.0037,
+      "item-kNN": 0.0134,
+      "ALS": 0.0105,
+      "BPR": 0.0057
+    }
+  }
+}
