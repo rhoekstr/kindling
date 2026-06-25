@@ -24,7 +24,7 @@
 ## 1. What kindling is
 
 A hybrid recommender: a **Rust core** (`kindling_core`, PyO3) holding all
-numeric kernels, with a thin **Python shell** (`kindling.engine_v2`) for
+numeric kernels, with a thin **Python shell** (`kindling.engine`) for
 orchestration, profiling, and dataset plumbing. No PyTorch, no autograd,
 no BLAS/LAPACK system deps — the linear algebra that matters (the EASE
 inversion) runs on `faer`, pure Rust. This is deliberate: the v1 era was
@@ -525,8 +525,7 @@ ranking is the real unsolved problem.
 | `open_catalog` | True | metadata-only items become candidates |
 | `cold_slots` | 0 | reserve N of top-K for cold items (set 1 on churning catalogs) |
 | `cold_recency_beta` | 2.0 | release-recency prior in cold-slot ranking; 0 disables |
-| `cold_impute` / `cold_impute_min_r2` | `"content"` / 0.06 | cold-slot ranker; `"impute"`/`"auto"` is the dormant cooc-space path (§4.9 — did not transfer on the EASE path) |
-| `open_catalog_max_extension` | None (RAM-auto) | pin the metadata-only extension size; auto caps it under 80% physical RAM |
+| `open_catalog_max_extension` | None (RAM-auto) | pin the metadata-only extension size; auto caps it under (physical RAM − 6 GB reserve) |
 | `retrieval_budget` | 500 | oracle says little headroom from raising it alone |
 | `calibrate_base` | False | diagnostics only — see §4.4 |
 | `persona_*`, `use_als`, `use_graph_mf` | benched/auto | diagnostics; see §4.1–4.3 |
@@ -542,20 +541,22 @@ native/kindling_core/src/
   persona/   index.rs  fit_gate.rs  coherence.rs
   score/     layered.rs  retrieve/  repeat/
 
-src/kindling/
-  engine_v2.py        orchestrator: profile → gates → channels → blend
+src/kindling/   (post-consolidation: 40 modules — validated stack only)
+  engine.py           orchestrator: profile → gates → base + channels
                       + open-catalog extension + cold slots
-  item_features.py    schema-inferring extractor + content_scores
-  llm_enrich.py       batched/resumable LLM keyword generation (MLX)
-  dense_content.py    MiniLM embeddings, niche/user-profile prompts
-  loaders/steam.py    realistic tier: no k-core, chronological, parquet-cached
-  loaders/amazon_chrono.py   books 5-core on the chronological protocol
-  benchmarks/
-    parity.py                   canonical eval-set builder
-    gap_decomposition.py        floor / oracle / pool-recall diagnostic
-    enrichment_probe.py         stage-1 LLM-enrichment go/no-go (run FIRST)
-    clustering_coherence_sweep.py, persona_diff.py, ...   (persona-era diagnostics)
+  activation.py       ActivationPlan — the inspectable regime → layer gates
+  persist.py          Engine.save / load (versioned)
+  item_features.py    schema-inferring content extractor (cold-slot ranker)
+  graph/              cooc_transform (wilson), item_graph
+  path/               tail / basket / path-tree indices (path-family signals)
+  loaders/            movielens, amazon(+chrono), steam, retailrocket, ... synthetic
+  benchmarks/         parity (eval-set builder), metrics, gap_decomposition,
+                      comparison (dataset registry) — the CI-minimal harness
 ```
+
+*(The Rust map above predates the v1-crate deletion; some kindling_core
+signals — lightgcn / graph_mf / persona — are now unused by the Python
+side. Trimming dead Rust is a separate follow-up.)*
 
 ## 7. Open fronts
 
@@ -654,7 +655,7 @@ src/kindling/
    better *and* cheaper.) **The EASE gate stays at 20k; wilson is the
    >20k base.** CG-column / sparse-B variants face the same
    spectrum + a diag(P) obstacle and are not pursued.
-4. **Cold-user serving** — **BUILT** (`EngineV2.recommend_for_items`).
+4. **Cold-user serving** — **BUILT** (`Engine.recommend_for_items`).
    Brand-new / anonymous users (absent from training) are served from
    ad-hoc seed items: the closed-form base scores from *any* seed set
    with no per-user training, so a user who just interacted with a few

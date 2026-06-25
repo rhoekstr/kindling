@@ -18,15 +18,10 @@ import json
 import os
 import time
 
+from kindling import Engine
 from kindling.benchmarks.comparison import _load_dataset
 from kindling.benchmarks.metrics import aggregate
 from kindling.benchmarks.parity import _build_eval_set
-
-try:
-    # Pre-rename: EngineV2. Post-rename (Phase 3): Engine forwards here.
-    from kindling.engine_v2 import EngineV2 as _Engine
-except ImportError:  # pragma: no cover - after the v2→Engine promotion
-    from kindling import Engine as _Engine
 
 # Documented per-dataset config (REFERENCE §3.3 / §5). persona_min_users is
 # pinned high to disable the (dead, to-be-deleted) persona path.
@@ -66,7 +61,7 @@ def evaluate(dataset: str, *, quiet: bool = False) -> dict:
         cfg["cold_slots"] = 0
 
     t0 = time.perf_counter()
-    engine = _Engine(**cfg)
+    engine = Engine(**cfg)
     engine.fit(train, item_metadata=split.items if has_meta else None)
     fit_s = time.perf_counter() - t0
     st = engine._state

@@ -1,38 +1,30 @@
-"""v2 Engine path — base + z-gated boost layers via ``kindling_core``.
+"""The kindling engine — closed-form base + auto-gated channels via ``kindling_core``.
 
-This is the parallel-build implementation of the PRD architecture
-(``read-this-prd-ponder-fluffy-turing.md``). It runs alongside the
-v1 ``Engine`` rather than replacing it. The v1 engine forwards to
-this module when constructed with ``use_v2_core=True``.
-
-Pipeline (per PRD §"Pipeline (the contract)"):
+A fused score per (user, candidate) built from a closed-form base and a
+set of counting-statistic channels, each activated by a measurable
+property of the dataset. Numerics run in the Rust core; this module is the
+orchestration + profiling shell. See ``docs/REFERENCE.md`` for the full
+architecture and ``engine.activation_plan`` for the runtime gate decisions.
 
     fit(interactions):
         1. ingest + preprocess
-        2. profile → LayerPlan
-        3. build cooc base (Rust kernel + decay knob)
-        4. if personas enabled:
-              ALS factors → HDBSCAN → persona_index → persona_cooc
-        5. build enabled boost layers
-        6. calibrate (z, boost) via held-out NDCG sweep
+        2. profile the data → regime (catalog size, timestamps, rating
+           signal, rating-burst, history length, sessions)
+        3. build the base: rating-weighted EASE (catalog ≤ ease_max_items)
+           or wilson-normalized cooccurrence (above), auto-selected
+        4. build the active channels (trend / last-item / transitions /
+           user-CF) — each gated on the regime
+        5. (open_catalog) extend the catalog with metadata-only items;
+           reserve cold_slots for cold-item exposure
 
     recommend(entity_id, n):
-        1. retrieve candidate pool (cooc retriever)
-        2. two-gate base routing:
-              cluster == -1 → cooc base
-              cluster >= 0  → fit ≥ 70% → persona_cooc; else cooc
-        3. apply z-gated boost layers
-        4. apply repeat multiplier (still Python until Phase 1g)
-        5. return top-N
+        score = z(base) + 0.5·z(trend) + 0.25·z(last_item)
+              + 0.25·z(transitions) + 1.0·z(user_cf)   [active channels only]
+        → top-N, with reserved cold slots ranked by content similarity.
 
-Subsystems still pending Rust port (Phase 1f/g):
-- ALS / cosine / LightGCN / interaction_network as boost layers
-- repeat module
-
-Until those land, this engine has a smaller boost-layer set than the
-final v2 design (path_tail, path_basket, session_cooc, temporal_cooc)
-and uses scipy SVD as a stand-in for ALS user factors when ``implicit``
-isn't available.
+    recommend_for_items(seed_item_ids, n):
+        serve a brand-new / anonymous user from ad-hoc seeds with no
+        per-user training; empty/all-unknown seeds → popularity fallback.
 """
 
 from __future__ import annotations
@@ -63,7 +55,7 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True)
-class RecommendationV2:
+class Recommendation:
     """Single output row: item + composite score + per-layer contributions."""
 
     item_id: object
@@ -73,7 +65,7 @@ class RecommendationV2:
 
 
 @dataclass
-class V2FitState:
+class EngineState:
     """Everything the v2 recommend path reads."""
 
     # Catalog
@@ -187,8 +179,8 @@ class V2FitState:
     profile: dict[str, Any] = field(default_factory=dict)
 
 
-class EngineV2:
-    """v2 Engine. ``Engine(use_v2_core=True)`` constructs and forwards to this."""
+class Engine:
+    """The recommender engine. Fit on an interaction frame, then ``recommend``."""
 
     def __init__(
         self,
@@ -656,7 +648,7 @@ class EngineV2:
         self.graph_mf_alpha_hierarchy = graph_mf_alpha_hierarchy
         self.graph_mf_n_iters = graph_mf_n_iters
         self.graph_mf_dim = graph_mf_dim
-        self._state: V2FitState | None = None
+        self._state: EngineState | None = None
 
     # ------------------------------------------------------------------
     # fit
@@ -912,7 +904,7 @@ class EngineV2:
         self,
         interactions: pd.DataFrame,
         item_metadata: pd.DataFrame | None = None,
-    ) -> EngineV2:
+    ) -> Engine:
         t0 = time.perf_counter()
         # Same contract as v1: validate → canonicalize → preprocess.
         schema = validate_interactions(interactions)
@@ -1674,7 +1666,7 @@ class EngineV2:
                 stacklevel=2,
             )
 
-        self._state = V2FitState(
+        self._state = EngineState(
             item_ids=np.asarray(item_ids, dtype=object),
             item_to_idx=item_to_idx,
             n_items=n_items_ext,
@@ -1748,7 +1740,7 @@ class EngineV2:
         ``print(engine.activation_plan.summary())``.
         """
         if self._state is None:
-            raise RuntimeError("EngineV2 not fitted. Call .fit(interactions) first.")
+            raise RuntimeError("Engine not fitted. Call .fit(interactions) first.")
         from kindling.activation import build_activation_plan
 
         return build_activation_plan(self, self._state.profile)
@@ -1764,7 +1756,7 @@ class EngineV2:
         save_engine(self, path)
 
     @classmethod
-    def load(cls, path: str | Path) -> EngineV2:
+    def load(cls, path: str | Path) -> Engine:
         """Load an engine previously written by :meth:`save`."""
         from kindling.persist import load_engine
 
@@ -1774,9 +1766,9 @@ class EngineV2:
     # recommend
     # ------------------------------------------------------------------
 
-    def recommend(self, entity_id: object, n: int = 10) -> list[RecommendationV2]:
+    def recommend(self, entity_id: object, n: int = 10) -> list[Recommendation]:
         if self._state is None:
-            raise RuntimeError("EngineV2 not fitted. Call .fit(interactions) first.")
+            raise RuntimeError("Engine not fitted. Call .fit(interactions) first.")
         owned = self._state.owned_by_entity.get(entity_id)
         if owned is None or owned.size == 0:
             return []
@@ -1784,7 +1776,7 @@ class EngineV2:
 
     def recommend_for_items(
         self, seed_item_ids: Iterable[object], n: int = 10
-    ) -> list[RecommendationV2]:
+    ) -> list[Recommendation]:
         """Serve a NEW / anonymous user from ad-hoc seed items — no per-user
         training, no stored history required. The closed-form base (EASE/cooc)
         scores from *any* seed set, so a brand-new user who just interacted
@@ -1795,7 +1787,7 @@ class EngineV2:
         entities.
         """
         if self._state is None:
-            raise RuntimeError("EngineV2 not fitted. Call .fit(interactions) first.")
+            raise RuntimeError("Engine not fitted. Call .fit(interactions) first.")
         st = self._state
         seen: set[int] = set()
         owned_list: list[int] = []
@@ -1813,7 +1805,7 @@ class EngineV2:
             np.asarray(owned_list, dtype=np.int64), None, n, pop_prior=pop_prior
         )
 
-    def _cold_recommend(self, n: int) -> list[RecommendationV2]:
+    def _cold_recommend(self, n: int) -> list[Recommendation]:
         """Zero-history fallback for brand-new users with no seeds: top-n by
         all-time item popularity (the warming benchmark's cold-data champion —
         it beats recent-trend for a zero-info user), falling back to the trend
@@ -1828,7 +1820,7 @@ class EngineV2:
         top = np.argpartition(-scores, n_eff - 1)[:n_eff]
         top = top[np.argsort(-scores[top], kind="stable")]
         return [
-            RecommendationV2(
+            Recommendation(
                 item_id=st.item_ids[int(c)],
                 score=float(scores[c]),
                 base_kind="cold_popularity",
@@ -1838,7 +1830,7 @@ class EngineV2:
 
     def _recommend_core(
         self, owned: np.ndarray, entity_id: object, n: int, pop_prior: float = 0.0
-    ) -> list[RecommendationV2]:
+    ) -> list[Recommendation]:
         st = self._state
         assert st is not None
 
@@ -1941,13 +1933,13 @@ class EngineV2:
         # co-occurrence evidence). EASE weights are signed, so a small
         # negative composite can still be the best available candidate.
         order = np.argsort(-composite)[:n]
-        out: list[RecommendationV2] = []
+        out: list[Recommendation] = []
         for rank, idx in enumerate(order):
             if composite[idx] <= 0.0 and base_kind not in ("ease", "cooc_fused"):
                 continue
             cid = cand_ids[idx]
             out.append(
-                RecommendationV2(
+                Recommendation(
                     item_id=st.item_ids[cid],
                     score=float(composite[idx]),
                     base_kind=base_kind,
@@ -1993,7 +1985,7 @@ class EngineV2:
                 out = out[: max(n - len(cold_picks), 0)]
                 for i in cold_picks:
                     out.append(
-                        RecommendationV2(
+                        Recommendation(
                             item_id=st.item_ids[i],
                             score=float(cs[i]),
                             base_kind="cold_content",
@@ -2007,7 +1999,7 @@ class EngineV2:
 
     def _blend_channels(
         self,
-        st: V2FitState,
+        st: EngineState,
         owned: np.ndarray,
         scores_full: np.ndarray,
         user_row: int = -1,

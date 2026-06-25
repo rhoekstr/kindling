@@ -62,7 +62,7 @@ local (documented in gates.toml).
 ### A3. v2 persistence (save / load a fitted engine)  · M
 **Why.** `persist/` was v1-only and was deleted; **v2 cannot serialize a
 fitted model.** That blocks any real deployment (fit once, serve many).
-**Do.** Serialize `V2FitState` — the cooc/EASE CSRs + dense B, channel
+**Do.** Serialize `EngineState` — the cooc/EASE CSRs + dense B, channel
 state (trend_z, transitions, content), item index, profile — to a
 versioned on-disk format (npz/Arrow + a JSON manifest with a schema
 version). `Engine.save(path)` / `Engine.load(path)`.
@@ -134,7 +134,7 @@ be Python/numpy; profiling A1/B2 will show which dominate serve/fit.
 ## Phase C — Robustness depth
 
 ### C1. mypy strict clean  · M
-**Why.** 18 pre-existing strict errors in `engine_v2` (indexing `ndarray |
+**Why.** 18 pre-existing strict errors in `engine` (indexing `ndarray |
 None`, a redef) — master wasn't mypy-clean either; the CI mypy job is
 effectively red.
 **Do.** Fix the Optional-narrowing + redefs; then make `mypy` a real CI gate.

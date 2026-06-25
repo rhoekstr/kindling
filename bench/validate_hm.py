@@ -34,7 +34,10 @@ from kindling import Engine
 from kindling.benchmarks.metrics import aggregate
 
 HM = Path(
-    "/Users/rhoekstr/.cache/kagglehub/competitions/h-and-m-personalized-fashion-recommendations"
+    os.environ.get(
+        "HM_DIR",
+        Path.home() / ".cache/kagglehub/competitions/h-and-m-personalized-fashion-recommendations",
+    )
 )
 K = 12
 N_EVAL = 8000

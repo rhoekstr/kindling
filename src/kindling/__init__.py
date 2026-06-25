@@ -8,8 +8,7 @@ the architecture and ``docs/EXPERIMENTS.md`` for the experiment record.
 from importlib.metadata import PackageNotFoundError, version
 
 from kindling.activation import ActivationPlan, LayerActivation
-from kindling.engine_v2 import EngineV2 as Engine
-from kindling.engine_v2 import RecommendationV2 as Recommendation
+from kindling.engine import Engine, Recommendation
 from kindling.explain import Explanation
 
 try:

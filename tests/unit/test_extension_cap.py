@@ -3,7 +3,7 @@
 The cap bounds the metadata-only extension so the fit stays under a RAM
 budget. It reserves the estimated interaction-fit peak plus an OS/runtime
 floor; on a borderline machine it must shrink the extension (or drop to
-catalog-only) rather than risk an OOM. See engine_v2._open_catalog_extension_cap.
+catalog-only) rather than risk an OOM. See engine._open_catalog_extension_cap.
 """
 
 from __future__ import annotations

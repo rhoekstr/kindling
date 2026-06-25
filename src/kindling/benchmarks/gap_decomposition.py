@@ -31,7 +31,7 @@ import numpy as np
 
 from kindling.benchmarks.metrics import aggregate
 from kindling.benchmarks.parity import _build_eval_set
-from kindling.engine_v2 import EngineV2
+from kindling.engine import Engine
 
 
 def run(loader: str, max_eval_users: int = 500, k: int = 10, seed: int = 0) -> dict[str, object]:
@@ -43,7 +43,7 @@ def run(loader: str, max_eval_users: int = 500, k: int = 10, seed: int = 0) -> d
     if not eval_set:
         raise RuntimeError("eval set empty")
 
-    engine = EngineV2(
+    engine = Engine(
         persona_min_users=10_000_000,  # personas off — isolate cooc base
         retrieval_budget=500,
         random_state=seed,
