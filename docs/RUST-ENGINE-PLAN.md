@@ -112,8 +112,19 @@ the gate), full-library + PyO3 the target. Differential harness: `bench/rust_par
 | **wired into the engine** — `Engine.recommend_batch` + single `recommend` / `recommend_for_items` (native fast path, Python fallback via `_use_native`; lazy-built per fit) | ✅ reproduces baselines via the public API; 143 tests pass |
 | **cooc-fused base** (the book path) | ✅ native serves the cooc base too; forced-cooc parity ml1m 500/500, beauty 496/500 (NDCG-exact); real book validating |
 | **persistence** — `EngineState.save`/`load` + `to_bytes`/`from_bytes` (bincode) | ✅ self-contained serving artifact; round-trip recommend-exact |
+| **content channel + plain-cooc** ported to native | ✅ content_alpha>0 299/300, plain cooc 150/150 (vs Python, before deletion) |
+| **native-only** — deleted `_recommend_core` + the Python fallback + path_basket; recommend is Rust-only | ✅ −1948 LOC net; ml1m gate 0.2928; 121 tests pass |
+| **hardened** — OOB/empty owned, n=0, bad shapes → no panic / clean errors | ✅ fuzz tests |
+| **serving** — `KindlingServer` + FastAPI example | ✅ artifact load → recommend, no re-fit |
 | ingestion (drop pandas — the memory win) | ⬜ |
-| native catalog mappings (item_ids / owned) for a pure-Rust serve | ⬜ |
+| native catalog mappings inside the artifact for a pure-Rust serve | ⬜ |
+
+**Native-only milestone (reached).** Recommend no longer has a Python path —
+`_recommend_core` / `_blend_channels` / `_compute_base` / `_build_layer_specs`
+and the path-family feature were deleted; `Engine.recommend{,_batch,_for_items}`
+go straight to the Rust `EngineState`. Fit is still Python (ingest / preprocess
+/ activation-plan → resolved arrays → native build). Final-state perf:
+sub-millisecond single recommend, ~15k recs/s batch on ml1m (`bench/final_state_perf.py`).
 
 **Honest scope note:** the engine is ~1563 lines of orchestration over a large
 `EngineState`; a full exact-parity Rust library is a multi-run effort, not a

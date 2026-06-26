@@ -33,8 +33,15 @@ engine = Engine()
 engine.fit(interactions)
 
 for rec in engine.recommend(entity_id=42, n=10):
-    print(rec.item_id, rec.score, rec.explanation)
+    print(rec.item_id, rec.score, rec.base_kind)
+
+# Many users at once — runs in parallel in the Rust core (GIL released).
+batches = engine.recommend_batch([42, 99, 7], n=10)
 ```
+
+Recommendation is served end-to-end by the Rust core (`kindling_core`): the
+EASE/cooc base, the channel blend, the boost layer, and cold-slots all run
+natively. Single recommend is sub-millisecond; batch is the parallel path.
 
 **New / anonymous users** (absent from training) are served from ad-hoc
 seed items with no per-user training — and a zero/all-unknown seed set
@@ -69,13 +76,48 @@ wins cold-*user* buckets on cold-heavy catalogs. The full benchmark
 record — including the negative results, which are half the value — is in
 [`docs/EXPERIMENTS.md`](docs/EXPERIMENTS.md).
 
+### Growth curves
+
+How accuracy grows from cold to hot, against the standard baselines
+(`bench/plot_growth_curves.py`):
+
+![growth curves](bench/reports/growth_curves_grid.png)
+
+### Serving performance (native engine, `bench/final_state_perf.py`)
+
+| dataset | fit | single recommend p50 | batch throughput | NDCG@10 |
+|---|---:|---:|---:|---:|
+| movielens-1m | 4.2 s | 0.17 ms | 15.4k recs/s | 0.2928 |
+| amazon-beauty | 13.1 s | 1.21 ms | 3.0k recs/s | 0.0328 |
+| steam | 110 s | 5.81 ms | 0.8k recs/s | 0.0659 |
+
+The recommend path is pure Rust with the GIL released for the batch path —
+single recommend dropped from ~200 ms (the earlier Python path) to
+sub-millisecond, with byte-identical rankings.
+
+### Serving
+
+Persist a fit as a self-contained artifact and serve it with no re-fit:
+
+```python
+from kindling.serving import KindlingServer
+KindlingServer.from_engine(engine).save("artifact/")
+# ── in the serving process ──
+server = KindlingServer.load("artifact/")
+server.recommend("user-42", n=10)
+```
+
+A FastAPI example (`kindling.serving_app`) ships behind the optional
+`serve` extra: `pip install 'kindling[serve]'`.
+
 ## Project layout
 
 ```
-src/kindling/      library source (engine, channels, Rust bindings, loaders)
-native/kindling_core/  Rust numeric core (EASE, cooccurrence, layered scoring)
-bench/             regression gate (bench/verify.py) + frozen reports
-docs/              REFERENCE.md (architecture) · EXPERIMENTS.md (record)
+src/kindling/      library source (engine, serving, Rust bindings, loaders)
+native/kindling_core/  Rust core (EASE, cooccurrence, channel blend, recommend)
+bench/             regression gate (bench/verify.py) + frozen reports + plots
+docs/              REFERENCE.md (architecture) · EXPERIMENTS.md (record) ·
+                   LESSONS.md (what the build taught) · RUST-ENGINE-PLAN.md
 tests/             unit, property, integration
 ```
 
