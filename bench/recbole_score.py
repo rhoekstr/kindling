@@ -30,15 +30,15 @@ K = 10
 
 def score(preds: dict[str, list[str]], truth: dict[str, set[str]]) -> tuple[float, float, float]:
     ndcgs, recalls, mrrs = [], [], []
-    for u, T in truth.items():
-        if not T:
+    for u, gt in truth.items():
+        if not gt:
             continue
-        P = preds.get(u, [])[:K]
-        dcg = sum(1.0 / log2(i + 2) for i, p in enumerate(P) if p in T)
-        idcg = sum(1.0 / log2(i + 2) for i in range(min(len(T), K)))
+        pred = preds.get(u, [])[:K]
+        dcg = sum(1.0 / log2(i + 2) for i, p in enumerate(pred) if p in gt)
+        idcg = sum(1.0 / log2(i + 2) for i in range(min(len(gt), K)))
         ndcgs.append(dcg / idcg if idcg > 0 else 0.0)
-        recalls.append(len(set(P) & T) / len(T))
-        rr = next((1.0 / (i + 1) for i, p in enumerate(P) if p in T), 0.0)
+        recalls.append(len(set(pred) & gt) / len(gt))
+        rr = next((1.0 / (i + 1) for i, p in enumerate(pred) if p in gt), 0.0)
         mrrs.append(rr)
     return float(np.mean(ndcgs)), float(np.mean(recalls)), float(np.mean(mrrs))
 

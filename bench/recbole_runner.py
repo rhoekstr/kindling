@@ -108,9 +108,9 @@ def run(model_name: str) -> None:
     test_uids = np.unique(test_data._dataset.inter_feat[uid_field].numpy())
     topk: dict[str, list[str]] = {}
     t0 = time.perf_counter()
-    BATCH = 2048
-    for s in range(0, len(test_uids), BATCH):
-        chunk = test_uids[s : s + BATCH]
+    batch_size = 2048
+    for s in range(0, len(test_uids), batch_size):
+        chunk = test_uids[s : s + batch_size]
         _, topk_iid = full_sort_topk(chunk, model, test_data, k=K, device=config["device"])
         for u_int, items_int in zip(chunk, topk_iid.cpu().numpy()):
             u_ext = str(dataset.id2token(uid_field, u_int))
@@ -123,7 +123,7 @@ def run(model_name: str) -> None:
         "fit_seconds": round(fit_s, 3),
         "eval_seconds": round(eval_s, 3),
         "predict_seconds": round(predict_s, 3),
-        "n_test_users": int(len(test_uids)),
+        "n_test_users": len(test_uids),
         "topk": topk,
     }
     (OUT / f"recbole_{model_name}.json").write_text(json.dumps(out))
