@@ -38,6 +38,7 @@ DATASETS = [
     ("retailrocket", "RetailRocket"),
     ("tafeng", "Ta-Feng (grocery)"),
     ("dunnhumby", "Dunnhumby (grocery)"),
+    ("instacart", "Instacart (grocery)"),
     ("yelp2018", "Yelp 2018"),
     ("gowalla", "Gowalla"),
 ]
