@@ -32,9 +32,15 @@ _CONFIG = {
 }
 
 
-def check(dataset: str) -> tuple[int, int, float, float, bool]:
-    """Returns (identical, n_users, ndcg_python, ndcg_native, native_used)."""
-    cfg = _CONFIG.get(dataset, {})
+def check(dataset: str, force_cooc: bool = False) -> tuple[int, int, float, float, bool]:
+    """Returns (identical, n_users, ndcg_python, ndcg_native, native_used).
+
+    `force_cooc=True` pins the cooc base on small datasets, exercising the
+    native cooc-fused path (the book base) without the heavy book fit.
+    """
+    cfg = dict(_CONFIG.get(dataset, {}))
+    if force_cooc:
+        cfg["base_scorer"] = "cooc"
     split = _load_dataset(dataset, 0.1)
     has_meta = getattr(split, "items", None) is not None
     eng = Engine(retrieval_budget=500, random_state=0, **cfg).fit(
@@ -58,14 +64,17 @@ def check(dataset: str) -> tuple[int, int, float, float, bool]:
 
 
 if __name__ == "__main__":
-    datasets = sys.argv[1:] or ["movielens-1m"]
+    argv = sys.argv[1:]
+    force_cooc = "--cooc" in argv
+    datasets = [a for a in argv if not a.startswith("--")] or ["movielens-1m"]
     ok = True
     for ds in datasets:
-        ident, nuser, nd_py, nd_rs, used = check(ds)
+        ident, nuser, nd_py, nd_rs, used = check(ds, force_cooc=force_cooc)
         match = abs(nd_py - nd_rs) < 5e-4
         ok = ok and match
+        tag = f"{ds}{' [cooc]' if force_cooc else ''}"
         print(
-            f"[{'PASS' if match else 'FAIL'}] {ds:18s} native={used!s:5s} "
+            f"[{'PASS' if match else 'FAIL'}] {tag:20s} native={used!s:5s} "
             f"reclist {ident}/{nuser}  NDCG@10 python={nd_py:.4f} batch={nd_rs:.4f}"
         )
     raise SystemExit(0 if ok else 1)

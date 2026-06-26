@@ -24,8 +24,13 @@ type Csr32 = (Vec<f32>, Vec<i32>, Vec<i32>);
 #[pyclass]
 pub struct EngineState {
     n_items: usize,
+    // base: EASE (dense ease_n×ease_n) or cooc-fused (symmetric cooc CSR).
+    base_is_ease: bool,
     ease_n: usize,
     ease_b: Vec<f32>, // ease_n × ease_n, row-major
+    cooc_data: Vec<f32>,
+    cooc_indices: Vec<i32>,
+    cooc_indptr: Vec<i32>,
 
     // channels
     trend_z: Vec<f64>,
@@ -102,6 +107,12 @@ fn cfg_usize(d: &Bound<'_, PyDict>, k: &str, default: usize) -> PyResult<usize> 
         _ => Ok(default),
     }
 }
+fn cfg_bool(d: &Bound<'_, PyDict>, k: &str, default: bool) -> PyResult<bool> {
+    match d.get_item(k)? {
+        Some(o) if !o.is_none() => o.extract::<bool>(),
+        _ => Ok(default),
+    }
+}
 
 /// Build a native [`EngineState`] from the Python `EngineState` arrays
 /// (`arrays`) and scalar config (`config`). Arrays absent / None become empty
@@ -131,8 +142,12 @@ fn build_engine(arrays: &Bound<'_, PyDict>, config: &Bound<'_, PyDict>) -> PyRes
     }
     Ok(EngineState {
         n_items: cfg_usize(config, "n_items", 0)?,
+        base_is_ease: cfg_bool(config, "base_is_ease", true)?,
         ease_n,
         ease_b,
+        cooc_data: f32v(arrays, "cooc_data")?,
+        cooc_indices: i32v(arrays, "cooc_indices")?,
+        cooc_indptr: i32v(arrays, "cooc_indptr")?,
         trend_z: f64v(arrays, "trend_z")?,
         trend_alpha: cfg_f64(config, "trend_alpha", 0.0)?,
         last_item_alpha: cfg_f64(config, "last_item_alpha", 0.0)?,
@@ -236,20 +251,32 @@ impl EngineState {
         pop_prior: f64,
     ) -> (Vec<i64>, Vec<f64>, Vec<String>) {
         let n_items = self.n_items;
-        // base_vec = Σ ease_b[owned] (padded to n_items; extension items = 0).
+        let base_kind = if self.base_is_ease { "ease" } else { "cooc_fused" };
+        // base_vec: EASE row-sum (padded to n_items) or cooc-fused row-sum.
         let mut base = vec![0f64; n_items];
-        for &o in owned {
-            let o = o as usize;
-            if o < self.ease_n {
-                let row = &self.ease_b[o * self.ease_n..(o + 1) * self.ease_n];
-                for (b, &x) in base.iter_mut().zip(row) {
-                    *b += x as f64;
+        if self.base_is_ease {
+            for &o in owned {
+                let o = o as usize;
+                if o < self.ease_n {
+                    let row = &self.ease_b[o * self.ease_n..(o + 1) * self.ease_n];
+                    for (b, &x) in base.iter_mut().zip(row) {
+                        *b += x as f64;
+                    }
+                }
+            }
+        } else {
+            for &o in owned {
+                let o = o as usize;
+                if o + 1 < self.cooc_indptr.len() {
+                    for k in self.cooc_indptr[o] as usize..self.cooc_indptr[o + 1] as usize {
+                        base[self.cooc_indices[k] as usize] += self.cooc_data[k] as f64;
+                    }
                 }
             }
         }
-        // last-item row (padded).
+        // last-item row (padded) — EASE base only (no EASE row for cooc base).
         let mut last_row: Vec<f64> = Vec::new();
-        if self.last_item_alpha > 0.0 && !owned.is_empty() {
+        if self.base_is_ease && self.last_item_alpha > 0.0 && !owned.is_empty() {
             let last = *owned.last().unwrap() as usize;
             last_row = vec![0f64; n_items];
             if last < self.ease_n {
@@ -347,7 +374,7 @@ impl EngineState {
         order.sort_by(cmp);
         let mut items: Vec<i64> = order.iter().map(|&i| cand[i] as i64).collect();
         let mut out_scores: Vec<f64> = order.iter().map(|&i| composite[i]).collect();
-        let mut kinds: Vec<String> = vec!["ease".into(); items.len()];
+        let mut kinds: Vec<String> = vec![base_kind.to_string(); items.len()];
 
         // Reserved cold slots ("new releases shelf"): content-space ranker over
         // the cold tail, replacing the final `cold_slots` warm picks.

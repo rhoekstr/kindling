@@ -31,13 +31,19 @@ def native_supported(engine: Engine) -> bool:
     if not CORE_AVAILABLE or not hasattr(kindling_core, "build_engine"):
         return False
     st = engine._state
-    if st is None or st.ease_b is None:
+    if st is None:
         return False
     cf = st.content_features
     if st.content_alpha > 0.0 and cf is not None and cf.n_features > 0:
         return False
     basket = st.basket_index
-    return not (basket is not None and getattr(basket, "observations", None))
+    if basket is not None and getattr(basket, "observations", None):
+        return False
+    if st.ease_b is not None:
+        return True
+    # cooc-fused: cooc base driven by at least one retrieval channel (the book
+    # path). Plain cooc (no channels) keeps the Python retriever.
+    return st.cooc_data is not None and (st.trend_alpha > 0.0 or st.transition_alpha > 0.0)
 
 
 def _uri_csr(st: Any, n_users: int) -> tuple[np.ndarray, np.ndarray]:
@@ -63,7 +69,15 @@ def build_native_engine(engine: Engine) -> Any | None:
     st = engine._state
     assert st is not None
     n_users = st.uu_user_deg.shape[0] if st.uu_user_deg is not None else 0
-    arrays: dict[str, Any] = {"ease_b": np.ascontiguousarray(st.ease_b, np.float32)}
+    base_is_ease = st.ease_b is not None
+    arrays: dict[str, Any] = {}
+    if base_is_ease:
+        arrays["ease_b"] = np.ascontiguousarray(st.ease_b, np.float32)
+    elif st.cooc_data is not None:
+        # cooc-fused base: the symmetric cooc CSR drives the base row-sum.
+        arrays["cooc_data"] = np.ascontiguousarray(st.cooc_data, np.float32)
+        arrays["cooc_indices"] = np.ascontiguousarray(st.cooc_indices, np.int32)
+        arrays["cooc_indptr"] = np.ascontiguousarray(st.cooc_indptr, np.int32)
     if st.trend_z is not None:
         arrays["trend_z"] = st.trend_z.astype(np.float64)
     if st.trans_data is not None:
@@ -106,6 +120,7 @@ def build_native_engine(engine: Engine) -> Any | None:
             arrays["cold_recency"] = st.cold_recency.astype(np.float64)
     config = dict(
         n_items=int(st.n_items),
+        base_is_ease=bool(base_is_ease),
         trend_alpha=float(st.trend_alpha),
         last_item_alpha=float(st.last_item_alpha),
         transition_alpha=float(st.transition_alpha),
