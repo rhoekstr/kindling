@@ -50,6 +50,24 @@ def test_small_catalog_selects_ease_base(ratings):
     assert eng._state.profile.get("base_scorer_used") == "ease"
 
 
+def test_recommend_batch_matches_per_user_recommend(ratings):
+    # recommend_batch (native Rust fast path when the extension is built; a
+    # per-user Python loop otherwise) must produce the same lists as recommend.
+    eng = _fit(ratings)
+    ents = list(pd.Index(ratings.train["entity_id"].unique()))[:20]
+    batch = eng.recommend_batch(ents, n=10)
+    assert len(batch) == len(ents)
+    for ent, recs in zip(ents, batch):
+        ref = eng.recommend(entity_id=ent, n=10)
+        assert [r.item_id for r in recs] == [r.item_id for r in ref]
+        assert all(isinstance(r, Recommendation) for r in recs)
+
+
+def test_recommend_batch_unknown_entity_returns_empty(ratings):
+    eng = _fit(ratings)
+    assert eng.recommend_batch(["__not_a_real_entity__"], n=10) == [[]]
+
+
 def test_recommend_for_items_warm_seeds_personalize(ratings):
     eng = _fit(ratings)
     seeds = ratings.train["item_id"].value_counts().index[:3].tolist()
