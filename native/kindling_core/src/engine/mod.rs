@@ -9,10 +9,12 @@
 use pyo3::prelude::*;
 
 pub mod channels;
+pub mod native_state;
 pub mod recommend;
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     channels::register(m)?;
     recommend::register(m)?;
+    native_state::register(m)?;
     Ok(())
 }

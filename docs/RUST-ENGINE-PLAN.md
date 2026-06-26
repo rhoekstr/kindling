@@ -106,9 +106,10 @@ the gate), full-library + PyO3 the target. Differential harness: `bench/rust_par
 | transitions (directional cooc) | ✅ already Rust kernel |
 | last-item (recommend-time EASE row) | — (no fit-state) |
 | **recommend blend** — `_blend_channels` (base z-norm + trend + user-CF + last-item + transitions) | ✅ ported, **ranking-exact** (this branch) |
-| **ml1m recommend** (EASE base + trend + last-item, no boost/cold) | ✅ ported, **byte-exact** 300/300 (this branch) |
-| recommend remainder — cooc-base accumulation, temporal-cooc boost layer wiring, cold-slots, top-N orchestration | ⬜ |
-| native `EngineState` assembly | ⬜ |
+| **native `EngineState` + recommend** — EASE base + blend + temporal-cooc boost layer + cold-slots | ✅ ported (this branch) |
+| ⇒ **native recommend end-to-end** (built from Python state) | ✅ reproduces ml1m 0.2928 (500/500 byte-exact), beauty 0.0328, steam 0.0659 (499/500, NDCG-exact) |
+| recommend remainder — cooc-base path (book), new-user / `recommend_for_items` | ⬜ |
+| wire native recommend as the default `Engine.recommend` path | ⬜ |
 | persistence (bincode/rkyv) | ⬜ |
 | ingestion (drop pandas — the memory win) | ⬜ |
 | PyO3 `Engine` + full 4-dataset parity | ⬜ |
