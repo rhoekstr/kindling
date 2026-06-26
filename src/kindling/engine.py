@@ -93,7 +93,6 @@ class EngineState:
     boost_layer_adjacencies: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]] = field(
         default_factory=dict
     )
-    history_by_entity: dict[object, tuple[object, ...]] = field(default_factory=dict)
     # EASE base scorer: dense item-item weight matrix B (n_items × n_items,
     # f32, zero diagonal). None when the cooc base is active.
     ease_b: np.ndarray | None = None
@@ -576,21 +575,17 @@ class Engine:
         # entity_ids is first-appearance ordered, so ascending user_idx
         # preserves the original dict insertion order.
         owned_by_entity: dict[object, np.ndarray] = {}
-        history_by_entity: dict[object, tuple[object, ...]] = {}
         if timestamps_col is not None:
             order = np.lexsort((timestamps_col, user_idx))
         else:
             order = np.lexsort((np.arange(len(user_idx)), user_idx))
         su = user_idx[order]
         si = item_idx[order]
-        item_ids_arr = np.asarray(item_ids, dtype=object)
         if len(su):
             boundaries = np.flatnonzero(np.diff(su)) + 1
             starts = np.concatenate(([0], boundaries))
             for start, items_arr in zip(starts, np.split(si, boundaries)):
-                ent = entity_ids[int(su[start])]
-                owned_by_entity[ent] = items_arr
-                history_by_entity[ent] = tuple(item_ids_arr[items_arr])
+                owned_by_entity[entity_ids[int(su[start])]] = items_arr
 
         # ── Profile + Plan decisions.
         profile = self._profile(interactions, weights, n_users, n_items)
@@ -967,7 +962,6 @@ class Engine:
             owned_by_entity=owned_by_entity,
             entity_to_user_idx=entity_to_user_idx,
             n_users=n_users,
-            history_by_entity=history_by_entity,
             kernel=plan["kernel"],
             half_life_days=plan["half_life_days"],
             enabled_boost_layers=list(boost_adj.keys()),
