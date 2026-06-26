@@ -173,6 +173,17 @@ class Engine:
         # (sparse; wanted ~250) — λ must grow with item-count density or
         # the inverse under-regularizes the popular-item rows.
         ease_lambda: float | None = None,
+        # Opt-in held-out λ search (leave-last-out, recall@10) over a grid around
+        # the heuristic. Default OFF: investigation (docs/EASE-LAMBDA.md) found
+        # the heuristic is already EASE-optimal — a held-out search independently
+        # lands on ~1× across last-1/3/10% held-outs and recall/NDCG — so the
+        # search *confirms* rather than improves it, and defaulting it on would
+        # triple fit time for no gain. The earlier "4× too high" was a
+        # random-split-protocol artifact (that regime wants ~0.2× the heuristic).
+        # Useful as opt-in for off-distribution data where the heuristic may be
+        # off; needs timestamps, gated by catalog size for cost. "auto" =
+        # search when affordable (≤8k items); True/False force it.
+        ease_lambda_search: bool | str = False,
         ease_max_items: int = 20_000,
         # Weight transform for the cooc base scorer — applies ONLY on the
         # cooc path (n_items > ease_max_items; <=20k uses EASE and is left
@@ -328,6 +339,11 @@ class Engine:
         if ease_lambda is not None and ease_lambda <= 0.0:
             raise ValueError(f"ease_lambda must be > 0 or None (auto); got {ease_lambda!r}")
         self.ease_lambda = ease_lambda
+        if ease_lambda_search not in (True, False, "auto"):
+            raise ValueError(
+                f"ease_lambda_search must be True | False | 'auto'; got {ease_lambda_search!r}"
+            )
+        self.ease_lambda_search = ease_lambda_search
         if ease_max_items < 1:
             raise ValueError(f"ease_max_items must be >= 1; got {ease_max_items!r}")
         self.ease_max_items = ease_max_items
@@ -629,11 +645,6 @@ class Engine:
         eff_trend_alpha = self.trend_alpha
         eff_trans_alpha = self.transition_alpha if transition_gate_open else 0.0
         if ease_eligible:
-            eff_lambda = (
-                self.ease_lambda
-                if self.ease_lambda is not None
-                else 20.0 * len(user_idx) / max(n_items, 1)
-            )
             use_w = self.ease_use_weights == "on" or (
                 self.ease_use_weights == "auto" and signal_kind == "ratings"
             )
@@ -643,6 +654,14 @@ class Engine:
                 if w_mean > 0:
                     ease_weights = (weights / w_mean).astype(np.float32)
             profile["ease_weighted"] = ease_weights is not None
+            heuristic_lambda = 20.0 * len(user_idx) / max(n_items, 1)
+            if self.ease_lambda is not None:
+                eff_lambda = self.ease_lambda
+            else:
+                eff_lambda = self._resolve_ease_lambda(
+                    user_idx, item_idx, timestamps_col, n_users, n_items,
+                    ease_weights, heuristic_lambda, profile,
+                )
             t_ease = time.perf_counter()
             ease_b = np.asarray(
                 kindling_core.fit_ease_py(
@@ -1142,6 +1161,88 @@ class Engine:
                     for i, s, kk in zip(items, scores, kinds)
                 ]
         return results
+
+    def _resolve_ease_lambda(
+        self,
+        user_idx: np.ndarray,
+        item_idx: np.ndarray,
+        timestamps_col: np.ndarray | None,
+        n_users: int,
+        n_items: int,
+        ease_weights: np.ndarray | None,
+        heuristic: float,
+        profile: dict[str, Any],
+    ) -> float:
+        """Pick EASE λ. The heuristic (20× mean Gram diagonal) is a good center
+        but the optimum is protocol-dependent (chronological eval wants ~2.5×,
+        random-split ~0.2×), so refine it with a leave-last-out held-out search
+        over a multiplicative grid, scored by recall@10. Needs timestamps; gated
+        by catalog size for cost (each candidate is one EASE inversion)."""
+        profile["ease_lambda_heuristic"] = float(heuristic)
+        do_search = self.ease_lambda_search is True or (
+            self.ease_lambda_search == "auto" and n_items <= 8000
+        )
+        if not do_search or timestamps_col is None or len(timestamps_col) == 0:
+            profile["ease_lambda_searched"] = False
+            return heuristic
+
+        # Leave-last-out: hold out each multi-interaction user's latest item.
+        order = np.lexsort((timestamps_col, user_idx))  # by user, then time asc
+        su, si = user_idx[order], item_idx[order]
+        sw = ease_weights[order] if ease_weights is not None else None
+        is_last = np.empty(su.shape, dtype=bool)
+        is_last[-1] = True
+        is_last[:-1] = su[:-1] != su[1:]
+        counts = np.bincount(su, minlength=n_users)
+        last_pos = np.flatnonzero(is_last)
+        multi = counts[su[last_pos]] >= 2
+        drop_pos = last_pos[multi]
+        if drop_pos.size < 50:
+            profile["ease_lambda_searched"] = False
+            return heuristic
+        held_user = su[drop_pos]
+        held_item = si[drop_pos]
+        keep = np.ones(su.shape, dtype=bool)
+        keep[drop_pos] = False
+        tu, ti = su[keep], si[keep]
+        tw = sw[keep] if sw is not None else None
+
+        # Sample held users for cheap scoring; build their train history.
+        rng = np.random.default_rng(self.random_state)
+        if held_user.size > 2000:
+            sel = rng.choice(held_user.size, 2000, replace=False)
+            held_user, held_item = held_user[sel], held_item[sel]
+        held_set = set(held_user.tolist())
+        hist: dict[int, list[int]] = {u: [] for u in held_set}
+        for u, i in zip(tu.tolist(), ti.tolist()):
+            h = hist.get(u)
+            if h is not None:
+                h.append(i)
+
+        candidates = [heuristic * m for m in (1.0, 2.0, 4.0)]
+        best_lam, best_score = heuristic, -1.0
+        for lam in candidates:
+            b = np.asarray(
+                kindling_core.fit_ease_py(
+                    tu, ti, n_users=n_users, n_items=n_items, lambda_=lam, weights=tw
+                ),
+                dtype=np.float32,
+            )
+            hits = 0
+            for u, t in zip(held_user.tolist(), held_item.tolist()):
+                h = hist.get(u)
+                if not h:
+                    continue
+                scores = b[h].sum(axis=0)
+                scores[h] = -np.inf
+                if t in np.argpartition(-scores, 10)[:10]:
+                    hits += 1
+            sc = hits / max(held_user.size, 1)
+            if sc > best_score:
+                best_score, best_lam = sc, lam
+        profile["ease_lambda_searched"] = True
+        profile["ease_lambda_search_mult"] = round(best_lam / max(heuristic, 1e-9), 3)
+        return best_lam
 
     def _cold_recommend(self, n: int) -> list[Recommendation]:
         """Zero-history fallback for brand-new users with no seeds: top-n by
