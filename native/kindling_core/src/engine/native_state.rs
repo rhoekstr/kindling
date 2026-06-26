@@ -225,6 +225,22 @@ fn top_indices(s: &[f64], budget: usize) -> Vec<usize> {
 
 #[pymethods]
 impl EngineState {
+    /// Override the channel blend weights in place — used by the held-out
+    /// channel-activation gate to ablate a channel without rebuilding the
+    /// (dense-EASE-carrying) state.
+    fn set_channel_alphas(
+        &mut self,
+        trend_alpha: f64,
+        user_cf_alpha: f64,
+        last_item_alpha: f64,
+        transition_alpha: f64,
+    ) {
+        self.trend_alpha = trend_alpha;
+        self.user_cf_alpha = user_cf_alpha;
+        self.last_item_alpha = last_item_alpha;
+        self.transition_alpha = transition_alpha;
+    }
+
     /// Top-n recommendations for `owned` (engine item indices). `user_row` is
     /// the entity's user-CF row (-1 if unknown); `pop_prior` drives the
     /// new-user popularity addend (0 for known users). Returns

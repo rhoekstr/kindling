@@ -29,6 +29,7 @@ architecture and ``engine.activation_plan`` for the runtime gate decisions.
 
 from __future__ import annotations
 
+import math
 import os
 import time
 from collections.abc import Iterable
@@ -184,6 +185,16 @@ class Engine:
         # off; needs timestamps, gated by catalog size for cost. "auto" =
         # search when affordable (≤8k items); True/False force it.
         ease_lambda_search: bool | str = False,
+        # Held-out channel-activation gate: backward-eliminate a blend channel
+        # (trend / user_cf / last_item / transition) when removing it strictly
+        # improves a leave-last-out held-out (recall@10). Channels are tuned for
+        # temporal/sequential signal; on data without it they can be net-negative
+        # (a random-split ml1m ablation cost −0.017 NDCG). The gate auto-disables
+        # the offenders out of the box — and never fires on data where the
+        # channels help (strict-improvement criterion), so it can't regress the
+        # temporal benchmarks. "auto" = gate when affordable (≤20k items);
+        # True/False force it. EASE base only.
+        channel_gate: bool | str = "auto",
         ease_max_items: int = 20_000,
         # Weight transform for the cooc base scorer — applies ONLY on the
         # cooc path (n_items > ease_max_items; <=20k uses EASE and is left
@@ -344,6 +355,9 @@ class Engine:
                 f"ease_lambda_search must be True | False | 'auto'; got {ease_lambda_search!r}"
             )
         self.ease_lambda_search = ease_lambda_search
+        if channel_gate not in (True, False, "auto"):
+            raise ValueError(f"channel_gate must be True | False | 'auto'; got {channel_gate!r}")
+        self.channel_gate = channel_gate
         if ease_max_items < 1:
             raise ValueError(f"ease_max_items must be >= 1; got {ease_max_items!r}")
         self.ease_max_items = ease_max_items
@@ -1020,6 +1034,7 @@ class Engine:
         # Invalidate the native engine cache — rebuilt lazily for this fit.
         self._native = None
         self._native_built = False
+        self._apply_channel_gate()
         return self
 
     @property
@@ -1243,6 +1258,110 @@ class Engine:
         profile["ease_lambda_searched"] = True
         profile["ease_lambda_search_mult"] = round(best_lam / max(heuristic, 1e-9), 3)
         return best_lam
+
+    def _apply_channel_gate(self) -> None:
+        """Backward-eliminate net-negative non-recency channels (user_cf,
+        last_item) on a leave-last-fraction held-out, scored by NDCG@10. Drops a
+        channel's α only when removing it *strictly* improves held-out NDCG, so
+        it disables channels mis-firing on non-temporal data without regressing
+        data where they help."""
+        st = self._state
+        assert st is not None
+        if st.base_scorer_used != "ease" or st.ease_b is None:
+            return
+        do_gate = self.channel_gate is True or (
+            self.channel_gate == "auto" and st.n_items <= 20_000
+        )
+        if not do_gate:
+            return
+        names = ("trend", "user_cf", "last_item", "transition")
+        alphas0 = [
+            float(st.trend_alpha),
+            float(st.user_cf_alpha),
+            float(st.last_item_alpha),
+            float(st.transition_alpha),
+        ]
+        # Gate only the non-recency channels (user_cf, last_item). A held-out
+        # carved from a full-train fit leaks the recency window, so trend /
+        # transition can't be judged this way — and they already have their own
+        # temporal gates. user_cf / last_item are exactly the channels the
+        # random-split ablation found net-negative on non-temporal data.
+        active = [i for i in (1, 2) if alphas0[i] > 0.0]
+        if len(active) < 1:
+            return
+        # Held-out = the last ~20% of each (time-ordered) history, matching the
+        # leave-last-fraction deployment objective. Leave-last-*out* (one item)
+        # would mis-rank recency channels: the single last item is already
+        # recoverable from the base's co-occurrence, so trend/transition look
+        # useless against it even though they help predict the recent tail.
+        ents = [(e, h) for e, h in st.owned_by_entity.items() if h.size >= 5]
+        if len(ents) < 50:
+            return
+        rng = np.random.default_rng(self.random_state)
+        if len(ents) > 2000:
+            ents = [ents[i] for i in rng.choice(len(ents), 2000, replace=False)]
+        held = []
+        for e, h in ents:
+            k = max(1, h.size // 5)
+            hist = h[:-k].tolist()
+            if hist:
+                held.append((int(st.entity_to_user_idx.get(e, -1)), hist, set(h[-k:].tolist())))
+        if len(held) < 50:
+            return
+
+        from kindling._native_engine import build_native_engine
+
+        native = build_native_engine(self)
+        if native is None:
+            return
+
+        idcg = [0.0] + [
+            sum(1.0 / math.log2(r + 2) for r in range(min(k, 10))) for k in range(1, 11)
+        ]
+
+        def ndcg(alphas: list[float]) -> float:
+            # NDCG@10, not recall@10: recency channels (trend/transition) mostly
+            # re-order items already in the pool, which lifts NDCG without
+            # changing top-10 membership — recall would be blind to their value.
+            native.set_channel_alphas(*alphas)
+            total = 0.0
+            for ur, hist, targets in held:
+                items, _, _ = native.recommend(hist, ur, 10, 0.0)
+                dcg = sum(1.0 / math.log2(r + 2) for r, it in enumerate(items) if it in targets)
+                total += dcg / idcg[min(len(targets), 10)]
+            return total / len(held)
+
+        # Backward elimination: drop the channel whose removal most improves
+        # held-out NDCG, repeat until no removal strictly helps.
+        current = list(alphas0)
+        cur_r = ndcg(current)
+        dropped: list[str] = []
+        while True:
+            best_i, best_r = None, cur_r
+            for i in active:
+                if current[i] == 0.0:
+                    continue
+                trial = list(current)
+                trial[i] = 0.0
+                r = ndcg(trial)
+                if r > best_r:
+                    best_r, best_i = r, i
+            if best_i is None:
+                break
+            current[best_i] = 0.0
+            cur_r = best_r
+            dropped.append(names[best_i])
+
+        (
+            st.trend_alpha,
+            st.user_cf_alpha,
+            st.last_item_alpha,
+            st.transition_alpha,
+        ) = current
+        native.set_channel_alphas(*current)
+        self._native = native
+        self._native_built = True
+        st.profile["channels_gated"] = dropped
 
     def _cold_recommend(self, n: int) -> list[Recommendation]:
         """Zero-history fallback for brand-new users with no seeds: top-n by

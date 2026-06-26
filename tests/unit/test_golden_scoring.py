@@ -23,7 +23,9 @@ GOLDEN = {
 @pytest.fixture(scope="module")
 def engine():
     s = synthetic.make_ratings(n_entities=60, n_items=40, ratings_per_entity=15, seed=7)
-    e = Engine(random_state=0)
+    # Pin the deterministic scoring core; the held-out channel gate is adaptive
+    # (and covered by its own tests), so keep it off for the golden fixture.
+    e = Engine(random_state=0, channel_gate=False)
     e.fit(s.train)
     return e
 
