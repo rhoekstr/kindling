@@ -26,9 +26,9 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from run_warming_curve import load_split  # noqa: E402
+from run_warming_curve import load_split
 
-from kindling.benchmarks.metrics import aggregate  # noqa: E402
+from kindling.benchmarks.metrics import aggregate
 
 ROOT = Path(__file__).resolve().parent.parent
 REPORT_DIR = Path(__file__).resolve().parent / "reports"
@@ -100,7 +100,7 @@ def main() -> int:
             per.append((list(topk.get(str(ent), []))[:k], rel))
         m = aggregate(per, catalog_size=catalog, k=k)
         rows.append({
-            "fraction": frac, "n_train": len(sub), "n_train_items": int(len(sub_items)),
+            "fraction": frac, "n_train": len(sub), "n_train_items": len(sub_items),
             "n_eval_nonempty": sum(1 for e in eval_entities if test_by.get(e, set()) - owned_sub.get(e, set())),
             "model": "lightgcn", "fit_seconds": round(preds["fit_seconds"], 3), "p50_ms": 0.0,
             "recall@k": round(m.recall_at_k, 4), "ndcg@k": round(m.ndcg_at_k, 4),

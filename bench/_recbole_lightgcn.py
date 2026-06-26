@@ -49,5 +49,6 @@ for s in range(0, len(test_uids), 2048):
     for u, items in zip(chunk, iid.cpu().numpy()):
         topk[str(ds.id2token(uid_field, u))] = [str(x) for x in ds.id2token(iid_field, items)]
 
-json.dump({"fit_seconds": round(fit_s, 1), "topk": topk}, open(out_path, "w"))
+with open(out_path, "w") as fh:
+    json.dump({"fit_seconds": round(fit_s, 1), "topk": topk}, fh)
 print(f"LightGCN fit={fit_s:.1f}s test_users={len(test_uids)}", flush=True)
