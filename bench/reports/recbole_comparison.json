@@ -1,0 +1,57 @@
+{
+  "dataset": "ml-1m",
+  "k": 10,
+  "rows": [
+    {
+      "model": "EASE",
+      "framework": "RecBole",
+      "ndcg@10": 0.3022,
+      "recall@10": 0.2038,
+      "mrr": 0.5139,
+      "ndcg@10_recbole": 0.3022,
+      "fit_seconds": 1.498,
+      "predict_seconds": 0.412
+    },
+    {
+      "model": "kindling",
+      "framework": "kindling",
+      "ndcg@10": 0.275,
+      "recall@10": 0.1791,
+      "mrr": 0.4788,
+      "ndcg@10_recbole": null,
+      "fit_seconds": 8.534,
+      "predict_seconds": 0.591,
+      "base": "ease"
+    },
+    {
+      "model": "ItemKNN",
+      "framework": "RecBole",
+      "ndcg@10": 0.2574,
+      "recall@10": 0.1652,
+      "mrr": 0.4495,
+      "ndcg@10_recbole": 0.2574,
+      "fit_seconds": 2.028,
+      "predict_seconds": 1.095
+    },
+    {
+      "model": "BPR",
+      "framework": "RecBole",
+      "ndcg@10": 0.2528,
+      "recall@10": 0.1656,
+      "mrr": 0.4439,
+      "ndcg@10_recbole": 0.2528,
+      "fit_seconds": 78.122,
+      "predict_seconds": 0.045
+    },
+    {
+      "model": "Pop",
+      "framework": "RecBole",
+      "ndcg@10": 0.1266,
+      "recall@10": 0.074,
+      "mrr": 0.2465,
+      "ndcg@10_recbole": 0.1266,
+      "fit_seconds": 0.935,
+      "predict_seconds": 0.046
+    }
+  ]
+}

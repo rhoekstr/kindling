@@ -45,3 +45,5 @@ bench/reports/*.local.*
 ~$*.docx
 .claude/
 native/target/
+recbole_data/
+.venv-recbole/
