@@ -1,0 +1,49 @@
+{
+  "results": [
+    {
+      "dataset": "movielens-1m",
+      "base": "ease",
+      "n_items": 3883,
+      "n_users": 6011,
+      "fit_seconds": 4.23,
+      "native_build_seconds": 0.026,
+      "single_recommend_p50_ms": 0.172,
+      "single_recommend_p95_ms": 0.592,
+      "batch_throughput_recs_per_s": 15357.4,
+      "batch_total_ms": 32.6,
+      "n_eval_users": 500,
+      "ndcg_at_10": 0.2928,
+      "peak_rss_gb": 1.18
+    },
+    {
+      "dataset": "amazon-beauty",
+      "base": "ease",
+      "n_items": 124469,
+      "n_users": 21768,
+      "fit_seconds": 13.09,
+      "native_build_seconds": 0.108,
+      "single_recommend_p50_ms": 1.207,
+      "single_recommend_p95_ms": 1.451,
+      "batch_throughput_recs_per_s": 3022.3,
+      "batch_total_ms": 165.4,
+      "n_eval_users": 500,
+      "ndcg_at_10": 0.0328,
+      "peak_rss_gb": 2.89
+    },
+    {
+      "dataset": "steam",
+      "base": "ease",
+      "n_items": 32132,
+      "n_users": 2333499,
+      "fit_seconds": 110.14,
+      "native_build_seconds": 0.957,
+      "single_recommend_p50_ms": 5.808,
+      "single_recommend_p95_ms": 10.509,
+      "batch_throughput_recs_per_s": 823.0,
+      "batch_total_ms": 607.5,
+      "n_eval_users": 500,
+      "ndcg_at_10": 0.0659,
+      "peak_rss_gb": 3.55
+    }
+  ]
+}
