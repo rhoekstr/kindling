@@ -45,12 +45,20 @@ REPORT_DIR = Path(__file__).parent / "reports"
 
 def load_split(name: str, tf: float = 0.1):
     """_load_dataset, plus the timestamp-less book-academic (52k/91k) split —
-    full amazon-book (357k) OOMs / trips the kill wall on this box."""
+    full amazon-book (357k) OOMs / trips the kill wall on this box — and the
+    real-retail H&M log (validate_hm's loader, kagglehub cache)."""
     if name == "amazon-book-academic":
         from kindling.benchmarks.comparison import _load_academic_split
         b = Path("~/.cache/kindling/amazon-book").expanduser()
         return _load_academic_split(b / "train.txt", b / "test.txt",
                                     name=name, action_type="rate")
+    if name == "hm":
+        import sys
+        from types import SimpleNamespace
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import validate_hm
+        train, test, articles = validate_hm._load()
+        return SimpleNamespace(train=train, test=test, items=articles)
     return _load_dataset(name, test_fraction=tf)
 
 

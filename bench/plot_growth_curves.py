@@ -28,11 +28,18 @@ from matplotlib.ticker import FuncFormatter, LogLocator, NullFormatter
 REPORTS = Path(__file__).resolve().parent / "reports"
 
 # Dataset rows (file stem → display label). Only those with cached data render.
+# Academic benchmarks first, then real retail/e-commerce logs.
 DATASETS = [
     ("movielens-1m", "MovieLens-1M"),
     ("amazon-beauty", "Amazon Beauty"),
     ("steam", "Steam"),
     ("amazon-book-academic", "Amazon Books"),
+    ("hm", "H&M (retail)"),
+    ("retailrocket", "RetailRocket"),
+    ("tafeng", "Ta-Feng (grocery)"),
+    ("dunnhumby", "Dunnhumby (grocery)"),
+    ("yelp2018", "Yelp 2018"),
+    ("gowalla", "Gowalla"),
 ]
 
 # Algorithm → (display label, color, linewidth, z-order). kindling stands out.
@@ -116,7 +123,11 @@ def main() -> int:
                 if not xs:
                     continue
                 ax.plot(xs, ys, marker="o", ms=3.5, color=color, lw=lw, zorder=z, label=disp)
+            # Log x (cold→hot spread) but labelled as % of total data, not 10⁰.
             ax.set_xscale("log")
+            ax.xaxis.set_major_locator(LogLocator(base=10))
+            ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v * 100:g}%"))
+            ax.xaxis.set_minor_formatter(NullFormatter())
             if metric == "fit_seconds":
                 # Log scale (fit spans ~0.1s→250s) but labelled in plain seconds
                 # — "0.1s / 1s / 10s / 100s", not matplotlib's 10⁰ powers.
@@ -128,7 +139,7 @@ def main() -> int:
             if r == 0:
                 ax.set_title(col_label, fontsize=12, fontweight="bold")
             if r == nrows - 1:
-                ax.set_xlabel("fraction of training data (cold → hot)", fontsize=9)
+                ax.set_xlabel("% of total training data (cold → hot)", fontsize=9)
 
     handles, labels = axes[0][1].get_legend_handles_labels()
     fig.legend(
