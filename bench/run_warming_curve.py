@@ -52,13 +52,17 @@ def load_split(name: str, tf: float = 0.1):
         b = Path("~/.cache/kindling/amazon-book").expanduser()
         return _load_academic_split(b / "train.txt", b / "test.txt",
                                     name=name, action_type="rate")
-    if name == "hm":
+    if name in ("hm", "instacart"):
         import sys
         from types import SimpleNamespace
         sys.path.insert(0, str(Path(__file__).resolve().parent))
-        import validate_hm
-        train, test, articles = validate_hm._load()
-        return SimpleNamespace(train=train, test=test, items=articles)
+        if name == "hm":
+            import validate_hm
+            train, test, items = validate_hm._load()
+        else:
+            import validate_instacart
+            train, test, items = validate_instacart._load()
+        return SimpleNamespace(train=train, test=test, items=items)
     return _load_dataset(name, test_fraction=tf)
 
 
@@ -145,7 +149,22 @@ def main() -> None:
     log(f"{dataset}: warm={mode} train {len(train):,} test {len(test):,} "
         f"eval_entities {len(eval_entities)} catalog {catalog:,} fractions {fractions}")
 
+    REPORT_DIR.mkdir(parents=True, exist_ok=True)
+    out = REPORT_DIR / f"warming_{dataset}.json"
+    # MERGE keeps existing rows except the (fraction, model) pairs regenerated
+    # this run. Captured once; flush() re-merges the accumulated rows after every
+    # fraction so an OOM at the hot end never wipes the cold points already done.
+    prev_rows = json.loads(out.read_text())["rows"] if (merge and out.exists()) else []
+
     rows = []
+
+    def flush() -> None:
+        fresh = {(r["fraction"], r["model"]) for r in rows}
+        merged = [r for r in prev_rows if (r["fraction"], r["model"]) not in fresh] + rows
+        merged.sort(key=lambda r: (r["fraction"], r["model"]))
+        out.write_text(json.dumps({"dataset": dataset, "k": k, "catalog": catalog,
+                                   "n_eval": len(eval_entities), "rows": merged}, indent=2) + "\n")
+
     for frac in fractions:
         n = round(len(train) * frac)
         if mode == "chrono":
@@ -180,20 +199,10 @@ def main() -> None:
             rows.append(row)
             log(f"  frac={frac:<5} {model.name:14s} fit={fit_s:6.1f}s "
                 f"ndcg={row['ndcg@k']:.4f} recall={row['recall@k']:.4f} p50={row['p50_ms']:.1f}ms")
+        flush()  # checkpoint after every fraction (survives a hot-end OOM)
 
-    REPORT_DIR.mkdir(parents=True, exist_ok=True)
-    out = REPORT_DIR / f"warming_{dataset}.json"
-    if merge and out.exists():
-        # Keep existing rows except those for the (fraction, model) pairs just
-        # regenerated; append the fresh ones. Lets us add a model line or fill
-        # the cold tail without re-running the slow baselines.
-        prev = json.loads(out.read_text())["rows"]
-        fresh = {(r["fraction"], r["model"]) for r in rows}
-        rows = [r for r in prev if (r["fraction"], r["model"]) not in fresh] + rows
-        rows.sort(key=lambda r: (r["fraction"], r["model"]))
-    out.write_text(json.dumps({"dataset": dataset, "k": k, "catalog": catalog,
-                               "n_eval": len(eval_entities), "rows": rows}, indent=2) + "\n")
-    log(f"[wrote] {out} ({len(rows)} rows)")
+    flush()
+    log(f"[wrote] {out} ({len(prev_rows) + len(rows)} rows max)")
 
 
 if __name__ == "__main__":
