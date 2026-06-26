@@ -1225,7 +1225,10 @@ class Engine:
         # The positivity filter encodes cooc semantics (score 0 = no
         # co-occurrence evidence). EASE weights are signed, so a small
         # negative composite can still be the best available candidate.
-        order = np.argsort(-composite)[:n]
+        # Stable: ties broken by ascending pool position (== descending base
+        # score, the retrieval order), so the ranking is reproducible and the
+        # Rust port matches byte-for-byte. Quicksort's tie order is unspecified.
+        order = np.argsort(-composite, kind="stable")[:n]
         out: list[Recommendation] = []
         for rank, idx in enumerate(order):
             if composite[idx] <= 0.0 and base_kind not in ("ease", "cooc_fused"):
@@ -1267,7 +1270,7 @@ class Engine:
             cs[owned] = -np.inf
             kept_ids = {st.item_to_idx.get(r.item_id, -1) for r in out}
             cold_picks: list[int] = []
-            for i in np.argsort(-cs):
+            for i in np.argsort(-cs, kind="stable"):
                 if not np.isfinite(cs[i]):
                     break
                 if int(i) not in kept_ids:
