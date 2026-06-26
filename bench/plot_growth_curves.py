@@ -23,6 +23,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter, LogLocator, NullFormatter
 
 REPORTS = Path(__file__).resolve().parent / "reports"
 
@@ -84,7 +85,12 @@ def main() -> int:
                 ax.plot(xs, ys, marker="o", ms=3.5, color=color, lw=lw, zorder=z, label=disp)
             ax.set_xscale("log")
             if metric == "fit_seconds":
+                # Log scale (fit spans ~0.1s→250s) but labelled in plain seconds
+                # — "0.1s / 1s / 10s / 100s", not matplotlib's 10⁰ powers.
                 ax.set_yscale("log")
+                ax.yaxis.set_major_locator(LogLocator(base=10))
+                ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:g}s"))
+                ax.yaxis.set_minor_formatter(NullFormatter())
             ax.grid(True, which="major", ls=":", alpha=0.4)
             if r == 0:
                 ax.set_title(col_label, fontsize=12, fontweight="bold")
