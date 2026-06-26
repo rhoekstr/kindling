@@ -36,7 +36,9 @@ DATASETS = [
 
 # Algorithm → (display label, color, linewidth, z-order). kindling stands out.
 MODELS = {
-    "kindling": ("kindling", "#d6336c", 2.6, 5),
+    "kindling": ("kindling", "#d6336c", 2.6, 6),
+    "ease": ("EASE (base only)", "#f08c00", 1.8, 5),
+    "lightgcn": ("LightGCN", "#7048e8", 1.8, 4),
     "implicit_als": ("implicit ALS", "#1c7ed6", 1.6, 3),
     "item_item_knn": ("item-kNN", "#2f9e44", 1.6, 3),
     "popularity": ("popularity", "#868e96", 1.6, 2),

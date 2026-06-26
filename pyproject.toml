@@ -124,6 +124,7 @@ module = [
     "kindling_core",        # PyO3 Rust extension — no py.typed stubs
     "kindling._core",
     "sklearn.*",            # optional metadata-smoothing dose fit — no stubs
+    "implicit.*",           # bench-only ALS baseline (run_warming_curve) — no stubs
 ]
 ignore_missing_imports = true
 
