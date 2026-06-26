@@ -414,6 +414,20 @@ class Engine:
             )
         self.ease_use_weights = ease_use_weights
         self._state: EngineState | None = None
+        # Native Rust recommend engine, lazily built per fit and cached. It is a
+        # non-picklable PyO3 object, so it is dropped on pickle and rebuilt.
+        self._native: Any = None
+        self._native_built: bool = False
+        self._use_native: bool = True
+
+    def __getstate__(self) -> dict[str, Any]:
+        state = self.__dict__.copy()
+        state["_native"] = None
+        state["_native_built"] = False
+        return state
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        self.__dict__.update(state)
 
     # ------------------------------------------------------------------
     # fit
@@ -1066,9 +1080,15 @@ class Engine:
     def recommend(self, entity_id: object, n: int = 10) -> list[Recommendation]:
         if self._state is None:
             raise RuntimeError("Engine not fitted. Call .fit(interactions) first.")
-        owned = self._state.owned_by_entity.get(entity_id)
+        st = self._state
+        owned = st.owned_by_entity.get(entity_id)
         if owned is None or owned.size == 0:
             return []
+        if getattr(self, "_use_native", True):
+            native = self._get_native()
+            if native is not None:
+                user_row = int(st.entity_to_user_idx.get(entity_id, -1))
+                return self._native_recs(native, [int(x) for x in owned], user_row, n, 0.0)
         return self._recommend_core(owned, entity_id, n)
 
     def recommend_for_items(
@@ -1098,6 +1118,11 @@ class Engine:
         # Empirical-Bayes shrinkage: lean on the popularity prior when seeds are
         # few, the personalized signal as they accumulate.
         pop_prior = self.cold_user_pop_prior / len(owned_list)
+        if getattr(self, "_use_native", True):
+            native = self._get_native()
+            if native is not None:
+                # Anonymous: user_row=-1 (no user-CF); native applies pop_prior.
+                return self._native_recs(native, owned_list, -1, n, pop_prior)
         return self._recommend_core(
             np.asarray(owned_list, dtype=np.int64), None, n, pop_prior=pop_prior
         )
@@ -1112,6 +1137,18 @@ class Engine:
             self._native = build_native_engine(self)
             self._native_built = True
         return self._native
+
+    def _native_recs(
+        self, native: Any, owned: list[int], user_row: int, n: int, pop_prior: float
+    ) -> list[Recommendation]:
+        """Map a native ``EngineState.recommend`` result to ``Recommendation``s."""
+        st = self._state
+        assert st is not None
+        items, scores, kinds = native.recommend(owned, user_row, n, pop_prior)
+        return [
+            Recommendation(item_id=st.item_ids[i], score=float(s), base_kind=k)
+            for i, s, k in zip(items, scores, kinds)
+        ]
 
     def recommend_batch(
         self, entity_ids: Iterable[object], n: int = 10

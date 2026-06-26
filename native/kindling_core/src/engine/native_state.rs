@@ -367,8 +367,10 @@ impl EngineState {
         let cmp = |&a: &usize, &c: &usize| {
             composite[c].partial_cmp(&composite[a]).unwrap_or(std::cmp::Ordering::Equal).then(a.cmp(&c))
         };
-        if order.len() > k && k > 0 {
-            order.select_nth_unstable_by(k - 1, cmp);
+        if order.len() > k {
+            if k > 0 {
+                order.select_nth_unstable_by(k - 1, cmp);
+            }
             order.truncate(k);
         }
         order.sort_by(cmp);

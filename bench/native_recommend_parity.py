@@ -51,7 +51,9 @@ def check(dataset: str, force_cooc: bool = False) -> tuple[int, int, float, floa
     eval_set = _build_eval_set(split.train, split.test, max_users=500, seed=0)
     ents = [e for e in eval_set if (ow := st.owned_by_entity.get(e)) is not None and ow.size > 0]
 
+    eng._use_native = False  # pin the Python oracle for the reference lists
     py_lists = [[r.item_id for r in eng.recommend(e, 10)] for e in ents]
+    eng._use_native = True
     rs_lists = [[r.item_id for r in recs] for recs in eng.recommend_batch(ents, 10)]
     identical = sum(int(a == b) for a, b in zip(py_lists, rs_lists))
 
