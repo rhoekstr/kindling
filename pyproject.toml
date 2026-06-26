@@ -34,6 +34,10 @@ dev = [
     "pandas-stubs",
     "types-toml",
 ]
+serve = [
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+]
 bench = [
     "requests>=2.31",
     "tqdm>=4.66",
