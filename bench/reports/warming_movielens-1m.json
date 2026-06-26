@@ -265,6 +265,19 @@
       "hit_rate": 0.442
     },
     {
+      "fraction": 0.1,
+      "n_train": 90019,
+      "n_train_items": 3245,
+      "n_eval_nonempty": 500,
+      "model": "lightgcn",
+      "fit_seconds": 7.7,
+      "p50_ms": 0.0,
+      "recall@k": 0.0191,
+      "ndcg@k": 0.1179,
+      "mrr": 0.2232,
+      "hit_rate": 0.47
+    },
+    {
       "fraction": 0.15,
       "n_train": 135028,
       "n_train_items": 3347,
