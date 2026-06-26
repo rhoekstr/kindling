@@ -33,17 +33,10 @@ def native_supported(engine: Engine) -> bool:
     st = engine._state
     if st is None:
         return False
-    cf = st.content_features
-    if st.content_alpha > 0.0 and cf is not None and cf.n_features > 0:
-        return False
-    basket = st.basket_index
-    if basket is not None and getattr(basket, "observations", None):
-        return False
-    if st.ease_b is not None:
-        return True
-    # cooc-fused: cooc base driven by at least one retrieval channel (the book
-    # path). Plain cooc (no channels) keeps the Python retriever.
-    return st.cooc_data is not None and (st.trend_alpha > 0.0 or st.transition_alpha > 0.0)
+    # Native serves every recommend path: EASE / cooc-fused / plain cooc, the
+    # full channel blend (incl. content), the cooc-shaped boost layers, and
+    # cold-slots. The only requirement is a base scorer.
+    return st.ease_b is not None or st.cooc_data is not None
 
 
 def _uri_csr(st: Any, n_users: int) -> tuple[np.ndarray, np.ndarray]:
@@ -109,7 +102,8 @@ def build_native_engine(engine: Engine) -> Any | None:
     arrays["boost"] = boost
     cf = st.content_features
     content_nfeat = 0
-    if cf is not None and cf.n_features > 0 and engine.cold_slots > 0:
+    # Content features feed both cold-slots and the (cold-gated) content channel.
+    if cf is not None and cf.n_features > 0 and (engine.cold_slots > 0 or st.content_alpha > 0.0):
         content_nfeat = int(cf.n_features)
         arrays["content_data"] = np.ascontiguousarray(cf.data, np.float32)
         arrays["content_indices"] = np.ascontiguousarray(cf.indices, np.int32)
@@ -135,5 +129,6 @@ def build_native_engine(engine: Engine) -> Any | None:
         cold_slots=int(engine.cold_slots),
         content_nfeat=content_nfeat,
         cold_recency_beta=float(st.cold_recency_beta or 0.0),
+        content_alpha=float(st.content_alpha),
     )
     return kindling_core.build_engine(arrays, config)

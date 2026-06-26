@@ -162,6 +162,8 @@ fn blend_channels(
         user_cf_k,
         user_row,
         n_users,
+        content_alpha: 0.0,
+        content_contrib: &[],
     };
     Ok(blend_full(base_vec.as_slice()?.to_vec(), n_items, owned.as_slice()?, &bs))
 }
@@ -188,6 +190,10 @@ pub(crate) struct BlendState<'a> {
     pub user_cf_k: usize,
     pub user_row: i64,
     pub n_users: usize,
+    /// Content channel: precomputed `coldness · z(content_scores)` (len n_items
+    /// or empty), added as `content_alpha · content_contrib`.
+    pub content_alpha: f64,
+    pub content_contrib: &'a [f64],
 }
 
 /// Port of `_blend_channels`. `score` enters as the raw (pre-z-norm) base
@@ -199,7 +205,8 @@ pub(crate) fn blend_full(mut score: Vec<f64>, n_items: usize, owned: &[i64], b: 
     let last_on = b.last_item_alpha > 0.0 && b.last_row.len() == n_items && !owned.is_empty();
     let uu_on = b.user_cf_alpha > 0.0 && !b.uu_indptr.is_empty() && !owned.is_empty();
     let trans_on = b.transition_alpha > 0.0 && !b.trans_indptr.is_empty();
-    if !(trend_on || last_on || uu_on || trans_on) {
+    let content_on = b.content_alpha > 0.0 && b.content_contrib.len() == n_items;
+    if !(trend_on || last_on || uu_on || trans_on || content_on) {
         return score;
     }
 
@@ -258,6 +265,12 @@ pub(crate) fn blend_full(mut score: Vec<f64>, n_items: usize, owned: &[i64], b: 
                 }
             }
             z_in_place(&mut score, b.user_cf_alpha, &uu_vec);
+        }
+    }
+    // content channel (precomputed coldness · z(content); direct add).
+    if content_on {
+        for (s, &c) in score.iter_mut().zip(b.content_contrib) {
+            *s += b.content_alpha * c;
         }
     }
     // last-item.

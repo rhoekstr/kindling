@@ -72,6 +72,7 @@ pub struct EngineState {
     content_coldness: Vec<f64>,
     cold_recency: Vec<f64>,
     cold_recency_beta: f64,
+    content_alpha: f64,
 }
 
 fn f64v(d: &Bound<'_, PyDict>, k: &str) -> PyResult<Vec<f64>> {
@@ -181,6 +182,7 @@ fn build_engine(arrays: &Bound<'_, PyDict>, config: &Bound<'_, PyDict>) -> PyRes
         content_coldness: f64v(arrays, "content_coldness")?,
         cold_recency: f64v(arrays, "cold_recency")?,
         cold_recency_beta: cfg_f64(config, "cold_recency_beta", 0.0)?,
+        content_alpha: cfg_f64(config, "content_alpha", 0.0)?,
     })
 }
 
@@ -287,7 +289,21 @@ impl EngineState {
         pop_prior: f64,
     ) -> (Vec<i64>, Vec<f64>, Vec<String>) {
         let n_items = self.n_items;
-        let base_kind = if self.base_is_ease { "ease" } else { "cooc_fused" };
+        // Plain cooc (cooc base with no *active* trend/transition channel) skips
+        // the blend entirely and applies a positivity filter — matches the
+        // Python `_recommend_core` else-branch (which gates on the channel
+        // arrays being present, not just alpha > 0). Otherwise: EASE or
+        // cooc-fused (blended).
+        let trend_active = self.trend_alpha > 0.0 && self.trend_z.len() == n_items;
+        let trans_active = self.transition_alpha > 0.0 && !self.trans_indptr.is_empty();
+        let plain_cooc = !self.base_is_ease && !(trend_active || trans_active);
+        let base_kind = if self.base_is_ease {
+            "ease"
+        } else if plain_cooc {
+            "cooc"
+        } else {
+            "cooc_fused"
+        };
         // base_vec: EASE row-sum (padded to n_items) or cooc-fused row-sum.
         let mut base = vec![0f64; n_items];
         if self.base_is_ease {
@@ -324,28 +340,59 @@ impl EngineState {
                 }
             }
         }
-        let bs = BlendState {
-            trend_z: &self.trend_z,
-            trend_alpha: self.trend_alpha,
-            last_row: &last_row,
-            last_item_alpha: self.last_item_alpha,
-            trans_data: &self.trans_data,
-            trans_indices: &self.trans_indices,
-            trans_indptr: &self.trans_indptr,
-            transition_alpha: self.transition_alpha,
-            transition_last_k: self.transition_last_k,
-            transition_decay: self.transition_decay,
-            uu_data: &self.uu_data,
-            uu_indptr: &self.uu_indptr,
-            uu_deg: &self.uu_deg,
-            uri_data: &self.uri_data,
-            uri_indptr: &self.uri_indptr,
-            user_cf_alpha: self.user_cf_alpha,
-            user_cf_k: self.user_cf_k,
-            user_row,
-            n_users: self.n_users,
+        // Content channel: coldness · z(content_scores), added as
+        // content_alpha · contrib. Skipped for plain cooc (no blend).
+        let content_contrib: Vec<f64> = if self.content_alpha > 0.0
+            && self.content_nfeat > 0
+            && !plain_cooc
+        {
+            let cs = self.content_scores(owned);
+            let nn = cs.len() as f64;
+            let mean = cs.iter().sum::<f64>() / nn;
+            let std = (cs.iter().map(|x| (x - mean) * (x - mean)).sum::<f64>() / nn).sqrt();
+            if std > 0.0 {
+                let has_cold = self.content_coldness.len() == n_items;
+                cs.iter()
+                    .enumerate()
+                    .map(|(j, &x)| {
+                        let cold = if has_cold { self.content_coldness[j] } else { 1.0 };
+                        cold * (x - mean) / std
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            }
+        } else {
+            Vec::new()
         };
-        let mut scores = blend_full(base, n_items, owned, &bs);
+        let mut scores = if plain_cooc {
+            base
+        } else {
+            let bs = BlendState {
+                trend_z: &self.trend_z,
+                trend_alpha: self.trend_alpha,
+                last_row: &last_row,
+                last_item_alpha: self.last_item_alpha,
+                trans_data: &self.trans_data,
+                trans_indices: &self.trans_indices,
+                trans_indptr: &self.trans_indptr,
+                transition_alpha: self.transition_alpha,
+                transition_last_k: self.transition_last_k,
+                transition_decay: self.transition_decay,
+                uu_data: &self.uu_data,
+                uu_indptr: &self.uu_indptr,
+                uu_deg: &self.uu_deg,
+                uri_data: &self.uri_data,
+                uri_indptr: &self.uri_indptr,
+                user_cf_alpha: self.user_cf_alpha,
+                user_cf_k: self.user_cf_k,
+                user_row,
+                n_users: self.n_users,
+                content_alpha: self.content_alpha,
+                content_contrib: &content_contrib,
+            };
+            blend_full(base, n_items, owned, &bs)
+        };
         // New-user popularity addend: pop_prior · z(log1p(pop)).
         if pop_prior > 0.0 && self.item_pop.len() == n_items {
             let p: Vec<f64> = self.item_pop.iter().map(|&x| (x + 1.0).ln()).collect();
@@ -410,6 +457,11 @@ impl EngineState {
             order.truncate(k);
         }
         order.sort_by(cmp);
+        // Plain cooc: positivity filter — a 0 composite means no co-occurrence
+        // evidence (EASE / cooc-fused weights are signed, so no filter there).
+        if base_kind == "cooc" {
+            order.retain(|&i| composite[i] > 0.0);
+        }
         let mut items: Vec<i64> = order.iter().map(|&i| cand[i] as i64).collect();
         let mut out_scores: Vec<f64> = order.iter().map(|&i| composite[i]).collect();
         let mut kinds: Vec<String> = vec![base_kind.to_string(); items.len()];
