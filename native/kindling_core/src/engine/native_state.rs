@@ -12,6 +12,7 @@ use ndarray::ArrayView1;
 use numpy::{PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList, PyTuple};
+use rayon::prelude::*;
 
 use crate::engine::recommend::{blend_full, BlendState};
 use crate::score::layered::{layered_score, ZMode};
@@ -199,10 +200,45 @@ impl EngineState {
         n: usize,
         pop_prior: f64,
     ) -> (Vec<i64>, Vec<f64>, Vec<String>) {
+        self.recommend_one(&owned, user_row, n, pop_prior)
+    }
+
+    /// Batch recommend over many users in parallel, with the GIL released
+    /// (rayon). `owneds[i]` / `user_rows[i]` describe user i; equivalent to
+    /// calling `recommend` per user. This is the full-catalog eval win — no
+    /// GIL, so the per-user EASE sums / blends / retrievals run concurrently.
+    #[pyo3(signature = (owneds, user_rows, n, pop_prior=0.0))]
+    fn recommend_batch(
+        &self,
+        py: Python<'_>,
+        owneds: Vec<Vec<i64>>,
+        user_rows: Vec<i64>,
+        n: usize,
+        pop_prior: f64,
+    ) -> Vec<(Vec<i64>, Vec<f64>, Vec<String>)> {
+        py.allow_threads(|| {
+            owneds
+                .par_iter()
+                .zip(user_rows.par_iter())
+                .map(|(ow, &ur)| self.recommend_one(ow, ur, n, pop_prior))
+                .collect()
+        })
+    }
+}
+
+impl EngineState {
+    /// Core recommend (no PyO3) — shared by `recommend` and `recommend_batch`.
+    fn recommend_one(
+        &self,
+        owned: &[i64],
+        user_row: i64,
+        n: usize,
+        pop_prior: f64,
+    ) -> (Vec<i64>, Vec<f64>, Vec<String>) {
         let n_items = self.n_items;
         // base_vec = Σ ease_b[owned] (padded to n_items; extension items = 0).
         let mut base = vec![0f64; n_items];
-        for &o in &owned {
+        for &o in owned {
             let o = o as usize;
             if o < self.ease_n {
                 let row = &self.ease_b[o * self.ease_n..(o + 1) * self.ease_n];
@@ -246,7 +282,7 @@ impl EngineState {
             user_row,
             n_users: self.n_users,
         };
-        let mut scores = blend_full(base, n_items, &owned, &bs);
+        let mut scores = blend_full(base, n_items, owned, &bs);
         // New-user popularity addend: pop_prior · z(log1p(pop)).
         if pop_prior > 0.0 && self.item_pop.len() == n_items {
             let p: Vec<f64> = self.item_pop.iter().map(|&x| (x + 1.0).ln()).collect();
@@ -260,7 +296,7 @@ impl EngineState {
             }
         }
         // Exclude owned.
-        for &o in &owned {
+        for &o in owned {
             scores[o as usize] = f64::NEG_INFINITY;
         }
         // Retrieve candidate pool.
@@ -275,7 +311,7 @@ impl EngineState {
         for (data, indices, indptr) in &self.boost {
             let nrow = indptr.len().saturating_sub(1);
             let mut summed = vec![0f64; nrow];
-            for &o in &owned {
+            for &o in owned {
                 let o = o as usize;
                 if o + 1 < indptr.len() {
                     for k in indptr[o] as usize..indptr[o + 1] as usize {
@@ -316,7 +352,7 @@ impl EngineState {
         // Reserved cold slots ("new releases shelf"): content-space ranker over
         // the cold tail, replacing the final `cold_slots` warm picks.
         if self.cold_slots > 0 && self.content_nfeat > 0 && self.content_coldness.len() == n_items {
-            let mut cs = self.content_scores(&owned);
+            let mut cs = self.content_scores(owned);
             let nn = cs.len() as f64;
             let mean = cs.iter().sum::<f64>() / nn;
             let std = (cs.iter().map(|x| (x - mean) * (x - mean)).sum::<f64>() / nn).sqrt();
@@ -335,7 +371,7 @@ impl EngineState {
                     cs[j] = f64::NEG_INFINITY;
                 }
             }
-            for &o in &owned {
+            for &o in owned {
                 cs[o as usize] = f64::NEG_INFINITY;
             }
             let kept: std::collections::HashSet<i64> = items.iter().copied().collect();

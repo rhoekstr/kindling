@@ -108,6 +108,7 @@ the gate), full-library + PyO3 the target. Differential harness: `bench/rust_par
 | **recommend blend** — `_blend_channels` (base z-norm + trend + user-CF + last-item + transitions) | ✅ ported, **ranking-exact** (this branch) |
 | **native `EngineState` + recommend** — EASE base + blend + temporal-cooc boost layer + cold-slots | ✅ ported (this branch) |
 | ⇒ **native recommend end-to-end** (built from Python state) | ✅ reproduces ml1m 0.2928 (500/500 byte-exact), beauty 0.0328, steam 0.0659 (499/500, NDCG-exact) |
+| **batch recommend** (rayon, GIL released) | ✅ == serial 500/500; 16.9× (ml1m) / 6.2× (beauty) vs the Python recommend loop |
 | recommend remainder — cooc-base path (book), new-user / `recommend_for_items` | ⬜ |
 | wire native recommend as the default `Engine.recommend` path | ⬜ |
 | persistence (bincode/rkyv) | ⬜ |

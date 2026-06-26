@@ -124,18 +124,27 @@ def check(dataset: str) -> tuple[int, int, float, float]:
     ne = build_native_engine(eng)
     eval_set = _build_eval_set(split.train, split.test, max_users=500, seed=0)
     per_py, per_rs, identical, nuser = [], [], 0, 0
+    owneds, urows, serial_items = [], [], []
     for ent, rel in eval_set.items():
         owned = st.owned_by_entity.get(ent)
         if owned is None or owned.size == 0:
             continue
         py = [r.item_id for r in eng.recommend(ent, 10)]
         ur = int(st.entity_to_user_idx.get(ent, -1))
-        items, _sc, _kind = ne.recommend(owned.astype(np.int64).tolist(), ur, 10, 0.0)
+        ow = owned.astype(np.int64).tolist()
+        items, _sc, _kind = ne.recommend(ow, ur, 10, 0.0)
         rs = [st.item_ids[i] for i in items]
         identical += int(py == rs)
         nuser += 1
+        owneds.append(ow)
+        urows.append(ur)
+        serial_items.append(items)
         per_py.append((py, rel))
         per_rs.append((rs, rel))
+    # Parallel batch path must equal the serial per-user path exactly.
+    batch = ne.recommend_batch(owneds, urows, 10, 0.0)
+    batch_ok = all(b[0] == s for b, s in zip(batch, serial_items))
+    assert batch_ok, "recommend_batch != serial recommend"
     cat = max(st.n_items, 1)
     nd_py = float(aggregate(per_py, catalog_size=cat, k=10).ndcg_at_k)
     nd_rs = float(aggregate(per_rs, catalog_size=cat, k=10).ndcg_at_k)
