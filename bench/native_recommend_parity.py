@@ -51,18 +51,24 @@ def check(dataset: str, force_cooc: bool = False) -> tuple[int, int, float, floa
     eval_set = _build_eval_set(split.train, split.test, max_users=500, seed=0)
     ents = [e for e in eval_set if (ow := st.owned_by_entity.get(e)) is not None and ow.size > 0]
 
-    eng._use_native = False  # pin the Python oracle for the reference lists
-    py_lists = [[r.item_id for r in eng.recommend(e, 10)] for e in ents]
-    eng._use_native = True
-    rs_lists = [[r.item_id for r in recs] for recs in eng.recommend_batch(ents, 10)]
-    identical = sum(int(a == b) for a, b in zip(py_lists, rs_lists))
+    # Native-only: single recommend and the parallel batch are the same engine.
+    single = [[r.item_id for r in eng.recommend(e, 10)] for e in ents]
+    batch = [[r.item_id for r in recs] for recs in eng.recommend_batch(ents, 10)]
+    identical = sum(int(a == b) for a, b in zip(single, batch))
 
     cat = max(st.n_items, 1)
-    per_py = [(py_lists[i], eval_set[ents[i]]) for i in range(len(ents))]
-    per_rs = [(rs_lists[i], eval_set[ents[i]]) for i in range(len(ents))]
-    nd_py = float(aggregate(per_py, catalog_size=cat, k=10).ndcg_at_k)
-    nd_rs = float(aggregate(per_rs, catalog_size=cat, k=10).ndcg_at_k)
-    return identical, len(ents), nd_py, nd_rs, used
+    per = [(batch[i], eval_set[ents[i]]) for i in range(len(ents))]
+    ndcg = float(aggregate(per, catalog_size=cat, k=10).ndcg_at_k)
+    return identical, len(ents), ndcg, used
+
+
+def _baseline(dataset: str) -> float | None:
+    import tomllib
+    from pathlib import Path
+
+    gates = Path(__file__).resolve().parent / "gates.toml"
+    base = tomllib.loads(gates.read_text())["baseline"]["ndcg_at_10"]
+    return float(base[dataset]) if dataset in base else None
 
 
 if __name__ == "__main__":
@@ -71,12 +77,14 @@ if __name__ == "__main__":
     datasets = [a for a in argv if not a.startswith("--")] or ["movielens-1m"]
     ok = True
     for ds in datasets:
-        ident, nuser, nd_py, nd_rs, used = check(ds, force_cooc=force_cooc)
-        match = abs(nd_py - nd_rs) < 5e-4
+        ident, nuser, ndcg, used = check(ds, force_cooc=force_cooc)
+        base = None if force_cooc else _baseline(ds)
+        match = base is None or abs(ndcg - base) <= 0.02 * base
         ok = ok and match
         tag = f"{ds}{' [cooc]' if force_cooc else ''}"
+        base_s = "n/a" if base is None else f"{base:.4f}"
         print(
             f"[{'PASS' if match else 'FAIL'}] {tag:20s} native={used!s:5s} "
-            f"reclist {ident}/{nuser}  NDCG@10 python={nd_py:.4f} batch={nd_rs:.4f}"
+            f"single==batch {ident}/{nuser}  NDCG@10 {ndcg:.4f} (baseline {base_s})"
         )
     raise SystemExit(0 if ok else 1)

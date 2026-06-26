@@ -25,7 +25,6 @@ def engine():
     s = synthetic.make_ratings(n_entities=60, n_items=40, ratings_per_entity=15, seed=7)
     e = Engine(random_state=0)
     e.fit(s.train)
-    e._use_native = False  # golden pins the Python scoring path
     return e
 
 

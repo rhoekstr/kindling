@@ -68,16 +68,15 @@ def test_recommend_batch_unknown_entity_returns_empty(ratings):
     assert eng.recommend_batch(["__not_a_real_entity__"], n=10) == [[]]
 
 
-def test_native_single_recommend_matches_python(ratings):
-    # Engine.recommend defaults to the native path; it must match the Python
-    # reference (_use_native=False) for the supported (EASE) fit.
+def test_recommend_single_matches_batch(ratings):
+    # Single recommend and the parallel batch path are the same native engine;
+    # they must produce identical lists.
     eng = _fit(ratings)
     ents = list(pd.Index(ratings.train["entity_id"].unique()))[:20]
-    eng._use_native = False
-    py = {e: [r.item_id for r in eng.recommend(e, 10)] for e in ents}
-    eng._use_native = True
-    for e in ents:
-        assert [r.item_id for r in eng.recommend(e, 10)] == py[e]
+    single = {e: [r.item_id for r in eng.recommend(e, 10)] for e in ents}
+    batch = eng.recommend_batch(ents, 10)
+    for e, recs in zip(ents, batch):
+        assert [r.item_id for r in recs] == single[e]
 
 
 def test_native_engine_save_load_roundtrip(ratings, tmp_path):

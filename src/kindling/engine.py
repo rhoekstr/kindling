@@ -42,10 +42,6 @@ from kindling._native import CORE_AVAILABLE, kindling_core
 from kindling.explain import Explanation
 from kindling.graph.cooc_transform import apply_cooc_transform, resolve_cooc_transform
 from kindling.ingest.contract import canonicalize, validate_interactions
-from kindling.ingest.sessions import infer_sessions
-from kindling.path._sessions import sessions_from_interactions
-from kindling.path.basket_index import BasketIndex, build_basket_index
-from kindling.path.tail_index import TailIndex, build_tail_index
 from kindling.preprocess import preprocess_interactions, weights_of
 
 if TYPE_CHECKING:
@@ -97,9 +93,6 @@ class EngineState:
     boost_layer_adjacencies: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]] = field(
         default_factory=dict
     )
-    # Path-family signals (not cooc-shaped — separate Python objects).
-    tail_index: TailIndex | None = None
-    basket_index: BasketIndex | None = None
     history_by_entity: dict[object, tuple[object, ...]] = field(default_factory=dict)
     # EASE base scorer: dense item-item weight matrix B (n_items × n_items,
     # f32, zero diagonal). None when the cooc base is active.
@@ -418,7 +411,6 @@ class Engine:
         # non-picklable PyO3 object, so it is dropped on pickle and rebuilt.
         self._native: Any = None
         self._native_built: bool = False
-        self._use_native: bool = True
 
     def __getstate__(self) -> dict[str, Any]:
         state = self.__dict__.copy()
@@ -962,33 +954,10 @@ class Engine:
 
         # NOTE: item_cosine is no longer a boost layer — it IS the v2 base
         # (built earlier in this fit). Boost layers are now reserved for
-        # *refinements* on different axes (temporal, session, path).
-
-        # ── path_tail + path_basket: infer sessions, build indices.
-        # Build is plan-aware: skip basket on rating-burst datasets, etc.
-        # The Rust score_many kernels run at recommend time; here we just
-        # feed the Python orchestrators that own session walking.
-        tail_index: TailIndex | None = None
-        basket_index: BasketIndex | None = None
-        try:
-            sess_inf = infer_sessions(interactions)
-            sessions = list(sessions_from_interactions(interactions, sess_inf.session_ids))
-            if sessions:
-                tail_index = build_tail_index(sessions)
-                # Skip basket_index when sessions are too shallow — it's
-                # the heavyweight build and produces noise on rating-
-                # burst datasets.
-                deep_session_fraction = profile.get("deep_session_fraction", 0.0)
-                if deep_session_fraction >= 0.30:
-                    basket_index = build_basket_index(sessions)
-        except Exception as exc:  # pragma: no cover — defensive; sessions are optional
-            import warnings
-
-            warnings.warn(
-                f"path-family fit skipped ({exc!r}); v2 falls back to cooc-only retrieval.",
-                RuntimeWarning,
-                stacklevel=2,
-            )
+        # *refinements* on different axes (temporal, session) — all cooc-shaped
+        # and served by the native engine. The path-family (path_tail /
+        # path_basket) was a Python-per-recommend layer incompatible with the
+        # native batch path and is no longer built.
 
         self._state = EngineState(
             item_ids=np.asarray(item_ids, dtype=object),
@@ -998,8 +967,6 @@ class Engine:
             owned_by_entity=owned_by_entity,
             entity_to_user_idx=entity_to_user_idx,
             n_users=n_users,
-            tail_index=tail_index,
-            basket_index=basket_index,
             history_by_entity=history_by_entity,
             kernel=plan["kernel"],
             half_life_days=plan["half_life_days"],
@@ -1084,12 +1051,8 @@ class Engine:
         owned = st.owned_by_entity.get(entity_id)
         if owned is None or owned.size == 0:
             return []
-        if getattr(self, "_use_native", True):
-            native = self._get_native()
-            if native is not None:
-                user_row = int(st.entity_to_user_idx.get(entity_id, -1))
-                return self._native_recs(native, [int(x) for x in owned], user_row, n, 0.0)
-        return self._recommend_core(owned, entity_id, n)
+        user_row = int(st.entity_to_user_idx.get(entity_id, -1))
+        return self._native_recs(self._require_native(), [int(x) for x in owned], user_row, n, 0.0)
 
     def recommend_for_items(
         self, seed_item_ids: Iterable[object], n: int = 10
@@ -1118,24 +1081,24 @@ class Engine:
         # Empirical-Bayes shrinkage: lean on the popularity prior when seeds are
         # few, the personalized signal as they accumulate.
         pop_prior = self.cold_user_pop_prior / len(owned_list)
-        if getattr(self, "_use_native", True):
-            native = self._get_native()
-            if native is not None:
-                # Anonymous: user_row=-1 (no user-CF); native applies pop_prior.
-                return self._native_recs(native, owned_list, -1, n, pop_prior)
-        return self._recommend_core(
-            np.asarray(owned_list, dtype=np.int64), None, n, pop_prior=pop_prior
-        )
+        # Anonymous: user_row=-1 (no user-CF); native applies the pop_prior.
+        return self._native_recs(self._require_native(), owned_list, -1, n, pop_prior)
 
-    def _get_native(self) -> Any:
-        """Lazily build + cache the native Rust engine for this fit (``None`` if
-        the native path doesn't support it). The build copies the EASE matrix,
-        so it is deferred to first use and amortized over a batch."""
+    def _require_native(self) -> Any:
+        """The native Rust recommend engine for this fit, built lazily and
+        cached (the EASE-matrix copy amortizes over a batch). Raises if the
+        engine can't be built — there is no Python recommend fallback."""
         if not getattr(self, "_native_built", False):
             from kindling._native_engine import build_native_engine
 
             self._native = build_native_engine(self)
             self._native_built = True
+        if self._native is None:
+            raise RuntimeError(
+                "Native recommend engine unavailable — the kindling_core "
+                "extension is not built, or no base scorer was fitted. Build "
+                "the extension (maturin develop) or check the fit."
+            )
         return self._native
 
     def _native_recs(
@@ -1155,21 +1118,16 @@ class Engine:
     ) -> list[list[Recommendation]]:
         """Recommend for many known entities at once — the fast path.
 
-        When the native Rust engine supports this fit (EASE base; see
-        ``_native_engine.native_supported``) the per-user EASE sums / blends /
-        retrievals run concurrently in Rust with the GIL released — 6–17× the
-        Python ``recommend`` loop on the reference datasets, byte-identical
-        results (NDCG-identical; rare FP-tie orderings aside). Falls back to a
-        per-user Python loop otherwise. Entities with no history yield ``[]``,
+        The per-user EASE/cooc sums, channel blends, and retrievals run
+        concurrently in Rust with the GIL released — several× the per-user loop
+        on the reference datasets. Entities with no history yield ``[]``,
         matching :meth:`recommend`.
         """
         if self._state is None:
             raise RuntimeError("Engine not fitted. Call .fit(interactions) first.")
         st = self._state
         ids = list(entity_ids)
-        native = self._get_native()
-        if native is None:
-            return [self.recommend(e, n) for e in ids]
+        native = self._require_native()
         results: list[list[Recommendation]] = [[] for _ in ids]
         owneds: list[list[int]] = []
         user_rows: list[int] = []
@@ -1213,354 +1171,6 @@ class Engine:
             )
             for c in top
         ]
-
-    def _recommend_core(
-        self, owned: np.ndarray, entity_id: object, n: int, pop_prior: float = 0.0
-    ) -> list[Recommendation]:
-        st = self._state
-        assert st is not None
-
-        # New-user popularity shrinkage: a length-n_items addend
-        # pop_prior · z(log popularity), added to the blended full-catalog
-        # score so a thin-seed ranking leans on the popularity prior. Scalar 0
-        # (no-op) for known users (recommend passes pop_prior=0).
-        pop_addend: np.ndarray | float = 0.0
-        if pop_prior > 0.0 and st.item_popularity is not None:
-            p = np.log1p(st.item_popularity.astype(np.float64))
-            sd = p.std()
-            pop_addend = pop_prior * ((p - p.mean()) / sd) if sd > 0 else 0.0
-
-        # ── 1. Retrieve candidate pool. When EASE is the base scorer it
-        # powers retrieval too — the gap-decomposition diagnostic showed
-        # the raw-cooc retrieval/scoring tautology caps achievable
-        # quality, so the better signal must drive the pool as well.
-        ease_scores_full: np.ndarray | None = None
-        if st.ease_b is not None:
-            base_vec = st.ease_b[owned].sum(axis=0, dtype=np.float64)
-            if base_vec.size < st.n_items:
-                # Open-catalog extension items: no EASE evidence → 0.
-                base_vec = np.concatenate([base_vec, np.zeros(st.n_items - base_vec.size)])
-            ease_scores_full = self._blend_channels(
-                st,
-                owned,
-                base_vec,
-                user_row=st.entity_to_user_idx.get(entity_id, -1),
-            )
-            ease_scores_full = ease_scores_full + pop_addend
-            ease_scores_full[owned] = -np.inf
-            budget = min(self.retrieval_budget, ease_scores_full.size)
-            top = np.argpartition(-ease_scores_full, budget - 1)[:budget]
-            top = top[np.argsort(-ease_scores_full[top], kind="stable")]
-            cand_ids = [int(c) for c in top if np.isfinite(ease_scores_full[c])]
-            base_kind = "ease"
-        elif (st.trend_z is not None and st.trend_alpha > 0.0) or (
-            st.trans_data is not None and st.transition_alpha > 0.0
-        ):
-            # Fused cooc path (large catalogs where the EASE inversion is
-            # gated off). Same channel blend over the full-catalog cooc
-            # vector. Because cooc is SPARSE — zero score for any item
-            # the history has no co-occurrence edge to — taking the pool
-            # from the blended scores is genuine retrieval fusion: trend/
-            # transition channels can promote items into the pool that
-            # the cooc retriever alone would never surface.
-            cooc_full = np.zeros(st.n_items, dtype=np.float64)
-            for item in owned.tolist():
-                s_ = int(st.cooc_indptr[item])
-                e_ = int(st.cooc_indptr[item + 1])
-                if e_ > s_:
-                    cooc_full[st.cooc_indices[s_:e_]] += st.cooc_data[s_:e_]
-            ease_scores_full = self._blend_channels(
-                st,
-                owned,
-                cooc_full,
-                user_row=st.entity_to_user_idx.get(entity_id, -1),
-            )
-            ease_scores_full = ease_scores_full + pop_addend
-            ease_scores_full[owned] = -np.inf
-            budget = min(self.retrieval_budget, ease_scores_full.size)
-            top = np.argpartition(-ease_scores_full, budget - 1)[:budget]
-            top = top[np.argsort(-ease_scores_full[top], kind="stable")]
-            cand_ids = [int(c) for c in top if np.isfinite(ease_scores_full[c])]
-            base_kind = "cooc_fused"
-        else:
-            cand_ids, _scores = kindling_core.cooccurrence_retrieve(
-                st.cooc_data,
-                st.cooc_indices,
-                st.cooc_indptr,
-                owned_indices=owned.tolist(),
-                budget=self.retrieval_budget,
-                include_owned=False,
-            )
-            cand_ids = list(cand_ids)
-            base_kind = ""
-        if not cand_ids:
-            return []
-
-        # ── 2. Base scores. Fused paths (ease / cooc_fused) carry their
-        # own pool scores; otherwise fall back to the cooc base.
-        if ease_scores_full is not None:
-            base = ease_scores_full[np.asarray(cand_ids, dtype=np.int64)]
-        else:
-            base_kind, base = self._compute_base(entity_id, owned, cand_ids)
-
-        # ── 3. Layered scoring.
-        layer_specs = self._build_layer_specs(entity_id, owned, cand_ids)
-        composite = kindling_core.layered_score_py(
-            base,
-            layer_specs,
-            z_threshold=st.z_threshold,
-            boost_multiplier=st.boost_multiplier,
-        )
-        composite = np.asarray(composite)
-
-        # ── 4. Top-N (skip repeat module — not yet ported).
-        # The positivity filter encodes cooc semantics (score 0 = no
-        # co-occurrence evidence). EASE weights are signed, so a small
-        # negative composite can still be the best available candidate.
-        # Stable: ties broken by ascending pool position (== descending base
-        # score, the retrieval order), so the ranking is reproducible and the
-        # Rust port matches byte-for-byte. Quicksort's tie order is unspecified.
-        order = np.argsort(-composite, kind="stable")[:n]
-        out: list[Recommendation] = []
-        for rank, idx in enumerate(order):
-            if composite[idx] <= 0.0 and base_kind not in ("ease", "cooc_fused"):
-                continue
-            cid = cand_ids[idx]
-            out.append(
-                Recommendation(
-                    item_id=st.item_ids[cid],
-                    score=float(composite[idx]),
-                    base_kind=base_kind,
-                )
-            )
-
-        # ── Reserved cold slots ("new releases shelf"). Cold items can
-        # never out-z the warm army in one blended ranking no matter the
-        # content weight (steam: rank-136-of-20k cold candidates vs 500
-        # warm EASE candidates for 10 slots). Reserving the final slots
-        # for the top cold-content candidates trades a sliver of warm
-        # accuracy for cold-start coverage — steam: cold-event recovery
-        # 0% → 5.1% for −0.6% aggregate NDCG at cold_slots=1.
-        if (
-            self.cold_slots > 0
-            and st.content_features is not None
-            and st.content_coldness is not None
-            and st.content_features.n_features > 0
-        ):
-            # Content-space ranker: cosine to the user's owned-item content.
-            from kindling.item_features import content_scores
-
-            cs = content_scores(st.content_features, owned)
-            std = cs.std()
-            if std > 0:
-                cs = (cs - cs.mean()) / std
-            if st.cold_recency is not None and st.cold_recency_beta > 0:
-                # New releases dominate real cold purchases; recency
-                # reorders only within the cold slot (warm untouched).
-                cs = cs + st.cold_recency_beta * st.cold_recency
-            cs[st.content_coldness < 0.75] = -np.inf  # warm items excluded
-            cs[owned] = -np.inf
-            kept_ids = {st.item_to_idx.get(r.item_id, -1) for r in out}
-            cold_picks: list[int] = []
-            for i in np.argsort(-cs, kind="stable"):
-                if not np.isfinite(cs[i]):
-                    break
-                if int(i) not in kept_ids:
-                    cold_picks.append(int(i))
-                    if len(cold_picks) >= self.cold_slots:
-                        break
-            if cold_picks:
-                out = out[: max(n - len(cold_picks), 0)]
-                for i in cold_picks:
-                    out.append(
-                        Recommendation(
-                            item_id=st.item_ids[i],
-                            score=float(cs[i]),
-                            base_kind="cold_content",
-                        )
-                    )
-        return out
-
-    # ------------------------------------------------------------------
-    # internals
-    # ------------------------------------------------------------------
-
-    def _blend_channels(
-        self,
-        st: EngineState,
-        owned: np.ndarray,
-        scores_full: np.ndarray,
-        user_row: int = -1,
-    ) -> np.ndarray:
-        """z-normalize a full-catalog base vector and add the active
-        channels (trend / last-item / transitions / content / user-CF).
-
-        Channels are independent of which base produced `scores_full`
-        (EASE or cooc), so both paths share this blend. `user_row` is
-        the engine user index, needed only by the user-CF channel for
-        self-exclusion.
-        """
-        trend_on = st.trend_z is not None and st.trend_alpha > 0.0
-        trans_on = st.trans_data is not None and st.transition_alpha > 0.0
-        content_on = (
-            st.content_features is not None
-            and st.content_alpha > 0.0
-            and st.content_features.n_features > 0
-        )
-        last_on = st.ease_b is not None and st.last_item_alpha > 0.0 and owned.size > 0
-        uu_on = st.uu_users_data is not None and st.user_cf_alpha > 0.0 and owned.size > 0
-        if not (trend_on or trans_on or content_on or last_on or uu_on):
-            return scores_full
-        std = scores_full.std()
-        if std > 0:
-            scores_full = (scores_full - scores_full.mean()) / std
-        if trend_on:
-            assert st.trend_z is not None  # narrowed by trend_on
-            scores_full = scores_full + st.trend_alpha * st.trend_z
-        if uu_on:
-            # Otsuka-Ochiai k-NN: overlap counts via the inverted index,
-            # normalized by sqrt(deg_u · deg_v); top-k neighbors vote
-            # for their items, weighted by similarity.
-            assert st.uu_user_deg is not None
-            assert st.uu_users_indptr is not None
-            assert st.uu_users_data is not None
-            n_users_total = st.uu_user_deg.shape[0]
-            counts = np.zeros(n_users_total, dtype=np.float64)
-            for i in owned.tolist():
-                s_ = int(st.uu_users_indptr[i])
-                e_ = int(st.uu_users_indptr[i + 1])
-                if e_ > s_:
-                    counts[st.uu_users_data[s_:e_]] += 1.0
-            if 0 <= user_row < n_users_total:
-                counts[user_row] = 0.0
-            nz = np.nonzero(counts)[0]
-            if nz.size > 0:
-                sims = counts[nz] / (np.sqrt(st.uu_user_deg[nz]) * np.sqrt(max(owned.size, 1)))
-                # Deterministic top-k: similarity desc, ties broken by
-                # ascending user row (nz is ascending, and a stable sort
-                # preserves that order among equal sims). argpartition's tie
-                # order is unspecified and not portable, so it cannot be
-                # byte-matched by the Rust core; a stable secondary key makes
-                # the neighbor set reproducible across implementations.
-                if nz.size > st.user_cf_k:
-                    keep = np.argsort(-sims, kind="stable")[: st.user_cf_k]
-                else:
-                    keep = np.arange(nz.size)
-                # Neighbors vote: accumulate their item sets. Inverted
-                # again via the per-user owned arrays would need a
-                # second index; instead vote through the entity map.
-                uu_vec = np.zeros(st.n_items, dtype=np.float64)
-                neighbor_rows = nz[keep]
-                neighbor_sims = sims[keep]
-                for v_row, sim in zip(neighbor_rows.tolist(), neighbor_sims.tolist()):
-                    v_items = st.user_row_items.get(int(v_row))
-                    if v_items is not None:
-                        uu_vec[v_items] += sim
-                u_std = uu_vec.std()
-                if u_std > 0:
-                    scores_full = scores_full + st.user_cf_alpha * (
-                        (uu_vec - uu_vec.mean()) / u_std
-                    )
-        if last_on:
-            assert st.ease_b is not None  # narrowed by last_on
-            last_row = st.ease_b[int(owned[-1])].astype(np.float64)
-            if last_row.size < st.n_items:
-                last_row = np.concatenate([last_row, np.zeros(st.n_items - last_row.size)])
-            l_std = last_row.std()
-            if l_std > 0:
-                scores_full = scores_full + st.last_item_alpha * (
-                    (last_row - last_row.mean()) / l_std
-                )
-        if content_on:
-            from kindling.item_features import content_scores
-
-            cs = content_scores(st.content_features, owned)
-            c_std = cs.std()
-            if c_std > 0:
-                cz = (cs - cs.mean()) / c_std
-                coldness = st.content_coldness if st.content_coldness is not None else 1.0
-                scores_full = scores_full + st.content_alpha * coldness * cz
-        if trans_on:
-            assert st.trans_indptr is not None
-            assert st.trans_indices is not None
-            assert st.trans_data is not None
-            trans = np.zeros(st.n_items, dtype=np.float64)
-            recent = owned[::-1][: st.transition_last_k]
-            for j, item in enumerate(recent):
-                s_ = int(st.trans_indptr[item])
-                e_ = int(st.trans_indptr[item + 1])
-                if e_ > s_:
-                    trans[st.trans_indices[s_:e_]] += (st.transition_decay**j) * st.trans_data[
-                        s_:e_
-                    ]
-            t_std = trans.std()
-            if t_std > 0:
-                scores_full = scores_full + st.transition_alpha * ((trans - trans.mean()) / t_std)
-        return scores_full
-
-    def _compute_base(
-        self, entity_id: object, owned: np.ndarray, cand_ids: list[int]
-    ) -> tuple[str, np.ndarray]:
-        """Cooc base scores over the candidate pool."""
-        st = self._state
-        assert st is not None
-        base = kindling_core.cooccurrence_signal(
-            st.cooc_data,
-            st.cooc_indices,
-            st.cooc_indptr,
-            owned_indices=owned.tolist(),
-            candidate_indices=cand_ids,
-        )
-        return "cooc", np.asarray(base)
-
-    def _build_layer_specs(
-        self,
-        entity_id: object,
-        owned: np.ndarray,
-        cand_ids: list[int],
-    ) -> list[tuple[np.ndarray, str]]:
-        """Build (layer_scores, z_mode) tuples for the layered scorer.
-
-        Pinned to v1 layered's canonical set
-        [path_basket, session_cooccurrence, temporal_cooccurrence] so v2
-        and v1-with-layered_scoring are an apples-to-apples comparison.
-        Each layer is sparse / "nonzero" z-mode.
-
-        path_tail and item_cosine were experimented with as additional
-        layers; both produced no measurable lift over the canonical set
-        and are intentionally excluded here so consolidation parity is
-        clean.
-        """
-        st = self._state
-        assert st is not None
-        out: list[tuple[np.ndarray, str]] = []
-
-        # Cooc-shaped sparse layers (temporal_cooc, session_cooc).
-        for layer_name in st.enabled_boost_layers:
-            adj = st.boost_layer_adjacencies.get(layer_name)
-            if adj is None:
-                continue
-            data, indices, indptr = adj
-            scores = kindling_core.cooccurrence_signal(
-                data,
-                indices,
-                indptr,
-                owned_indices=owned.tolist(),
-                candidate_indices=cand_ids,
-            )
-            out.append((np.asarray(scores), "nonzero"))
-
-        # path_basket: sparse, queries against the user's recent history.
-        if st.basket_index is not None and st.basket_index.observations:
-            history = st.history_by_entity.get(entity_id, ())
-            if history:
-                # Use the most recent ~50 items as the query basket.
-                query_basket = frozenset(history[-50:])
-                cand_external = [st.item_ids[ci] for ci in cand_ids]
-                basket_scores = st.basket_index.score_many(cand_external, query_basket=query_basket)
-                out.append((np.asarray(basket_scores, dtype=np.float64), "nonzero"))
-
-        return out
 
     def _profile(
         self,
