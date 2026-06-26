@@ -109,11 +109,11 @@ the gate), full-library + PyO3 the target. Differential harness: `bench/rust_par
 | **native `EngineState` + recommend** — EASE base + blend + temporal-cooc boost layer + cold-slots | ✅ ported (this branch) |
 | ⇒ **native recommend end-to-end** (built from Python state) | ✅ reproduces ml1m 0.2928 (500/500 byte-exact), beauty 0.0328, steam 0.0659 (499/500, NDCG-exact) |
 | **batch recommend** (rayon, GIL released) | ✅ == serial 500/500; 16.9× (ml1m) / 6.2× (beauty) vs the Python recommend loop |
-| **wired into the engine** — `Engine.recommend_batch` (native fast path, Python fallback; lazy-built per fit) | ✅ reproduces baselines via the public API; 134 unit + 8 integration tests pass |
-| recommend remainder — cooc-base path (book), native single `recommend` | ⬜ |
-| persistence (bincode/rkyv) | ⬜ |
+| **wired into the engine** — `Engine.recommend_batch` + single `recommend` / `recommend_for_items` (native fast path, Python fallback via `_use_native`; lazy-built per fit) | ✅ reproduces baselines via the public API; 143 tests pass |
+| **cooc-fused base** (the book path) | ✅ native serves the cooc base too; forced-cooc parity ml1m 500/500, beauty 496/500 (NDCG-exact); real book validating |
+| **persistence** — `EngineState.save`/`load` + `to_bytes`/`from_bytes` (bincode) | ✅ self-contained serving artifact; round-trip recommend-exact |
 | ingestion (drop pandas — the memory win) | ⬜ |
-| PyO3 `Engine` + full 4-dataset parity | ⬜ |
+| native catalog mappings (item_ids / owned) for a pure-Rust serve | ⬜ |
 
 **Honest scope note:** the engine is ~1563 lines of orchestration over a large
 `EngineState`; a full exact-parity Rust library is a multi-run effort, not a

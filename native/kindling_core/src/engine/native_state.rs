@@ -20,8 +20,11 @@ use crate::score::layered::{layered_score, ZMode};
 type Csr32 = (Vec<f32>, Vec<i32>, Vec<i32>);
 
 /// Native recommend engine. Constructed via [`build_engine`] from a Python
-/// `EngineState`; `recommend` reproduces `_recommend_core`.
+/// `EngineState`; `recommend` reproduces `_recommend_core`. Serializable
+/// (bincode) so a fitted engine can be persisted as a self-contained serving
+/// artifact and reloaded without re-fitting.
 #[pyclass]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct EngineState {
     n_items: usize,
     // base: EASE (dense ease_n×ease_n) or cooc-fused (symmetric cooc CSR).
@@ -238,6 +241,39 @@ impl EngineState {
                 .map(|(ow, &ur)| self.recommend_one(ow, ur, n, pop_prior))
                 .collect()
         })
+    }
+
+    /// Serialize the native engine to `path` (bincode) — a self-contained
+    /// serving artifact that reloads with [`EngineState::load`] (no re-fit).
+    fn save(&self, path: &str) -> PyResult<()> {
+        let bytes = bincode::serialize(self)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+        std::fs::write(path, bytes)
+            .map_err(|e| pyo3::exceptions::PyIOError::new_err(e.to_string()))?;
+        Ok(())
+    }
+
+    /// Load a native engine saved with [`EngineState::save`].
+    #[staticmethod]
+    fn load(path: &str) -> PyResult<EngineState> {
+        let bytes = std::fs::read(path)
+            .map_err(|e| pyo3::exceptions::PyIOError::new_err(e.to_string()))?;
+        bincode::deserialize(&bytes)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))
+    }
+
+    /// Serialize to an in-memory bincode buffer.
+    fn to_bytes<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, pyo3::types::PyBytes>> {
+        let bytes = bincode::serialize(self)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+        Ok(pyo3::types::PyBytes::new_bound(py, &bytes))
+    }
+
+    /// Reconstruct from a [`EngineState::to_bytes`] buffer.
+    #[staticmethod]
+    fn from_bytes(data: &[u8]) -> PyResult<EngineState> {
+        bincode::deserialize(data)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))
     }
 }
 

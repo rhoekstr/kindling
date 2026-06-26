@@ -20,6 +20,10 @@ ndarray = { version = "0.16", features = ["rayon"] }
 rayon = "1.10"
 rustc-hash = "2.0"
 
+# Native-state (de)serialization for the persisted serving artifact.
+serde = { version = "1", features = ["derive"] }
+bincode = "1"
+
 # v2-only deps. Listed here so version pins are workspace-wide.
 petal-clustering = "0.10"
 linfa = "0.7"

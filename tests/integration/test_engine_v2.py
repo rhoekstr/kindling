@@ -80,6 +80,34 @@ def test_native_single_recommend_matches_python(ratings):
         assert [r.item_id for r in eng.recommend(e, 10)] == py[e]
 
 
+def test_native_engine_save_load_roundtrip(ratings, tmp_path):
+    # The native engine is a serializable serving artifact: save/load (and the
+    # in-memory bytes form) must reproduce recommendations exactly.
+    from kindling._native import kindling_core
+    from kindling._native_engine import build_native_engine
+
+    eng = _fit(ratings)
+    native = build_native_engine(eng)
+    if native is None:
+        pytest.skip("native engine extension unavailable")
+    st = eng._state
+    ents = [
+        e
+        for e in pd.Index(ratings.train["entity_id"].unique())[:15]
+        if (ow := st.owned_by_entity.get(e)) is not None and ow.size > 0
+    ]
+    cases = [([int(x) for x in st.owned_by_entity[e]], int(st.entity_to_user_idx.get(e, -1)))
+             for e in ents]
+    path = str(tmp_path / "native_engine.bin")
+    native.save(path)
+    loaded = kindling_core.EngineState.load(path)
+    from_bytes = kindling_core.EngineState.from_bytes(native.to_bytes())
+    for owned, user_row in cases:
+        ref = native.recommend(owned, user_row, 10, 0.0)
+        assert loaded.recommend(owned, user_row, 10, 0.0)[:2] == ref[:2]
+        assert from_bytes.recommend(owned, user_row, 10, 0.0)[:2] == ref[:2]
+
+
 def test_recommend_for_items_warm_seeds_personalize(ratings):
     eng = _fit(ratings)
     seeds = ratings.train["item_id"].value_counts().index[:3].tolist()

@@ -16,6 +16,8 @@ numpy = { workspace = true }
 ndarray = { workspace = true }
 rayon = { workspace = true }
 rustc-hash = { workspace = true }
+serde = { workspace = true }
+bincode = { workspace = true }
 petal-clustering = { workspace = true }
 # EASE base scorer: closed-form (XᵀX + λI)⁻¹. faer is pure-Rust +
 # rayon-parallel — no BLAS/LAPACK system dep, no ABI fragility.
