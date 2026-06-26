@@ -60,8 +60,11 @@ def main() -> int:
     if not available:
         print("no warming_*.json data found")
         return 1
-    nrows, ncols = len(available), len(COLS)
-    fig, axes = plt.subplots(nrows, ncols, figsize=(4.4 * ncols, 3.1 * nrows), squeeze=False)
+    nrows, ncols = len(available), len(COLS) + 1  # + a full-data NDCG bar column
+    fig, axes = plt.subplots(
+        nrows, ncols, figsize=(3.4 + 4.4 * len(COLS), 3.1 * nrows), squeeze=False,
+        gridspec_kw={"width_ratios": [0.8, *([1.0] * len(COLS))]},
+    )
     fig.suptitle(
         "kindling vs. baseline recommenders — cold→hot growth curves",
         fontsize=15, fontweight="bold", y=0.997,
@@ -70,7 +73,37 @@ def main() -> int:
     for r, (stem, label, data) in enumerate(available):
         rows = data["rows"]
         models_here = [m for m in MODELS if any(x["model"] == m for x in rows)]
-        for c, (metric, col_label) in enumerate(COLS):
+
+        # Column 0: full-data NDCG@10 as a horizontal bar per model.
+        axb = axes[r][0]
+        fmax = max(x["fraction"] for x in rows)
+        bars = [
+            (m, next((x["ndcg@k"] for x in rows
+                      if x["model"] == m and x["fraction"] == fmax and x.get("ndcg@k") is not None),
+                     None))
+            for m in models_here
+        ]
+        n = len(bars)
+        for i, (m, v) in enumerate(bars):
+            if v is None:
+                continue
+            pos = n - 1 - i  # kindling (first) on top
+            axb.barh(pos, v, color=MODELS[m][1], height=0.72, zorder=3)
+            axb.text(v, pos, f" {v:.3f}", va="center", ha="left", fontsize=6.5)
+        axb.set_yticks([n - 1 - i for i in range(n)])
+        axb.set_yticklabels([MODELS[m][0] for m, _ in bars], fontsize=7)
+        vmax = max((v for _, v in bars if v is not None), default=1.0)
+        axb.set_xlim(0, vmax * 1.28)
+        axb.tick_params(axis="x", labelsize=7)
+        axb.grid(True, axis="x", ls=":", alpha=0.4)
+        axb.set_ylabel(label, fontsize=11, fontweight="bold")
+        if r == 0:
+            axb.set_title("NDCG@10 (full data)", fontsize=12, fontweight="bold")
+        if r == nrows - 1:
+            axb.set_xlabel("NDCG@10", fontsize=9)
+
+        # Columns 1..: cold→hot growth curves.
+        for c, (metric, col_label) in enumerate(COLS, start=1):
             ax = axes[r][c]
             for model in models_here:
                 disp, color, lw, z = MODELS[model]
@@ -94,12 +127,10 @@ def main() -> int:
             ax.grid(True, which="major", ls=":", alpha=0.4)
             if r == 0:
                 ax.set_title(col_label, fontsize=12, fontweight="bold")
-            if c == 0:
-                ax.set_ylabel(label, fontsize=11, fontweight="bold")
             if r == nrows - 1:
                 ax.set_xlabel("fraction of training data (cold → hot)", fontsize=9)
 
-    handles, labels = axes[0][0].get_legend_handles_labels()
+    handles, labels = axes[0][1].get_legend_handles_labels()
     fig.legend(
         handles, labels, loc="lower center", ncol=len(labels),
         frameon=False, fontsize=11, bbox_to_anchor=(0.5, -0.01),
