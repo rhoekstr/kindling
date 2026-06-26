@@ -132,6 +132,23 @@ fn build_engine(arrays: &Bound<'_, PyDict>, config: &Bound<'_, PyDict>) -> PyRes
         }
         _ => (Vec::new(), 0),
     };
+    // Shape validation: a base must exist, fit the catalog, and be square.
+    let n_items = cfg_usize(config, "n_items", 0)?;
+    let has_cooc = !i32v(arrays, "cooc_indptr")?.is_empty();
+    if n_items == 0 {
+        return Err(pyo3::exceptions::PyValueError::new_err("n_items must be > 0"));
+    }
+    if ease_n == 0 && !has_cooc {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "no base scorer: provide ease_b or a cooc CSR",
+        ));
+    }
+    if ease_n > n_items || ease_b.len() != ease_n * ease_n {
+        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+            "ease_b shape inconsistent: dim {ease_n}, len {}, n_items {n_items}",
+            ease_b.len()
+        )));
+    }
     let mut boost: Vec<Csr32> = Vec::new();
     if let Some(o) = arrays.get_item("boost")? {
         if !o.is_none() {
@@ -145,7 +162,7 @@ fn build_engine(arrays: &Bound<'_, PyDict>, config: &Bound<'_, PyDict>) -> PyRes
         }
     }
     Ok(EngineState {
-        n_items: cfg_usize(config, "n_items", 0)?,
+        n_items,
         base_is_ease: cfg_bool(config, "base_is_ease", true)?,
         ease_n,
         ease_b,
@@ -289,6 +306,20 @@ impl EngineState {
         pop_prior: f64,
     ) -> (Vec<i64>, Vec<f64>, Vec<String>) {
         let n_items = self.n_items;
+        // Defensive: the PyO3 entry point is callable with arbitrary indices.
+        // Drop negative / out-of-range owned items so no downstream index (the
+        // owned mask, the EASE/cooc/content row gathers) can panic.
+        let owned: Vec<i64> = owned
+            .iter()
+            .copied()
+            .filter(|&o| o >= 0 && (o as usize) < n_items)
+            .collect();
+        let owned = owned.as_slice();
+        // No (valid) history → no personalized recommendation. The serving
+        // layer routes zero-history users to a popularity fallback separately.
+        if owned.is_empty() {
+            return (Vec::new(), Vec::new(), Vec::new());
+        }
         // Plain cooc (cooc base with no *active* trend/transition channel) skips
         // the blend entirely and applies a positivity filter — matches the
         // Python `_recommend_core` else-branch (which gates on the channel

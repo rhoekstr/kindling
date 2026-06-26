@@ -7,8 +7,6 @@
 //! transitions / user-CF channels, the temporal boost layer, the cooc base, and
 //! cold-slots.
 
-use ndarray::ArrayView2;
-use numpy::PyReadonlyArray2;
 use pyo3::prelude::*;
 
 #[inline]
@@ -24,149 +22,6 @@ fn z_in_place(v: &mut [f64], alpha: f64, src: &[f64]) {
     }
 }
 
-/// Top-n recommendations for the EASE base + trend + last-item blend.
-///
-/// `ease_b` is the dense n_items×n_items EASE matrix; `trend_z` is the
-/// fit-time z-normalized trend (len n_items, or empty). Returns
-/// `(item_indices, scores)` of length ≤ n, owned excluded, ordered by score
-/// descending with ties broken by ascending index (matches the Python stable
-/// retrieval sort; top-N is identity over the descending pool here).
-#[pyfunction]
-#[pyo3(signature = (ease_b, trend_z, owned, trend_alpha, last_item_alpha, n))]
-fn recommend_ease_blend(
-    ease_b: PyReadonlyArray2<'_, f32>,
-    trend_z: numpy::PyReadonlyArray1<'_, f64>,
-    owned: numpy::PyReadonlyArray1<'_, i64>,
-    trend_alpha: f64,
-    last_item_alpha: f64,
-    n: usize,
-) -> PyResult<(Vec<i64>, Vec<f64>)> {
-    let b: ArrayView2<'_, f32> = ease_b.as_array();
-    let n_items = b.ncols();
-    let owned = owned.as_slice()?;
-    let tz = trend_z.as_slice()?;
-
-    // base_vec = Σ_{o∈owned} ease_b[o, :]
-    let mut score = vec![0f64; n_items];
-    for &o in owned {
-        let row = b.row(o as usize);
-        for (s, &x) in score.iter_mut().zip(row.iter()) {
-            *s += x as f64;
-        }
-    }
-    // z-normalize the base (population mean/std) before adding channels —
-    // matches `_blend_channels` (only when ≥1 channel is active, which it is
-    // for the trend + last-item path here).
-    {
-        let nn = n_items as f64;
-        let mean = score.iter().sum::<f64>() / nn;
-        let std = (score.iter().map(|x| (x - mean) * (x - mean)).sum::<f64>() / nn).sqrt();
-        if std > 0.0 {
-            for s in score.iter_mut() {
-                *s = (*s - mean) / std;
-            }
-        }
-    }
-    // trend channel (trend_z already z-normed at fit).
-    if trend_alpha > 0.0 && tz.len() == n_items {
-        for (s, &x) in score.iter_mut().zip(tz) {
-            *s += trend_alpha * x;
-        }
-    }
-    // last-item channel: alpha * z(ease_b[owned[-1], :]).
-    if last_item_alpha > 0.0 && !owned.is_empty() {
-        let last = *owned.last().unwrap() as usize;
-        let row: Vec<f64> = b.row(last).iter().map(|&x| x as f64).collect();
-        z_in_place(&mut score, last_item_alpha, &row);
-    }
-    // Exclude owned.
-    for &o in owned {
-        score[o as usize] = f64::NEG_INFINITY;
-    }
-    // Top-n by score desc, ties by ascending index (stable).
-    let mut idx: Vec<usize> = (0..n_items).filter(|&i| score[i].is_finite()).collect();
-    let k = n.min(idx.len());
-    let pivot = k.saturating_sub(1).min(idx.len().saturating_sub(1));
-    idx.select_nth_unstable_by(pivot, |&a, &b2| {
-        score[b2].partial_cmp(&score[a]).unwrap_or(std::cmp::Ordering::Equal).then(a.cmp(&b2))
-    });
-    let mut top: Vec<usize> = idx.into_iter().take(k).collect();
-    top.sort_by(|&a, &b2| {
-        score[b2].partial_cmp(&score[a]).unwrap_or(std::cmp::Ordering::Equal).then(a.cmp(&b2))
-    });
-    let items: Vec<i64> = top.iter().map(|&i| i as i64).collect();
-    let scores: Vec<f64> = top.iter().map(|&i| score[i]).collect();
-    Ok((items, scores))
-}
-
-/// Full channel blend — port of `_blend_channels` (engine.py). Base-agnostic:
-/// `base_vec` is the raw (pre-z-norm) full-catalog base (EASE sum or cooc
-/// accumulation); returns the blended full-catalog score vector. Covers the
-/// trend / user-CF / last-item / transitions channels (content is off in every
-/// reference dataset and is not ported here — guarded by alpha == 0).
-///
-/// Channel state is passed as numpy arrays; an inactive channel is signalled by
-/// alpha == 0 and/or an empty array. `user_row_items` is a CSR
-/// (`uri_data`/`uri_indptr`, indexed by user row) of each user's owned items,
-/// for neighbor voting.
-#[pyfunction]
-#[pyo3(signature = (
-    base_vec, owned, n_items,
-    trend_z, trend_alpha,
-    last_row, last_item_alpha,
-    trans_data, trans_indices, trans_indptr, transition_alpha, transition_last_k, transition_decay,
-    uu_data, uu_indptr, uu_deg, uri_data, uri_indptr, user_cf_alpha, user_cf_k, user_row, n_users,
-))]
-#[allow(clippy::too_many_arguments)]
-fn blend_channels(
-    base_vec: numpy::PyReadonlyArray1<'_, f64>,
-    owned: numpy::PyReadonlyArray1<'_, i64>,
-    n_items: usize,
-    trend_z: numpy::PyReadonlyArray1<'_, f64>,
-    trend_alpha: f64,
-    last_row: numpy::PyReadonlyArray1<'_, f64>,
-    last_item_alpha: f64,
-    trans_data: numpy::PyReadonlyArray1<'_, f64>,
-    trans_indices: numpy::PyReadonlyArray1<'_, i32>,
-    trans_indptr: numpy::PyReadonlyArray1<'_, i64>,
-    transition_alpha: f64,
-    transition_last_k: usize,
-    transition_decay: f64,
-    uu_data: numpy::PyReadonlyArray1<'_, i64>,
-    uu_indptr: numpy::PyReadonlyArray1<'_, i64>,
-    uu_deg: numpy::PyReadonlyArray1<'_, f64>,
-    uri_data: numpy::PyReadonlyArray1<'_, i64>,
-    uri_indptr: numpy::PyReadonlyArray1<'_, i64>,
-    user_cf_alpha: f64,
-    user_cf_k: usize,
-    user_row: i64,
-    n_users: usize,
-) -> PyResult<Vec<f64>> {
-    let bs = BlendState {
-        trend_z: trend_z.as_slice()?,
-        trend_alpha,
-        last_row: last_row.as_slice()?,
-        last_item_alpha,
-        trans_data: trans_data.as_slice()?,
-        trans_indices: trans_indices.as_slice()?,
-        trans_indptr: trans_indptr.as_slice()?,
-        transition_alpha,
-        transition_last_k,
-        transition_decay,
-        uu_data: uu_data.as_slice()?,
-        uu_indptr: uu_indptr.as_slice()?,
-        uu_deg: uu_deg.as_slice()?,
-        uri_data: uri_data.as_slice()?,
-        uri_indptr: uri_indptr.as_slice()?,
-        user_cf_alpha,
-        user_cf_k,
-        user_row,
-        n_users,
-        content_alpha: 0.0,
-        content_contrib: &[],
-    };
-    Ok(blend_full(base_vec.as_slice()?.to_vec(), n_items, owned.as_slice()?, &bs))
-}
 
 /// Channel state for [`blend_full`] — slice views, so both the `blend_channels`
 /// pyfunction and the native engine can share the blend without re-marshaling.
@@ -293,8 +148,8 @@ pub(crate) fn blend_full(mut score: Vec<f64>, n_items: usize, owned: &[i64], b: 
     score
 }
 
-pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(recommend_ease_blend, m)?)?;
-    m.add_function(wrap_pyfunction!(blend_channels, m)?)?;
+pub(crate) fn register(_m: &Bound<'_, PyModule>) -> PyResult<()> {
+    // No pyfunctions here now — the blend is internal (`blend_full`), exposed
+    // only through the native `EngineState`.
     Ok(())
 }
