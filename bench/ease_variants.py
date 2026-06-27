@@ -1,3 +1,4 @@
+# ruff: noqa: N802, N803, N806  (linear-algebra matrix names: X, G, B, P, T)
 """EASE-variant assessment (Stage 3): EASE vs EDLAE vs RLAE on the ml-1m split.
 
 DIY closed-form item-item linear autoencoders, scored with the SAME valid-masked
@@ -29,7 +30,8 @@ D = Path("recbole_data")
 
 
 def _load():
-    truth = {u: set(v) for u, v in json.load(open(D / "split_truth.json")).items()}
+    with open(D / "split_truth.json") as fh:
+        truth = {u: set(v) for u, v in json.load(fh).items()}
     train = pd.read_csv(D / "split_train.csv")
     full = pd.read_csv(D / "ml-1m/ml-1m.inter", sep="\t")
     full.columns = ["user", "item", "rating", "ts"]
@@ -122,8 +124,8 @@ def main():
     print("\n=== best per variant (valid-masked eval) ===")
     for k, (nd, hp) in best.items():
         print(f"  {k:6s} {nd}  (hp={hp})")
-    json.dump({k: {"ndcg": v[0], "hp": v[1]} for k, v in best.items()},
-              open(D / "ease_variants_diy.json", "w"), indent=2)
+    with open(D / "ease_variants_diy.json", "w") as fh:
+        json.dump({k: {"ndcg": v[0], "hp": v[1]} for k, v in best.items()}, fh, indent=2)
 
 
 if __name__ == "__main__":
