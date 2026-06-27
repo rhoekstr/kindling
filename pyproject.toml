@@ -3,7 +3,7 @@ requires = ["maturin>=1.7,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "kindling"
+name = "kindling-rec"
 version = "1.0.0"
 description = "A hybrid recommender system that grows with your data"
 readme = "README.md"

@@ -17,8 +17,9 @@ last-item, transitions, user-CF), with a Rust core for the numerics.
 ## Install
 
 ```bash
-pip install -e ".[dev]"      # dev tooling
-pip install -e ".[dev,bench]"  # + benchmark harness
+pip install kindling-rec           # from PyPI
+pip install -e ".[dev]"            # dev / from source
+pip install -e ".[dev,bench]"      # + benchmark harness
 ```
 
 ## Quickstart

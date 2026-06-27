@@ -9,7 +9,7 @@ then publishes to PyPI via **Trusted Publishing** (OIDC — no stored token).
 1. Log in to [pypi.org](https://pypi.org) (create an account if needed).
 2. Go to **Your projects → Add project** (or the project page once it exists).
 3. Under **Publishing → Trusted Publishers → Add a new publisher**, fill in:
-   - **PyPI project name:** `kindling`
+   - **PyPI project name:** `kindling-rec`
    - **Owner:** `rhoekstr`
    - **Repository:** `kindling`
    - **Workflow name:** `release.yml`
@@ -33,7 +33,7 @@ smoke-test on each, and publishes the full dist set to PyPI.
 ## Verifying the release
 
 ```bash
-pip install kindling==1.0.0
+pip install kindling-rec==1.0.0
 python -c "import kindling; print(kindling.__version__)"
 ```
 
