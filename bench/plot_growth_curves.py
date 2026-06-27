@@ -66,12 +66,10 @@ def _load(stem: str) -> dict | None:
 
 def main() -> int:
     available = [(s, label, d) for s, label in DATASETS if (d := _load(s)) is not None]
-    # Mark datasets evaluated repeat-aware (reorders credited) — those rows answer
-    # the repeat-regime objective, not discovery.
-    available = [
-        (s, label + ("  ⟳ repeat-aware" if d.get("eval") == "repeat_aware" else ""), d)
-        for s, label, d in available
-    ]
+    # Carry a repeat-aware flag per row (reorders credited — the repeat-regime
+    # objective, not discovery). Rendered as a small subheader under the dataset
+    # name so the bold row label stays short.
+    available = [(s, label, d, d.get("eval") == "repeat_aware") for s, label, d in available]
     if not available:
         print("no warming_*.json data found")
         return 1
@@ -85,7 +83,7 @@ def main() -> int:
         fontsize=15, fontweight="bold", y=0.997,
     )
 
-    for r, (stem, label, data) in enumerate(available):
+    for r, (stem, label, data, repeat) in enumerate(available):
         rows = data["rows"]
         models_here = [m for m in MODELS if any(x["model"] == m for x in rows)]
 
@@ -111,7 +109,15 @@ def main() -> int:
         axb.set_xlim(0, vmax * 1.28)
         axb.tick_params(axis="x", labelsize=7)
         axb.grid(True, axis="x", ls=":", alpha=0.4)
-        axb.set_ylabel(label, fontsize=11, fontweight="bold")
+        # Dataset name as the bold row label; repeat-aware rows get a smaller
+        # subheader line just to the right of it (a second vertical line) so the
+        # name stays short and unwrapped.
+        axb.set_ylabel(label, fontsize=11, fontweight="bold", labelpad=14 if repeat else 6)
+        if repeat:
+            axb.text(
+                -0.30, 0.5, "⟳ repeat-aware", transform=axb.transAxes,
+                rotation=90, va="center", ha="center", fontsize=7.5, color="#c0392b",
+            )
         if r == 0:
             axb.set_title("NDCG@10 (full data)", fontsize=12, fontweight="bold")
         if r == nrows - 1:
