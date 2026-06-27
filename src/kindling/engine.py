@@ -298,6 +298,12 @@ class Engine:
         # timing multiplier (REPLENISH: suppress just-bought, keep due).
         repeat_recommend: bool | str = "auto",
         repeat_min_rate: float = 0.15,
+        # Boost-layer (z_threshold, boost_multiplier) auto-calibration. When the
+        # fit has cooc-shaped boost layers (temporal/session cooc), "auto" runs a
+        # held-out (leave-last-out) grid sweep and adopts the (z, boost) cell that
+        # maximizes held-out NDCG — falling back to the 2.5/3.0 defaults if no
+        # cell beats them (so it never regresses). True/False force it.
+        calibrate_boost: bool | str = "auto",
         # Release-recency weight inside the cold slot. Cold purchases
         # skew heavily toward NEW releases; ranking cold candidates by
         # z(content) + beta·exp(−days_since_release/180) lifted steam
@@ -439,6 +445,9 @@ class Engine:
         if not 0.0 <= repeat_min_rate <= 1.0:
             raise ValueError(f"repeat_min_rate must be in [0, 1]; got {repeat_min_rate!r}")
         self.repeat_min_rate = float(repeat_min_rate)
+        if calibrate_boost not in (True, False, "auto"):
+            raise ValueError(f"calibrate_boost must be True | False | 'auto'; got {calibrate_boost!r}")
+        self.calibrate_boost = calibrate_boost
         if cold_recency_beta < 0:
             raise ValueError(f"cold_recency_beta must be >= 0; got {cold_recency_beta!r}")
         self.cold_recency_beta = float(cold_recency_beta)
@@ -1047,6 +1056,18 @@ class Engine:
         # path_basket) was a Python-per-recommend layer incompatible with the
         # native batch path and is no longer built.
 
+        # Auto-calibrate the boost layer's (z_threshold, boost_multiplier) by
+        # held-out lift; no-op (defaults) without boost layers.
+        eff_z, eff_boost = self._calibrate_boost(
+            ease_b,
+            (cooc_data, cooc_indices, cooc_indptr) if ease_b is None else None,
+            boost_adj,
+            user_idx,
+            item_idx,
+            timestamps_col,
+            profile,
+        )
+
         self._state = EngineState(
             item_ids=np.asarray(item_ids, dtype=object),
             item_to_idx=item_to_idx,
@@ -1094,8 +1115,8 @@ class Engine:
             repeat_quality=repeat_quality,
             repeat_now_ts=repeat_now_ts,
             boost_layer_adjacencies=boost_adj,
-            z_threshold=2.5,
-            boost_multiplier=3.0,
+            z_threshold=eff_z,
+            boost_multiplier=eff_boost,
             fit_seconds=time.perf_counter() - t0,
             profile=profile,
         )
@@ -1430,6 +1451,106 @@ class Engine:
         self._native = native
         self._native_built = True
         st.profile["channels_gated"] = dropped
+
+    def _calibrate_boost(
+        self,
+        ease_b: np.ndarray | None,
+        cooc: tuple[np.ndarray, np.ndarray, np.ndarray] | None,
+        boost_adj: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]],
+        user_idx: np.ndarray,
+        item_idx: np.ndarray,
+        timestamps_col: np.ndarray | None,
+        profile: dict[str, Any],
+    ) -> tuple[float, float]:
+        """Held-out (z_threshold, boost_multiplier) grid sweep for the boost
+        layers. Builds leave-last-out candidate pools (base + per-layer cooc
+        scores + held-out mask) for a sample of users and asks
+        ``calibrate_layered_py`` for the (z, boost) cell that maximizes held-out
+        NDCG@10 — falling back to (2.5, 3.0) if none beats them. No-op without
+        boost layers or timestamps."""
+        default = (2.5, 3.0)
+        do = self.calibrate_boost is True or self.calibrate_boost == "auto"
+        if not do or not boost_adj or timestamps_col is None or timestamps_col.size == 0:
+            return default
+        layer_csrs = list(boost_adj.values())
+        n_core = int(ease_b.shape[0]) if ease_b is not None else (cooc[2].size - 1 if cooc else 0)
+        if n_core == 0:
+            return default
+        # Leave-last-out: hold out each user's latest interaction (count ≥ 2).
+        order = np.lexsort((timestamps_col, user_idx))
+        su, si = user_idx[order], item_idx[order]
+        is_last = np.empty(su.shape, dtype=bool)
+        is_last[-1] = True
+        is_last[:-1] = su[:-1] != su[1:]
+        counts = np.bincount(su, minlength=int(su.max()) + 1 if su.size else 1)
+        last_pos = np.flatnonzero(is_last)
+        multi = counts[su[last_pos]] >= 2
+        drop_pos = last_pos[multi]
+        if drop_pos.size < 100:
+            return default
+        held_user, held_item = su[drop_pos], si[drop_pos]
+        keep = np.ones(su.shape, dtype=bool)
+        keep[drop_pos] = False
+        tu, ti = su[keep], si[keep]
+        rng = np.random.default_rng(self.random_state)
+        if held_user.size > 1500:
+            sel = rng.choice(held_user.size, 1500, replace=False)
+            held_user, held_item = held_user[sel], held_item[sel]
+        held_set = set(held_user.tolist())
+        hist: dict[int, list[int]] = {u: [] for u in held_set}
+        for u, i in zip(tu.tolist(), ti.tolist()):
+            h = hist.get(u)
+            if h is not None and i < n_core:
+                h.append(i)
+        budget = min(self.retrieval_budget, n_core)
+        users: list[tuple[np.ndarray, list[tuple[np.ndarray, str]], np.ndarray]] = []
+        for u, t in zip(held_user.tolist(), held_item.tolist()):
+            h = hist.get(u)
+            if not h or t >= n_core:
+                continue
+            ho = np.asarray(h, dtype=np.int64)
+            if ease_b is not None:
+                base_full = ease_b[ho].sum(axis=0).astype(np.float64)
+            else:
+                d, ix, ip = cooc  # type: ignore[misc]
+                base_full = np.asarray(
+                    kindling_core.cooccurrence_signal(
+                        d, ix, ip, owned_indices=ho.tolist(),
+                        candidate_indices=list(range(n_core)),
+                    ),
+                    dtype=np.float64,
+                )
+            base_full[ho] = -np.inf
+            cand = np.argpartition(-base_full, budget - 1)[:budget]
+            cand = cand[np.isfinite(base_full[cand])]
+            if t not in set(cand.tolist()):
+                continue  # target not retrieved — no (z, boost) can credit it
+            cl = cand.tolist()
+            layers = [
+                (
+                    np.asarray(
+                        kindling_core.cooccurrence_signal(
+                            d, ix, ip, owned_indices=ho.tolist(), candidate_indices=cl
+                        ),
+                        dtype=np.float64,
+                    ),
+                    "nonzero",
+                )
+                for (d, ix, ip) in layer_csrs
+            ]
+            users.append((base_full[cand].astype(np.float64), layers, (cand == t).astype(np.float64)))
+        if len(users) < 50:
+            return default
+        z_grid = [1.5, 2.0, 2.5, 3.0, 3.5]
+        boost_grid = [1.0, 2.0, 3.0, 4.0, 5.0]
+        _cells, (bz, bb, bndcg, fell_back) = kindling_core.calibrate_layered_py(
+            users, z_grid, boost_grid, 10, 20, 3, 2.5, 3.0, 0.003, 0.0
+        )
+        profile["boost_calibrated"] = not fell_back
+        profile["boost_calibrated_z"] = float(bz)
+        profile["boost_calibrated_mult"] = float(bb)
+        profile["boost_calibrated_users"] = len(users)
+        return (float(bz), float(bb))
 
     def _cold_recommend(self, n: int) -> list[Recommendation]:
         """Zero-history fallback for brand-new users with no seeds: top-n by
