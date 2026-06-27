@@ -104,3 +104,34 @@ fits; don't let a memory wall block a correctness claim.
   tie-break shifted steam 0.0660 → 0.0659, that one digit was re-baselined in
   `gates.toml` with a note explaining why — so the next person doesn't read it
   as a regression.
+
+## 8. A held-out gate must mirror the benchmark's split protocol
+
+The repeat module had to auto-decide which datasets it helps. The first gate
+held out each user's most-recent items and confidently *kept* Steam — where the
+module actually hurts. The benchmark splits **chronologically and globally**
+(most-recent fraction by wall-clock time); the per-user-recent held-out
+over-represented re-logged repeats and answered a different question than the one
+being scored. Rebuilding the gate around the *same* global-time split — leak-free
+(profile rebuilt on held-out history) and faithful (real timestamps, so the
+timing logic behaves as at serve time) — made it decline Steam and keep the
+genuine grocery logs. A held-out that doesn't match the eval doesn't approximate
+the answer; it answers a different question. See [REPEAT-GATE.md](REPEAT-GATE.md).
+
+## 9. "Fake repeat" — re-logging is not repurchase
+
+Steam has a *higher* duplicate-interaction rate than Ta-Feng, yet recommending
+repeats helps Ta-Feng (+47%) and hurts Steam (−4%) even when reorders are
+credited. A duplicate (user, item) on a grocery log is intent to re-buy; on a
+game log it's re-opening something you already own. The discriminator isn't *how
+much* users repeat but *whether past repeats predict future ones* — which only a
+held-out test (Lesson 8), not a count, can answer.
+
+## 10. A non-universal win is better offered than imposed
+
+EASE+ (EDLAE denoising) beats plain EASE on three datasets and loses on a fourth,
+and a held-out search couldn't reliably pick the right δ per dataset. The
+disciplined move was to ship it **opt-in** with the default unchanged, rather
+than adopt a "win" that silently regresses one reference number. When an upgrade
+isn't universal and you can't cheaply detect where it applies, a flag beats a
+default.
