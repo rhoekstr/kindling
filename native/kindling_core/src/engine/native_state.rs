@@ -80,12 +80,14 @@ pub struct EngineState {
     repeat_active: bool,
     repeat_indptr: Vec<i64>,
     repeat_items: Vec<i64>,
+    repeat_counts: Vec<f64>,
     repeat_last_ts: Vec<f64>,
     repeat_periods: Vec<f64>,
     repeat_quality: Vec<f64>,
     repeat_now_ts: f64,
     repeat_refractory: f64,
     repeat_epsilon: f64,
+    repeat_freq_alpha: f64,
 }
 
 fn f64v(d: &Bound<'_, PyDict>, k: &str) -> PyResult<Vec<f64>> {
@@ -216,12 +218,14 @@ fn build_engine(arrays: &Bound<'_, PyDict>, config: &Bound<'_, PyDict>) -> PyRes
         repeat_active: cfg_bool(config, "repeat_active", false)?,
         repeat_indptr: i64v(arrays, "repeat_indptr")?,
         repeat_items: i64v(arrays, "repeat_items")?,
+        repeat_counts: f64v(arrays, "repeat_counts")?,
         repeat_last_ts: f64v(arrays, "repeat_last_ts")?,
         repeat_periods: f64v(arrays, "repeat_periods")?,
         repeat_quality: f64v(arrays, "repeat_quality")?,
         repeat_now_ts: cfg_f64(config, "repeat_now_ts", f64::NAN)?,
         repeat_refractory: cfg_f64(config, "repeat_refractory", 0.0)?,
         repeat_epsilon: cfg_f64(config, "repeat_epsilon", 1e-3)?,
+        repeat_freq_alpha: cfg_f64(config, "repeat_freq_alpha", 0.0)?,
     })
 }
 
@@ -502,7 +506,16 @@ impl EngineState {
                     tsl,
                     self.repeat_epsilon,
                 );
-                exempt.push((j, scores[j] * mult));
+                // Personal-frequency layer: lift the reorder by how often the
+                // user bought it (log1p(count)), timing-modulated, so frequent
+                // staples rise like the "buy it again" baseline. alpha=0 → the
+                // old affinity-only behavior.
+                let freq = if self.repeat_freq_alpha > 0.0 && k < self.repeat_counts.len() {
+                    self.repeat_freq_alpha * (1.0 + self.repeat_counts[k]).ln()
+                } else {
+                    0.0
+                };
+                exempt.push((j, (scores[j] + freq) * mult));
             }
         }
         // Exclude owned.
