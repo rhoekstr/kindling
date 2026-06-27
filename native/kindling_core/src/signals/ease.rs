@@ -42,6 +42,7 @@ pub fn fit_ease(
     n_users: usize,
     n_items: usize,
     lambda: f64,
+    delta: f64,
 ) -> Result<Vec<f32>, String> {
     if n_items == 0 {
         return Ok(Vec::new());
@@ -104,8 +105,12 @@ pub fn fit_ease(
     }
 
     // ── 3. Regularize + invert via Cholesky (G + λI is SPD).
+    // EDLAE denoising (δ>0): add δ·diag(G) to the ridge, i.e. an extra
+    // popularity-proportional penalty on each item's self-term — corrects the
+    // train/serve mismatch of the dropout-free autoencoder. δ=0 ⇒ canonical EASE.
     for d in 0..n_items {
-        g[(d, d)] += lambda;
+        let gdd = g[(d, d)];
+        g[(d, d)] += lambda + delta * gdd;
     }
     let llt = g
         .cholesky(Side::Lower)
@@ -132,7 +137,7 @@ pub fn fit_ease(
 
 /// PyO3 wrapper. Returns B as an (n_items, n_items) float32 ndarray.
 #[pyfunction]
-#[pyo3(signature = (user_idx, item_idx, n_users, n_items, lambda_ = 250.0, weights = None))]
+#[pyo3(signature = (user_idx, item_idx, n_users, n_items, lambda_ = 250.0, weights = None, delta = 0.0))]
 fn fit_ease_py<'py>(
     py: Python<'py>,
     user_idx: PyReadonlyArray1<'py, i64>,
@@ -141,6 +146,7 @@ fn fit_ease_py<'py>(
     n_items: usize,
     lambda_: f64,
     weights: Option<PyReadonlyArray1<'py, f32>>,
+    delta: f64,
 ) -> PyResult<Bound<'py, PyArray2<f32>>> {
     // Own the index arrays so the GIL can be released during the
     // O(n_items³) inversion.
@@ -152,7 +158,7 @@ fn fit_ease_py<'py>(
     };
     let b = py
         .allow_threads(|| {
-            fit_ease(&users, &items, w_vec.as_deref(), n_users, n_items, lambda_)
+            fit_ease(&users, &items, w_vec.as_deref(), n_users, n_items, lambda_, delta)
         })
         .map_err(PyValueError::new_err)?;
     let arr = Array2::from_shape_vec((n_items, n_items), b)
@@ -180,7 +186,7 @@ mod tests {
         let user_idx = vec![0_i64, 0, 1, 2];
         let item_idx = vec![0_i64, 1, 0, 1];
         let lambda = 0.5;
-        let b = fit_ease(&user_idx, &item_idx, None, 3, 2, lambda).unwrap();
+        let b = fit_ease(&user_idx, &item_idx, None, 3, 2, lambda, 0.0).unwrap();
         let expect = 1.0 / (2.0 + lambda);
         assert!((b[0 * 2 + 1] as f64 - expect).abs() < 1e-6, "B01 = {}, want {}", b[1], expect);
         assert!((b[1 * 2 + 0] as f64 - expect).abs() < 1e-6, "B10 = {}, want {}", b[2], expect);
@@ -192,8 +198,8 @@ mod tests {
     /// item twice must not change G.
     #[test]
     fn duplicates_binarized() {
-        let once = fit_ease(&[0, 0, 1], &[0, 1, 0], None, 2, 2, 1.0).unwrap();
-        let dup = fit_ease(&[0, 0, 0, 1, 1], &[0, 1, 1, 0, 0], None, 2, 2, 1.0).unwrap();
+        let once = fit_ease(&[0, 0, 1], &[0, 1, 0], None, 2, 2, 1.0, 0.0).unwrap();
+        let dup = fit_ease(&[0, 0, 0, 1, 1], &[0, 1, 1, 0, 0], None, 2, 2, 1.0, 0.0).unwrap();
         for (a, b) in once.iter().zip(dup.iter()) {
             assert!((a - b).abs() < 1e-9);
         }
@@ -223,7 +229,7 @@ mod tests {
             users.push(u);
             items.push(3);
         }
-        let b = fit_ease(&users, &items, None, 6, 4, 0.5).unwrap();
+        let b = fit_ease(&users, &items, None, 6, 4, 0.5, 0.0).unwrap();
         let n = 4;
         // For a user who owns item 1: B[1, 2] (true association) should
         // exceed B[1, 0] (popularity).
@@ -237,7 +243,7 @@ mod tests {
 
     #[test]
     fn empty_inputs_safe() {
-        let b = fit_ease(&[], &[], None, 0, 0, 1.0).unwrap();
+        let b = fit_ease(&[], &[], None, 0, 0, 1.0, 0.0).unwrap();
         assert!(b.is_empty());
     }
 }

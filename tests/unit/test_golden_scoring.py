@@ -44,3 +44,17 @@ def test_golden_recommendations(engine, entity):
     assert got_ids == want_ids, "top-K item ids drifted — scoring changed"
     for g, w in zip(got_scores, want_scores):
         assert abs(g - w) < 1e-3, f"score drifted: {g} vs {w}"
+
+
+def test_ease_denoise_opt_in():
+    """EASE+ (EDLAE) is opt-in: the default base is plain EASE (δ=0); a positive
+    ease_denoise δ produces a different EDLAE item-item matrix. Guards that the
+    default never silently switches to EASE+."""
+    import numpy as np
+
+    s = synthetic.make_ratings(n_entities=60, n_items=40, ratings_per_entity=15, seed=7)
+    base = Engine(random_state=0, channel_gate=False).fit(s.train)
+    plus = Engine(random_state=0, channel_gate=False, ease_denoise=0.5).fit(s.train)
+    assert base._state.profile.get("ease_delta") == 0.0
+    assert plus._state.profile.get("ease_delta") == 0.5
+    assert not np.array_equal(base._state.ease_b, plus._state.ease_b)
