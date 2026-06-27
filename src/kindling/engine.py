@@ -1545,6 +1545,16 @@ class Engine:
             return
         if timestamps_col.size == 0 or timestamps_col.max() <= timestamps_col.min():
             return
+        # The held-out test builds a native engine to compare ON vs OFF, which
+        # duplicates the cooc base in memory — fine on dense-feasible catalogs (it
+        # reuses the channel gate's cached native there), but it OOMs on very large
+        # ones (gowalla, 1.2M items). Above the EASE/dense bound, skip the held-out
+        # and keep the module on via the repeat-rate pre-filter — the same default
+        # as timestamp-less data. The reference catalogs that actually need gating
+        # (e.g. steam, where repeat must be declined) are all <= ease_max_items.
+        if st.n_items > self.ease_max_items:
+            st.profile["repeat_gated"] = {"kept": True, "skipped": "catalog_over_ease_max"}
+            return
 
         # Chronological GLOBAL split, matching the benchmark protocol: hold out the
         # most-recent 15% of interactions by global time (not per-user-recent,
