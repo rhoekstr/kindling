@@ -208,6 +208,11 @@ class Engine:
         # temporal benchmarks. "auto" = gate when affordable (≤20k items);
         # True/False force it. EASE base only.
         channel_gate: bool | str = "auto",
+        # Catalog-size gate for the EASE base: above this, "auto" falls back to
+        # wilson-cooc. The wall is the dense n×n Gram + inverse (O(n²) memory,
+        # O(n³) compute) — ~3GB at 20k, ~20GB at 50k, ~63GB at 88k. 20k is a safe
+        # default for a typical box; raise it on a larger-memory machine to push
+        # EASE onto bigger catalogs (e.g. ease_max_items=50_000 ≈ 20GB Gram).
         ease_max_items: int = 20_000,
         # Weight transform for the cooc base scorer — applies ONLY on the
         # cooc path (n_items > ease_max_items; <=20k uses EASE and is left

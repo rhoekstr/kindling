@@ -36,6 +36,41 @@ against that block's EASE anchor):
    not Steck's exact derivations — a canonical EDLAE could land closer to
    ADMM-SLIM. Even so, the EASE-family frontier on ml-1m is only ~3% above EASE.
 
+## Cross-dataset: fit time + non-universality (EASE vs EDLAE)
+
+`bench/ease_edlae_compare.py`, exclude-seen eval, λ/δ-tuned, on the EASE-feasible
+catalogs:
+
+| dataset | items | EASE NDCG | EASE fit | EDLAE NDCG | EDLAE fit | Δ acc | Δ fit |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| ml-1m | 3,678 | 0.2740 | 0.64s | 0.2778 | 0.59s | +1.38% | −0.06s |
+| beauty | 11,959 | 0.0308 | 17.0s | 0.0311 | 16.7s | +1.12% | −0.39s |
+| steam | 14,057 | 0.0552 | 28.5s | 0.0551 | 29.3s | **−0.15%** | +0.77s |
+
+1. **Fit time is identical.** EASE and EDLAE are the same single dense O(n³)
+   inversion; EDLAE adds an O(n) diagonal term. Measured Δfit is ±0.8s on
+   0.6–29s fits — pure noise. (Only ADMM-SLIM costs time: iterative, ~13×.)
+2. **EDLAE's edge is tiny AND non-universal** — +1.4% / +1.1% on ml1m / beauty
+   but **−0.15% on steam**. It is not strictly better than EASE.
+3. **No variant dominates** (`bench/plot_ease_family.py`, full-data NDCG@10):
+   on Ta-Feng (24k) EDLAE is +5.3% but **RLAE is −14%**; on beauty ADMM-SLIM is
+   −4% (and 18× the fit cost). Each variant wins on some catalogs and loses on
+   others — there is no free, universal upgrade to swap the base to.
+
+### How far EASE scales (the dense-Gram wall)
+
+EASE needs a dense n×n Gram + inverse (O(n²) memory). Feasibility on this box:
+
+| tier | datasets | Gram |
+|---|---|---|
+| comfortable | ml1m, beauty, steam, **tafeng (24k)** | ≤4.5 GB |
+| at the wall | yelp (38k), hm (44k), instacart (50k) | 12–20 GB |
+| infeasible | dunnhumby (88k), book (92k), retailrocket (224k), gowalla (1.2M) | 63 GB → 11 TB |
+
+This is exactly why kindling gates EASE at 20k and falls back to wilson-cooc — the
+88k+ catalogs would need 63 GB to 11 TB just to hold the Gram. The EASE-family
+chart (`bench/plot_ease_family.py`) shows the variants across the feasible range.
+
 ## Why not swap (for accuracy)
 
 - The whole EASE family sits within **~3%** of plain EASE on ml-1m; the best
