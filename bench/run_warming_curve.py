@@ -107,15 +107,38 @@ class Ease:
         return [r.item_id for r in self._e.recommend(entity_id, n=n)]
 
 
-from ease_variant_models import ADMMSLIM, EDLAE, RLAE  # noqa: E402
+class Cooc:
+    """Forced wilson-cooc base — channels + gate off, base_scorer='cooc' on every
+    catalog (even ≤20k, where kindling would auto-pick EASE). A consistent base
+    reference line across all datasets, unlike `ease` (EASE small / cooc large)."""
+
+    name = "cooc"
+
+    def fit(self, df: pd.DataFrame):
+        from kindling import Engine
+        self._e = Engine(
+            retrieval_budget=500, random_state=0, base_scorer="cooc",
+            trend_alpha=0.0, user_cf_alpha=0.0, last_item_alpha=0.0,
+            transition_alpha=0.0, channel_gate=False,
+        )
+        self._e.fit(df)
+        return self
+
+    def recommend(self, entity_id, n: int = 10):
+        return [r.item_id for r in self._e.recommend(entity_id, n=n)]
+
+
+from ease_variant_models import ADMMSLIM, EASE, EDLAE, RLAE  # noqa: E402
 
 _REGISTRY = {
     "kindling": Kindling,
     "ease": Ease,
+    "cooc": Cooc,
     "popularity": PopularityBaseline,
     "item_item_knn": partial(ItemItemKNN, k_neighbors=200),
     "implicit_als": partial(ImplicitALSBaseline, factors=64, iterations=15),
-    # EASE-family variants (Stage 4) — dense item-item solve, ≤20k-item catalogs.
+    # EASE-family variants — dense item-item solve, gated by EASE_MAX_ITEMS.
+    "ease_full": EASE,
     "edlae": EDLAE,
     "rlae": RLAE,
     "admm_slim": ADMMSLIM,

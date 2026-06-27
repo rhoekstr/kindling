@@ -46,15 +46,13 @@ DATASETS = [
 # Algorithm → (display label, color, linewidth, z-order). kindling stands out.
 MODELS = {
     "kindling": ("kindling", "#d6336c", 2.6, 6),
-    "ease": ("kindling base (EASE/cooc)", "#f08c00", 1.8, 5),
-    "admm_slim": ("ADMM-SLIM", "#0ca678", 1.4, 4),
-    "edlae": ("EDLAE", "#e8590c", 1.3, 4),
-    "rlae": ("RLAE", "#9c36b5", 1.3, 4),
+    "cooc": ("cooc (base only)", "#f08c00", 1.8, 5),
     "lightgcn": ("LightGCN", "#7048e8", 1.8, 4),
     "implicit_als": ("implicit ALS", "#1c7ed6", 1.6, 3),
     "item_item_knn": ("item-kNN", "#2f9e44", 1.6, 3),
     "popularity": ("popularity", "#868e96", 1.6, 2),
 }
+# EASE-family variants (edlae/rlae/admm_slim) moved to bench/plot_ease_family.py.
 
 COLS = [("ndcg@k", "NDCG@10"), ("recall@k", "Recall@10"), ("fit_seconds", "Fit time (s)")]
 
