@@ -12,7 +12,7 @@
 //! NDCG@k on the held-out items, with the same default-preference and
 //! sparse-data-cap heuristics as the v1 calibrator.
 
-use ndarray::{Array1, ArrayView1};
+use ndarray::Array1;
 use pyo3::prelude::*;
 use pyo3::types::PyList;
 
