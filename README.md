@@ -76,6 +76,13 @@ wins cold-*user* buckets on cold-heavy catalogs. The full benchmark
 record — including the negative results, which are half the value — is in
 [`docs/EXPERIMENTS.md`](docs/EXPERIMENTS.md).
 
+On **repeat-regime** datasets (grocery/retail), a held-out gate turns on reorder
+recommendation; under repeat-aware eval kindling separates from the field —
+e.g. Dunnhumby 0.48 NDCG@10 vs ~0.05 for every baseline — while correctly
+*declining* on fake-repeat data like Steam (re-logs aren't repurchase). See
+[`docs/REPEAT-GATE.md`](docs/REPEAT-GATE.md). An opt-in EASE+ (EDLAE) base is
+available but off by default ([`docs/EASE-VARIANTS-ASSESSMENT.md`](docs/EASE-VARIANTS-ASSESSMENT.md)).
+
 ### Growth curves
 
 How accuracy grows from cold to hot, against the standard baselines

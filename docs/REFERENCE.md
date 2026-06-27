@@ -117,6 +117,8 @@ informative rather than merely frequent.
 | `n_items ≤ 100k` | boost-layer adjacency builds | each layer duplicates the full item-item CSR — OOM territory on book-scale catalogs |
 | `item_metadata` present + `content_alpha > 0` | content channel | opt-in; see §4.6 |
 | per-item coldness | content weight / cold slots | content dilutes warm ranking when ungated (§4.6); cold slots make it structural instead (§4.8) |
+| held-out repeat gate (`repeat_recommend`) | reorder module | re-buying helps grocery/retail but a re-log on a game log hurts even under fair eval; a held-out test on the benchmark's chronological-global split decides, declining steam (→ 0.0659 unchanged) and keeping the grocery logs. See [REPEAT-GATE.md](REPEAT-GATE.md) |
+| `ease_denoise > 0` | EASE+ (EDLAE) base | opt-in; EDLAE beats EASE on 3 datasets, loses on steam, and a held-out δ search can't reliably pick — so it ships off. See [EASE-VARIANTS-ASSESSMENT.md](EASE-VARIANTS-ASSESSMENT.md) |
 
 The last-item channel is deliberately **not** burst-gated: it reads the
 EASE row (co-occurrence structure) of the newest item, not within-burst
