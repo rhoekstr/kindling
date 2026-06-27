@@ -107,12 +107,18 @@ class Ease:
         return [r.item_id for r in self._e.recommend(entity_id, n=n)]
 
 
+from ease_variant_models import ADMMSLIM, EDLAE, RLAE  # noqa: E402
+
 _REGISTRY = {
     "kindling": Kindling,
     "ease": Ease,
     "popularity": PopularityBaseline,
     "item_item_knn": partial(ItemItemKNN, k_neighbors=200),
     "implicit_als": partial(ImplicitALSBaseline, factors=64, iterations=15),
+    # EASE-family variants (Stage 4) — dense item-item solve, ≤20k-item catalogs.
+    "edlae": EDLAE,
+    "rlae": RLAE,
+    "admm_slim": ADMMSLIM,
 }
 
 
