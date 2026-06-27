@@ -47,3 +47,7 @@ bench/reports/*.local.*
 native/target/
 recbole_data/
 .venv-recbole/
+
+# RecBole / LightGCN training artifacts
+log_tensorboard/
+saved/
