@@ -25,3 +25,9 @@ amazon-book-chrono = 0.0318   # wilson cooc + trend/transitions; local validatio
 # disabling the boost when it doesn't beat base-only. beauty 0.0328→0.0336 (its
 # temporal boost was net-negative on leave-last-out); ml1m (no boost) and steam
 # unchanged. Never regresses (worst case = boost off).
+# 2026-06 re-baseline (EASE+ + repeat gate): both NDCG-neutral for the references,
+# re-confirmed by verify.evaluate. EASE+ (EDLAE δ) ships opt-in (default δ=0 =
+# plain EASE), so the base is unchanged. The held-out repeat gate auto-DECLINES
+# on steam (its 12% "repeat" is re-logged games, not repurchase — gate: on 0.076
+# < off 0.083), so steam stays base-only = 0.0659. ml1m 0.2928 / beauty 0.0336
+# verified current; book frozen (18GB wall). All four baselines stand as-is.
