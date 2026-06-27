@@ -149,10 +149,12 @@ class EngineState:
     repeat_rate: float = 0.0
     repeat_indptr: np.ndarray | None = None
     repeat_items: np.ndarray | None = None
+    repeat_counts: np.ndarray | None = None
     repeat_last_ts: np.ndarray | None = None
     repeat_periods: np.ndarray | None = None
     repeat_quality: np.ndarray | None = None
     repeat_now_ts: float = float("nan")
+    repeat_freq_alpha: float = 0.0
     # Calibrated scoring config
     z_threshold: float = 2.5
     boost_multiplier: float = 3.0
@@ -298,6 +300,12 @@ class Engine:
         # timing multiplier (REPLENISH: suppress just-bought, keep due).
         repeat_recommend: bool | str = "auto",
         repeat_min_rate: float = 0.15,
+        # Personal-frequency layer for the repeat path. When the repeat gate
+        # fires, each reorder candidate is lifted by repeat_freq_alpha·log1p(count)
+        # (count = how often the user bought it), timing-modulated — so frequently
+        # bought items rise like the "buy it again" baseline. 0 = affinity-only
+        # (old behavior). "auto" picks a robust default when the gate is on.
+        repeat_freq_alpha: float | str = "auto",
         # Boost-layer (z_threshold, boost_multiplier) auto-calibration. When the
         # fit has cooc-shaped boost layers (temporal/session cooc), "auto" runs a
         # held-out (leave-last-out) grid sweep and adopts the (z, boost) cell that
@@ -445,6 +453,11 @@ class Engine:
         if not 0.0 <= repeat_min_rate <= 1.0:
             raise ValueError(f"repeat_min_rate must be in [0, 1]; got {repeat_min_rate!r}")
         self.repeat_min_rate = float(repeat_min_rate)
+        if repeat_freq_alpha != "auto" and (
+            not isinstance(repeat_freq_alpha, (int, float)) or repeat_freq_alpha < 0
+        ):
+            raise ValueError(f"repeat_freq_alpha must be >= 0 or 'auto'; got {repeat_freq_alpha!r}")
+        self.repeat_freq_alpha = repeat_freq_alpha
         if calibrate_boost not in (True, False, "auto"):
             raise ValueError(f"calibrate_boost must be True | False | 'auto'; got {calibrate_boost!r}")
         self.calibrate_boost = calibrate_boost
@@ -646,7 +659,7 @@ class Engine:
             else 0.0
         )
         repeat_indptr = repeat_items = repeat_last_ts = None
-        repeat_periods = repeat_quality = None
+        repeat_periods = repeat_quality = repeat_counts = None
         repeat_now_ts = float("nan")
         want_repeat = self.repeat_recommend is True or (
             self.repeat_recommend == "auto" and repeat_rate >= self.repeat_min_rate
@@ -660,12 +673,22 @@ class Engine:
             rp = kindling_core.fit_repeat_profile(user_idx, item_idx, ts_arg, n_users, 2)
             repeat_indptr = np.asarray(rp[0], np.int64)
             repeat_items = np.asarray(rp[1], np.int64)
+            repeat_counts = np.asarray(rp[2], np.float64)
             repeat_last_ts = np.asarray(rp[3], np.float64)
             repeat_periods = np.asarray(rp[4], np.float64)
             repeat_quality = np.asarray(rp[5], np.float64)
             repeat_active = repeat_items.size > 0
             if ts_arg is not None:
                 repeat_now_ts = float(ts_arg.max())
+        # Resolve the personal-frequency layer strength (auto → robust default).
+        eff_freq_alpha = 0.0
+        if repeat_active:
+            # auto=50: frequency dominates the reorder ranking (the "buy it again"
+            # signal), the timing multiplier modulates. Swept on dunnhumby/tafeng
+            # (both beat the personal-frequency baseline at 50).
+            eff_freq_alpha = (
+                50.0 if self.repeat_freq_alpha == "auto" else float(self.repeat_freq_alpha)
+            )
 
         # owned_by_entity + history (timestamp-ordered) per entity.
         # Vectorized: one stable lexsort over (entity, time) + boundary
@@ -1110,10 +1133,12 @@ class Engine:
             repeat_rate=repeat_rate,
             repeat_indptr=repeat_indptr,
             repeat_items=repeat_items,
+            repeat_counts=repeat_counts,
             repeat_last_ts=repeat_last_ts,
             repeat_periods=repeat_periods,
             repeat_quality=repeat_quality,
             repeat_now_ts=repeat_now_ts,
+            repeat_freq_alpha=eff_freq_alpha,
             boost_layer_adjacencies=boost_adj,
             z_threshold=eff_z,
             boost_multiplier=eff_boost,

@@ -124,6 +124,8 @@ def build_native_engine(engine: Engine) -> Any | None:
         arrays["repeat_last_ts"] = st.repeat_last_ts.astype(np.float64)
         arrays["repeat_periods"] = st.repeat_periods.astype(np.float64)
         arrays["repeat_quality"] = st.repeat_quality.astype(np.float64)
+        if st.repeat_counts is not None:
+            arrays["repeat_counts"] = st.repeat_counts.astype(np.float64)
     else:
         repeat_active = False
     config = dict(
@@ -148,5 +150,6 @@ def build_native_engine(engine: Engine) -> Any | None:
         repeat_now_ts=float(getattr(st, "repeat_now_ts", float("nan")) or float("nan")),
         repeat_refractory=0.0,
         repeat_epsilon=1e-3,
+        repeat_freq_alpha=float(getattr(st, "repeat_freq_alpha", 0.0) or 0.0),
     )
     return kindling_core.build_engine(arrays, config)
