@@ -15,9 +15,13 @@ ndcg_at_k_regression_limit = 0.02   # max 2% relative drop vs baseline
 [baseline.ndcg_at_10]
 # Measured 2026-06 on the v2 stack (EASE/wilson base + auto-gated channels).
 movielens-1m       = 0.2928   # rating-weighted EASE; CI gate
-amazon-beauty      = 0.0328   # ease_lambda=250; local validation
+amazon-beauty      = 0.0336   # ease_lambda=250 + boost auto-calibrated (boost→0)
 steam              = 0.0659   # open-catalog + cold_slots=1; local validation
 amazon-book-chrono = 0.0318   # wilson cooc + trend/transitions; local validation
 # 2026-06 re-baseline: user-CF top-k now uses a stable tie-break (sim desc,
 # user-row asc) so the Rust port matches byte-for-byte. NDCG-neutral —
 # ml1m/beauty unchanged; steam 0.0660→0.0659 (tie-equivalent neighbors).
+# 2026-06 boost calibration (Stage 1): held-out (z, boost) sweep, falls back to
+# disabling the boost when it doesn't beat base-only. beauty 0.0328→0.0336 (its
+# temporal boost was net-negative on leave-last-out); ml1m (no boost) and steam
+# unchanged. Never regresses (worst case = boost off).
