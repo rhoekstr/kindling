@@ -308,12 +308,17 @@ class Engine:
         cold_slots: int = 0,
         # Repeat-consumption recommendation. On repeat-regime datasets (grocery,
         # replenishment), the seen-item mask hides the user's reorders — exactly
-        # what they'll buy next. "auto" enables the repeat module when the fit's
-        # repeat_rate (fraction of duplicate user-item interactions) exceeds
-        # repeat_min_rate; True/False force it. Re-surfaces reorder items via the
-        # timing multiplier (REPLENISH: suppress just-bought, keep due).
+        # what they'll buy next. "auto" builds the reorder profile when the fit's
+        # repeat_rate (fraction of duplicate user-item interactions) exceeds the
+        # low repeat_min_rate pre-filter, then a held-out repeat gate keeps it
+        # only if recommending reorders strictly improves a leave-last-fraction
+        # repeat-aware NDCG@10 — so it auto-declines on fake-repeat data (e.g.
+        # steam: re-logs are duplicates but freq-reordering ranks worse than the
+        # base), which a repeat-rate threshold alone can't tell from true
+        # repurchase. True/False force it (True skips the gate). Re-surfaces via
+        # the personal-frequency layer + timing multiplier (REPLENISH).
         repeat_recommend: bool | str = "auto",
-        repeat_min_rate: float = 0.15,
+        repeat_min_rate: float = 0.05,
         # Personal-frequency layer for the repeat path. When the repeat gate
         # fires, each reorder candidate is lifted by repeat_freq_alpha·log1p(count)
         # (count = how often the user bought it), timing-modulated — so frequently
@@ -1171,6 +1176,7 @@ class Engine:
         self._native = None
         self._native_built = False
         self._apply_channel_gate()
+        self._apply_repeat_gate(user_idx, item_idx, timestamps_col)
         return self
 
     @property
@@ -1518,6 +1524,111 @@ class Engine:
         self._native = native
         self._native_built = True
         st.profile["channels_gated"] = dropped
+
+    def _apply_repeat_gate(
+        self,
+        user_idx: np.ndarray,
+        item_idx: np.ndarray,
+        timestamps_col: np.ndarray | None,
+    ) -> None:
+        """Held-out repeat gate. Keep the reorder module only when recommending
+        repeats *strictly* improves a leave-last-fraction held-out (NDCG@10, seen
+        items eligible). The held-out is leak-free and faithful: the reorder
+        profile is rebuilt on the held-out *history* with its real timestamps, so
+        the timing multiplier behaves exactly as at serve time. That auto-declines
+        fake-repeat data — e.g. steam, where REPLENISH suppresses the just-played
+        games the user re-logs — which a repeat-rate threshold cannot tell from
+        true repurchase. Only runs for repeat_recommend == 'auto'."""
+        st = self._state
+        assert st is not None
+        if not st.repeat_active or self.repeat_recommend != "auto" or timestamps_col is None:
+            return
+        if timestamps_col.size == 0 or timestamps_col.max() <= timestamps_col.min():
+            return
+
+        # Chronological GLOBAL split, matching the benchmark protocol: hold out the
+        # most-recent 15% of interactions by global time (not per-user-recent,
+        # which over-represents re-logged repeats). hist = pre-cut, targets =
+        # post-cut, per user.
+        cut = float(np.quantile(timestamps_col, 0.85))
+        is_held = timestamps_col >= cut
+        order = np.argsort(user_idx, kind="stable")
+        su, si, sts, sh = (
+            user_idx[order], item_idx[order], timestamps_col[order], is_held[order]
+        )
+        bounds = np.flatnonzero(np.r_[True, su[1:] != su[:-1], True])
+        rng = np.random.default_rng(self.random_state)
+        held: list[tuple[int, set[int]]] = []
+        hist_by: dict[int, list[int]] = {}
+        hts_by: dict[int, list[float]] = {}
+        for a, b in zip(bounds[:-1], bounds[1:]):
+            hmask = sh[a:b]
+            if hmask.all() or not hmask.any():
+                continue  # need both pre-cut history and post-cut targets
+            u = int(su[a])
+            held.append((u, set(si[a:b][hmask].tolist())))
+            hist_by[u] = si[a:b][~hmask].tolist()
+            hts_by[u] = sts[a:b][~hmask].tolist()
+        if len(held) < 50:
+            return
+        if len(held) > 2000:
+            sel = set(rng.choice(len(held), 2000, replace=False).tolist())
+            held = [h for i, h in enumerate(held) if i in sel]
+        keep_users = {ur for ur, _ in held}
+        hist_by = {u: v for u, v in hist_by.items() if u in keep_users}
+        hu_list, hi_list, hts_list = [], [], []
+        for u in keep_users:
+            items_u = hist_by[u]
+            hu_list.extend([u] * len(items_u))
+            hi_list.extend(items_u)
+            hts_list.extend(hts_by[u])
+
+        from kindling._native_engine import build_native_engine
+
+        native = self._native if self._native_built else build_native_engine(self)
+        if native is None:
+            return
+        # Leak-free, faithful profile: rebuilt on the held-out history *with*
+        # timestamps, so the timing multiplier matches serve time. now_ts = the
+        # latest kept interaction (the moment we predict the held-out tail).
+        hts = np.asarray(hts_list, np.float64)
+        rp = kindling_core.fit_repeat_profile(
+            np.asarray(hu_list, np.int64), np.asarray(hi_list, np.int64), hts, st.n_users, 2
+        )
+        full = (st.repeat_indptr, st.repeat_items, st.repeat_counts,
+                st.repeat_last_ts, st.repeat_periods, st.repeat_quality)
+        native.set_repeat_profile(
+            np.asarray(rp[0], np.int64), np.asarray(rp[1], np.int64),
+            np.asarray(rp[2], np.float64), np.asarray(rp[3], np.float64),
+            np.asarray(rp[4], np.float64), np.asarray(rp[5], np.float64),
+            cut,
+        )
+        idcg = [0.0] + [
+            sum(1.0 / math.log2(r + 2) for r in range(min(k, 10))) for k in range(1, 11)
+        ]
+
+        def ndcg(active: bool) -> float:
+            native.set_repeat_active(active)
+            total = 0.0
+            for ur, targets in held:
+                hist = hist_by.get(ur)
+                if not hist:
+                    continue
+                items, _, _ = native.recommend(hist, ur, 10, 0.0)
+                dcg = sum(1.0 / math.log2(r + 2) for r, it in enumerate(items) if it in targets)
+                total += dcg / idcg[min(len(targets), 10)]
+            return total / len(held)
+
+        on, off = ndcg(True), ndcg(False)
+        keep = bool(on > off)
+        native.set_repeat_profile(*full, float(st.repeat_now_ts))  # restore full profile
+        native.set_repeat_active(keep)
+        st.repeat_active = keep
+        self._native = native
+        self._native_built = True
+        st.profile["repeat_gated"] = {
+            "kept": keep, "ndcg_on": round(on, 4), "ndcg_off": round(off, 4),
+        }
 
     def _calibrate_boost(
         self,

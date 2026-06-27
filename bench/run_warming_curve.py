@@ -194,6 +194,14 @@ def main() -> None:
         out.write_text(json.dumps({"dataset": dataset, "k": k, "catalog": catalog,
                                    "n_eval": len(eval_entities), "rows": merged}, indent=2) + "\n")
 
+    # REPEAT_AWARE=1: credit reorders — relevant set keeps seen items (the
+    # repeat-regime objective). Default excludes seen (discovery objective).
+    repeat_aware = os.environ.get("REPEAT_AWARE", "") != ""
+
+    def relevant(ent, owned_sub):
+        t = test_by.get(ent, set())
+        return t if repeat_aware else t - owned_sub.get(ent, set())
+
     for frac in fractions:
         n = round(len(train) * frac)
         if mode == "chrono":
@@ -201,7 +209,7 @@ def main() -> None:
         else:
             sub = train.iloc[order[:n]].reset_index(drop=True)
         owned_sub = sub.groupby("entity_id", sort=False)["item_id"].apply(set)
-        n_nonempty = sum(1 for e in eval_entities if test_by.get(e, set()) - owned_sub.get(e, set()))
+        n_nonempty = sum(1 for e in eval_entities if relevant(e, owned_sub))
         for model in build_models(which):
             t0 = time.perf_counter()
             try:
@@ -212,7 +220,7 @@ def main() -> None:
             fit_s = time.perf_counter() - t0
             per, lat = [], []
             for ent in eval_entities:
-                rel = test_by.get(ent, set()) - owned_sub.get(ent, set())
+                rel = relevant(ent, owned_sub)
                 r0 = time.perf_counter()
                 recs = model.recommend(ent, n=k)
                 lat.append((time.perf_counter() - r0) * 1000.0)
