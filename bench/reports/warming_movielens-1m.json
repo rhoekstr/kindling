@@ -2,7 +2,7 @@
   "dataset": "movielens-1m",
   "k": 10,
   "catalog": 3678,
-  "n_eval": 1000,
+  "n_eval": 500,
   "rows": [
     {
       "fraction": 0.01,
