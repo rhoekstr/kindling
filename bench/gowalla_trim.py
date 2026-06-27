@@ -35,9 +35,8 @@ def _trim(train: pd.DataFrame, cap: int | None, seed: int = 0) -> pd.DataFrame:
     rng = np.random.default_rng(seed)
     keep = []
     for _, idx in train.groupby("entity_id").indices.items():
-        if len(idx) > cap:
-            idx = rng.choice(idx, cap, replace=False)
-        keep.append(idx)
+        sub = rng.choice(idx, cap, replace=False) if len(idx) > cap else idx
+        keep.append(sub)
     sel = np.concatenate(keep)
     return train.iloc[sel].reset_index(drop=True)
 
@@ -68,7 +67,7 @@ def main():
             dcg = sum(1 / log2(i + 2) for i, p in enumerate(recs) if p in rel)
             idcg = sum(1 / log2(i + 2) for i in range(min(len(rel), 10)))
             nd.append(dcg / idcg if idcg else 0.0)
-        print(f"{str(cap):>6} {len(tr):>11} {round(float(np.mean(nd)), 4):>8}", flush=True)
+        print(f"{cap!s:>6} {len(tr):>11} {round(float(np.mean(nd)), 4):>8}", flush=True)
 
 
 if __name__ == "__main__":
