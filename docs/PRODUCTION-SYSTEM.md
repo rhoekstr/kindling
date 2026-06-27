@@ -4,7 +4,9 @@
 > for someone who never saw the experiment history. What it includes, what
 > value it adds (and where it adds none), what's noteworthy, and the
 > measured numbers. The full experiment record (what was tried and why,
-> including the negatives) is the addendum in [`EXPERIMENTS.md`](EXPERIMENTS.md).
+> including the negatives) is the addendum in [`EXPERIMENTS.md`](EXPERIMENTS.md),
+> and the headline numbers — discovery growth + the repeat-regime dominance — are
+> in [`RESULTS.md`](RESULTS.md).
 
 ## 1. What it is
 
@@ -39,7 +41,7 @@ sub-millisecond time.
 | **Cold-item serving** | reserved `cold_slots` + open-catalog: metadata-only items ranked by content similarity + release recency |
 | **Rust core** | EASE Cholesky (faer), cooccurrence, directional cooc, layered scoring, retrieval |
 | **Loaders** | movielens, amazon (+chrono), steam, instacart, dunnhumby, tafeng, gowalla, yelp, retailrocket, synthetic |
-| **Verification harness** | `bench/verify.py` (4-dataset regression gate) + `run_gap_decomp.py` (the floor/oracle/pool-recall diagnostic) |
+| **Verification harness** | `bench/verify.py` (4-dataset regression gate) |
 
 The core is **40 Python modules** (down from ~130 pre-consolidation): the
 validated stack and a minimal CI harness, nothing else.

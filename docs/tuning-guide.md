@@ -52,12 +52,37 @@ rating-burst, or a history length on the wrong side of the gate.
 
 | knob | default | when to touch |
 |---|---|---|
-| `retrieval_budget` | 500 | the gap-decomposition diagnostic shows little headroom from raising it alone |
+| `retrieval_budget` | 500 | raising it alone shows little headroom (the candidate pool is rarely the bottleneck) |
+
+## Repeat consumption (auto-gated)
+
+For grocery / retail / replenishment data, kindling re-surfaces the items a user
+re-buys — the single biggest signal there, which the seen-item mask normally
+hides. This is **on by default via a held-out gate**: it activates only where
+recommending repeats strictly helps a held-out, so it lifts genuine repurchase
+data and *declines* fake-repeat data (e.g. game re-logs) on its own.
+
+| knob | default | when to touch |
+|---|---|---|
+| `repeat_recommend` | `"auto"` | `True` forces it on (skips the gate); `False` off. Leave on auto. |
+| `repeat_min_rate` | 0.05 | the cheap pre-filter before the held-out gate runs |
+| `repeat_freq_alpha` | `"auto"` (50) | how strongly reorder frequency drives the ranking |
+
+See [REPEAT-GATE.md](REPEAT-GATE.md) for how the gate decides.
+
+## EASE+ (opt-in)
+
+| knob | default | when to touch |
+|---|---|---|
+| `ease_denoise` | 0.0 (plain EASE) | set ~0.5 for the EDLAE denoising variant — it helps some catalogs and regresses others (e.g. steam), so it's opt-in. See [EASE-VARIANTS-ASSESSMENT.md](EASE-VARIANTS-ASSESSMENT.md). |
 
 ## Diagnosing a disappointing result
 
 1. `engine.activation_plan.summary()` — did the right base + channels turn on?
-2. `bench/run_gap_decomp.py` — is the system **ranking-bound** (the right
-   items are retrieved but ranked poorly) or **retrieval-bound** (the right
-   items never reach the candidate pool)? The fix differs entirely, and the
-   diagnostic tells you which wall you're against before you tune anything.
+   If a channel is `off` that you expected on, the printed gate reason is almost
+   always a missing `timestamp` column, a rating-burst, or a history length on
+   the wrong side of the gate.
+2. Ask whether you're **ranking-bound** (the right items are retrieved but ranked
+   poorly — tune the base/channels) or **retrieval-bound** (the right items never
+   reach the candidate pool — widen `retrieval_budget` or revisit the base). The
+   fix differs entirely; identify the wall before tuning.

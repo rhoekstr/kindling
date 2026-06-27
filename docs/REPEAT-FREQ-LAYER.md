@@ -1,6 +1,6 @@
 # Repeat personal-frequency layer
 
-Fixes the Stage-5 finding (`REPEAT-AWARE-FINDINGS.md`): the repeat module
+Fixes the Stage-5 finding (`archive/REPEAT-AWARE-FINDINGS.md`): the repeat module
 re-surfaced reorders but ranked them by co-occurrence affinity × timing, ignoring
 **reorder frequency** — so the trivial "buy it again" (personal_freq) baseline beat
 it on every high-repeat dataset.
