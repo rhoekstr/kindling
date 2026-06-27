@@ -198,6 +198,15 @@ class Engine:
         # off; needs timestamps, gated by catalog size for cost. "auto" =
         # search when affordable (≤8k items); True/False force it.
         ease_lambda_search: bool | str = False,
+        # EASE+ denoising (EDLAE): δ adds a popularity-proportional penalty
+        # δ·diag(G) to the EASE ridge, correcting the dropout-free autoencoder's
+        # train/serve mismatch. Default 0.0 = canonical EASE (opt-in only). EASE+
+        # is non-universal — δ=0.5 lifts ml1m/beauty/tafeng (+1.2–5%) but regresses
+        # steam (−1.7%), and the held-out "auto" δ search can't reliably tell them
+        # apart (leave-last-out recall is a noisy proxy for the chronological
+        # NDCG eval), so it ships off. Set a fixed float for EASE+ on data where
+        # it helps, or "auto" for the (caveated) held-out δ search. Gated by size.
+        ease_denoise: float | str = 0.0,
         # Held-out channel-activation gate: backward-eliminate a blend channel
         # (trend / user_cf / last_item / transition) when removing it strictly
         # improves a leave-last-out held-out (recall@10). Channels are tuned for
@@ -393,6 +402,11 @@ class Engine:
                 f"ease_lambda_search must be True | False | 'auto'; got {ease_lambda_search!r}"
             )
         self.ease_lambda_search = ease_lambda_search
+        if ease_denoise != "auto" and (
+            not isinstance(ease_denoise, (int, float)) or ease_denoise < 0
+        ):
+            raise ValueError(f"ease_denoise must be >= 0 or 'auto'; got {ease_denoise!r}")
+        self.ease_denoise = ease_denoise
         if channel_gate not in (True, False, "auto"):
             raise ValueError(f"channel_gate must be True | False | 'auto'; got {channel_gate!r}")
         self.channel_gate = channel_gate
@@ -766,13 +780,15 @@ class Engine:
                     ease_weights = (weights / w_mean).astype(np.float32)
             profile["ease_weighted"] = ease_weights is not None
             heuristic_lambda = 20.0 * len(user_idx) / max(n_items, 1)
+            fixed_delta = 0.0 if self.ease_denoise == "auto" else float(self.ease_denoise)
             if self.ease_lambda is not None:
-                eff_lambda = self.ease_lambda
+                eff_lambda, eff_delta = self.ease_lambda, fixed_delta
             else:
-                eff_lambda = self._resolve_ease_lambda(
+                eff_lambda, eff_delta = self._resolve_ease_hparams(
                     user_idx, item_idx, timestamps_col, n_users, n_items,
-                    ease_weights, heuristic_lambda, profile,
+                    ease_weights, heuristic_lambda, fixed_delta, profile,
                 )
+            profile["ease_delta"] = eff_delta
             t_ease = time.perf_counter()
             ease_b = np.asarray(
                 kindling_core.fit_ease_py(
@@ -782,6 +798,7 @@ class Engine:
                     n_items=n_items,
                     lambda_=eff_lambda,
                     weights=ease_weights,
+                    delta=eff_delta,
                 ),
                 dtype=np.float32,
             )
@@ -1296,7 +1313,7 @@ class Engine:
                 ]
         return results
 
-    def _resolve_ease_lambda(
+    def _resolve_ease_hparams(
         self,
         user_idx: np.ndarray,
         item_idx: np.ndarray,
@@ -1305,20 +1322,26 @@ class Engine:
         n_items: int,
         ease_weights: np.ndarray | None,
         heuristic: float,
+        fixed_delta: float,
         profile: dict[str, Any],
-    ) -> float:
-        """Pick EASE λ. The heuristic (20× mean Gram diagonal) is a good center
-        but the optimum is protocol-dependent (chronological eval wants ~2.5×,
-        random-split ~0.2×), so refine it with a leave-last-out held-out search
-        over a multiplicative grid, scored by recall@10. Needs timestamps; gated
-        by catalog size for cost (each candidate is one EASE inversion)."""
+    ) -> tuple[float, float]:
+        """Pick EASE (λ, δ) by leave-last-out held-out (recall@10). λ defaults to
+        the heuristic (20× mean Gram diagonal — already EASE-optimal); the
+        ease_lambda_search opt-in sweeps a multiplicative grid. δ (EASE+/EDLAE
+        denoising) defaults to a held-out search over {0, 0.5, 1.0} at the chosen
+        λ, keeping δ=0 (plain EASE) unless δ>0 strictly improves — never-regress.
+        Each candidate is one EASE inversion; gated by catalog size for cost."""
         profile["ease_lambda_heuristic"] = float(heuristic)
-        do_search = self.ease_lambda_search is True or (
+        auto_delta = self.ease_denoise == "auto"
+        search_lambda = self.ease_lambda_search is True or (
             self.ease_lambda_search == "auto" and n_items <= 8000
         )
-        if not do_search or timestamps_col is None or len(timestamps_col) == 0:
-            profile["ease_lambda_searched"] = False
-            return heuristic
+        # δ search runs on the EASE-feasible range (held-out builds are the same
+        # size as the real fit); λ search keeps its tighter, cheaper gate.
+        want_search = (search_lambda or auto_delta) and n_items <= self.ease_max_items
+        if not want_search or timestamps_col is None or len(timestamps_col) == 0:
+            profile["ease_searched"] = False
+            return heuristic, fixed_delta
 
         # Leave-last-out: hold out each multi-interaction user's latest item.
         order = np.lexsort((timestamps_col, user_idx))  # by user, then time asc
@@ -1332,8 +1355,8 @@ class Engine:
         multi = counts[su[last_pos]] >= 2
         drop_pos = last_pos[multi]
         if drop_pos.size < 50:
-            profile["ease_lambda_searched"] = False
-            return heuristic
+            profile["ease_searched"] = False
+            return heuristic, fixed_delta
         held_user = su[drop_pos]
         held_item = si[drop_pos]
         keep = np.ones(su.shape, dtype=bool)
@@ -1352,18 +1375,18 @@ class Engine:
             h = hist.get(u)
             if h is not None:
                 h.append(i)
+        hu, hi = held_user.tolist(), held_item.tolist()
 
-        candidates = [heuristic * m for m in (1.0, 2.0, 4.0)]
-        best_lam, best_score = heuristic, -1.0
-        for lam in candidates:
+        def recall(lam: float, delta: float) -> float:
             b = np.asarray(
                 kindling_core.fit_ease_py(
-                    tu, ti, n_users=n_users, n_items=n_items, lambda_=lam, weights=tw
+                    tu, ti, n_users=n_users, n_items=n_items,
+                    lambda_=lam, weights=tw, delta=delta,
                 ),
                 dtype=np.float32,
             )
             hits = 0
-            for u, t in zip(held_user.tolist(), held_item.tolist()):
+            for u, t in zip(hu, hi):
                 h = hist.get(u)
                 if not h:
                     continue
@@ -1371,12 +1394,26 @@ class Engine:
                 scores[h] = -np.inf
                 if t in np.argpartition(-scores, 10)[:10]:
                     hits += 1
-            sc = hits / max(held_user.size, 1)
-            if sc > best_score:
-                best_score, best_lam = sc, lam
-        profile["ease_lambda_searched"] = True
+            return hits / max(int(held_user.size), 1)
+
+        base_delta = 0.0 if auto_delta else fixed_delta
+        # λ: heuristic, or the opt-in multiplicative grid.
+        lam_grid = [heuristic * m for m in (1.0, 2.0, 4.0)] if search_lambda else [heuristic]
+        best_lam, best_sc = heuristic, -1.0
+        for lam in lam_grid:
+            sc = recall(lam, base_delta)
+            if sc > best_sc:
+                best_sc, best_lam = sc, lam
+        # δ: keep base_delta unless a positive δ strictly beats it (never-regress).
+        best_delta = base_delta
+        if auto_delta:
+            for delta in (0.5, 1.0):
+                sc = recall(best_lam, delta)
+                if sc > best_sc:
+                    best_sc, best_delta = sc, delta
+        profile["ease_searched"] = True
         profile["ease_lambda_search_mult"] = round(best_lam / max(heuristic, 1e-9), 3)
-        return best_lam
+        return best_lam, best_delta
 
     def _apply_channel_gate(self) -> None:
         """Backward-eliminate net-negative non-recency channels (user_cf,
