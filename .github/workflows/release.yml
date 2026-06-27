@@ -44,10 +44,9 @@ jobs:
       - name: Smoke-test wheel
         shell: bash
         run: |
-          python -m venv /tmp/wheeltest
-          /tmp/wheeltest/bin/pip install --find-links dist --no-index kindling-rec || \
-            /tmp/wheeltest/bin/pip install dist/*.whl
-          /tmp/wheeltest/bin/python -c "
+          pip install --find-links dist --no-index kindling-rec || \
+            pip install dist/*.whl
+          python -c "
           import kindling, pandas as pd
           from kindling._native import CORE_AVAILABLE
           assert CORE_AVAILABLE, 'Rust core not loaded'
