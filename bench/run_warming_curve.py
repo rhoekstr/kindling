@@ -119,7 +119,7 @@ class Cooc:
         self._e = Engine(
             retrieval_budget=500, random_state=0, base_scorer="cooc",
             trend_alpha=0.0, user_cf_alpha=0.0, last_item_alpha=0.0,
-            transition_alpha=0.0, channel_gate=False,
+            transition_alpha=0.0, channel_gate=False, repeat_recommend=False,
         )
         self._e.fit(df)
         return self
@@ -187,16 +187,18 @@ def main() -> None:
 
     rows = []
 
+    # REPEAT_AWARE=1: credit reorders — relevant set keeps seen items (the
+    # repeat-regime objective). Default excludes seen (discovery objective).
+    repeat_aware = os.environ.get("REPEAT_AWARE", "") != ""
+
     def flush() -> None:
         fresh = {(r["fraction"], r["model"]) for r in rows}
         merged = [r for r in prev_rows if (r["fraction"], r["model"]) not in fresh] + rows
         merged.sort(key=lambda r: (r["fraction"], r["model"]))
-        out.write_text(json.dumps({"dataset": dataset, "k": k, "catalog": catalog,
-                                   "n_eval": len(eval_entities), "rows": merged}, indent=2) + "\n")
-
-    # REPEAT_AWARE=1: credit reorders — relevant set keeps seen items (the
-    # repeat-regime objective). Default excludes seen (discovery objective).
-    repeat_aware = os.environ.get("REPEAT_AWARE", "") != ""
+        out.write_text(json.dumps(
+            {"dataset": dataset, "k": k, "catalog": catalog,
+             "eval": "repeat_aware" if repeat_aware else "exclude_seen",
+             "n_eval": len(eval_entities), "rows": merged}, indent=2) + "\n")
 
     def relevant(ent, owned_sub):
         t = test_by.get(ent, set())

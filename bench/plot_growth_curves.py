@@ -66,6 +66,12 @@ def _load(stem: str) -> dict | None:
 
 def main() -> int:
     available = [(s, label, d) for s, label in DATASETS if (d := _load(s)) is not None]
+    # Mark datasets evaluated repeat-aware (reorders credited) — those rows answer
+    # the repeat-regime objective, not discovery.
+    available = [
+        (s, label + ("  ⟳ repeat-aware" if d.get("eval") == "repeat_aware" else ""), d)
+        for s, label, d in available
+    ]
     if not available:
         print("no warming_*.json data found")
         return 1
