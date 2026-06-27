@@ -112,6 +112,20 @@ def build_native_engine(engine: Engine) -> Any | None:
             arrays["content_coldness"] = st.content_coldness.astype(np.float64)
         if st.cold_recency is not None:
             arrays["cold_recency"] = st.cold_recency.astype(np.float64)
+    repeat_active = bool(getattr(st, "repeat_active", False))
+    r_items = getattr(st, "repeat_items", None)
+    if repeat_active and r_items is not None and len(r_items) > 0:
+        assert st.repeat_indptr is not None
+        assert st.repeat_last_ts is not None
+        assert st.repeat_periods is not None
+        assert st.repeat_quality is not None
+        arrays["repeat_indptr"] = st.repeat_indptr.astype(np.int64)
+        arrays["repeat_items"] = r_items.astype(np.int64)
+        arrays["repeat_last_ts"] = st.repeat_last_ts.astype(np.float64)
+        arrays["repeat_periods"] = st.repeat_periods.astype(np.float64)
+        arrays["repeat_quality"] = st.repeat_quality.astype(np.float64)
+    else:
+        repeat_active = False
     config = dict(
         n_items=int(st.n_items),
         base_is_ease=bool(base_is_ease),
@@ -130,5 +144,9 @@ def build_native_engine(engine: Engine) -> Any | None:
         content_nfeat=content_nfeat,
         cold_recency_beta=float(st.cold_recency_beta or 0.0),
         content_alpha=float(st.content_alpha),
+        repeat_active=repeat_active,
+        repeat_now_ts=float(getattr(st, "repeat_now_ts", float("nan")) or float("nan")),
+        repeat_refractory=0.0,
+        repeat_epsilon=1e-3,
     )
     return kindling_core.build_engine(arrays, config)

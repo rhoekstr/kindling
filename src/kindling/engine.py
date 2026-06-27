@@ -142,6 +142,17 @@ class EngineState:
     user_cf_k: int = 100
     # Rating-signal classification (gates the EASE rating-weighting path).
     signal_kind: str = "unknown"  # "binary" | "counts" | "ratings"
+    # Repeat module: per-user CSR of reorder items re-surfaced via the timing
+    # multiplier on repeat-regime datasets (gated by repeat_rate). Active only
+    # when repeat_active; the native recommend exempts these from the owned-mask.
+    repeat_active: bool = False
+    repeat_rate: float = 0.0
+    repeat_indptr: np.ndarray | None = None
+    repeat_items: np.ndarray | None = None
+    repeat_last_ts: np.ndarray | None = None
+    repeat_periods: np.ndarray | None = None
+    repeat_quality: np.ndarray | None = None
+    repeat_now_ts: float = float("nan")
     # Calibrated scoring config
     z_threshold: float = 2.5
     boost_multiplier: float = 3.0
@@ -279,6 +290,14 @@ class Engine:
         # features). The aggregate-NDCG cost is small and explicit; the
         # cold-coverage gain is not achievable by blend weights at all.
         cold_slots: int = 0,
+        # Repeat-consumption recommendation. On repeat-regime datasets (grocery,
+        # replenishment), the seen-item mask hides the user's reorders — exactly
+        # what they'll buy next. "auto" enables the repeat module when the fit's
+        # repeat_rate (fraction of duplicate user-item interactions) exceeds
+        # repeat_min_rate; True/False force it. Re-surfaces reorder items via the
+        # timing multiplier (REPLENISH: suppress just-bought, keep due).
+        repeat_recommend: bool | str = "auto",
+        repeat_min_rate: float = 0.15,
         # Release-recency weight inside the cold slot. Cold purchases
         # skew heavily toward NEW releases; ranking cold candidates by
         # z(content) + beta·exp(−days_since_release/180) lifted steam
@@ -412,6 +431,14 @@ class Engine:
         if cold_slots < 0:
             raise ValueError(f"cold_slots must be >= 0; got {cold_slots!r}")
         self.cold_slots = int(cold_slots)
+        if repeat_recommend not in (True, False, "auto"):
+            raise ValueError(
+                f"repeat_recommend must be True | False | 'auto'; got {repeat_recommend!r}"
+            )
+        self.repeat_recommend = repeat_recommend
+        if not 0.0 <= repeat_min_rate <= 1.0:
+            raise ValueError(f"repeat_min_rate must be in [0, 1]; got {repeat_min_rate!r}")
+        self.repeat_min_rate = float(repeat_min_rate)
         if cold_recency_beta < 0:
             raise ValueError(f"cold_recency_beta must be >= 0; got {cold_recency_beta!r}")
         self.cold_recency_beta = float(cold_recency_beta)
@@ -597,6 +624,39 @@ class Engine:
             if "timestamp" in interactions.columns
             else None
         )
+
+        # ── Repeat module. repeat_rate = fraction of duplicate (entity, item)
+        # interactions — the reorders the seen-mask would otherwise hide. On a
+        # repeat-regime dataset, build the per-user reorder profile (count ≥ 2,
+        # last_ts, repurchase period) so the native recommend can re-surface
+        # due items via the timing multiplier.
+        repeat_active = False
+        repeat_rate = (
+            float(interactions.duplicated(["entity_id", "item_id"]).mean())
+            if len(interactions)
+            else 0.0
+        )
+        repeat_indptr = repeat_items = repeat_last_ts = None
+        repeat_periods = repeat_quality = None
+        repeat_now_ts = float("nan")
+        want_repeat = self.repeat_recommend is True or (
+            self.repeat_recommend == "auto" and repeat_rate >= self.repeat_min_rate
+        )
+        if want_repeat and hasattr(kindling_core, "fit_repeat_profile"):
+            ts_arg = (
+                timestamps_col
+                if timestamps_col is not None and timestamps_col.size and timestamps_col.max() > timestamps_col.min()
+                else None
+            )
+            rp = kindling_core.fit_repeat_profile(user_idx, item_idx, ts_arg, n_users, 2)
+            repeat_indptr = np.asarray(rp[0], np.int64)
+            repeat_items = np.asarray(rp[1], np.int64)
+            repeat_last_ts = np.asarray(rp[3], np.float64)
+            repeat_periods = np.asarray(rp[4], np.float64)
+            repeat_quality = np.asarray(rp[5], np.float64)
+            repeat_active = repeat_items.size > 0
+            if ts_arg is not None:
+                repeat_now_ts = float(ts_arg.max())
 
         # owned_by_entity + history (timestamp-ordered) per entity.
         # Vectorized: one stable lexsort over (entity, time) + boundary
@@ -1025,6 +1085,14 @@ class Engine:
             transition_last_k=self.transition_last_k,
             transition_decay=self.transition_decay,
             signal_kind=signal_kind,
+            repeat_active=repeat_active,
+            repeat_rate=repeat_rate,
+            repeat_indptr=repeat_indptr,
+            repeat_items=repeat_items,
+            repeat_last_ts=repeat_last_ts,
+            repeat_periods=repeat_periods,
+            repeat_quality=repeat_quality,
+            repeat_now_ts=repeat_now_ts,
             boost_layer_adjacencies=boost_adj,
             z_threshold=2.5,
             boost_multiplier=3.0,

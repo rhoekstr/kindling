@@ -15,6 +15,7 @@ use pyo3::types::{PyDict, PyList, PyTuple};
 use rayon::prelude::*;
 
 use crate::engine::recommend::{blend_full, BlendState};
+use crate::repeat::multiplier::multiplier_one;
 use crate::score::layered::{layered_score, ZMode};
 
 type Csr32 = (Vec<f32>, Vec<i32>, Vec<i32>);
@@ -73,6 +74,18 @@ pub struct EngineState {
     cold_recency: Vec<f64>,
     cold_recency_beta: f64,
     content_alpha: f64,
+
+    // repeat module: per-user CSR of reorder items re-surfaced via the timing
+    // multiplier (REPLENISH). Active only on repeat-regime datasets.
+    repeat_active: bool,
+    repeat_indptr: Vec<i64>,
+    repeat_items: Vec<i64>,
+    repeat_last_ts: Vec<f64>,
+    repeat_periods: Vec<f64>,
+    repeat_quality: Vec<f64>,
+    repeat_now_ts: f64,
+    repeat_refractory: f64,
+    repeat_epsilon: f64,
 }
 
 fn f64v(d: &Bound<'_, PyDict>, k: &str) -> PyResult<Vec<f64>> {
@@ -200,6 +213,15 @@ fn build_engine(arrays: &Bound<'_, PyDict>, config: &Bound<'_, PyDict>) -> PyRes
         cold_recency: f64v(arrays, "cold_recency")?,
         cold_recency_beta: cfg_f64(config, "cold_recency_beta", 0.0)?,
         content_alpha: cfg_f64(config, "content_alpha", 0.0)?,
+        repeat_active: cfg_bool(config, "repeat_active", false)?,
+        repeat_indptr: i64v(arrays, "repeat_indptr")?,
+        repeat_items: i64v(arrays, "repeat_items")?,
+        repeat_last_ts: f64v(arrays, "repeat_last_ts")?,
+        repeat_periods: f64v(arrays, "repeat_periods")?,
+        repeat_quality: f64v(arrays, "repeat_quality")?,
+        repeat_now_ts: cfg_f64(config, "repeat_now_ts", f64::NAN)?,
+        repeat_refractory: cfg_f64(config, "repeat_refractory", 0.0)?,
+        repeat_epsilon: cfg_f64(config, "repeat_epsilon", 1e-3)?,
     })
 }
 
@@ -452,9 +474,44 @@ impl EngineState {
                 }
             }
         }
+        // Repeat regime: exempt the user's reorder items from the owned-mask,
+        // re-surfacing them at base × REPLENISH-multiplier (suppress just-bought,
+        // keep due). Computed from the pre-mask blended scores. Timestamp-less
+        // logs → period NaN → multiplier 1.0 (surface on base affinity alone).
+        let mut exempt: Vec<(usize, f64)> = Vec::new();
+        if self.repeat_active
+            && user_row >= 0
+            && (user_row as usize) + 1 < self.repeat_indptr.len()
+        {
+            let ur = user_row as usize;
+            for k in self.repeat_indptr[ur] as usize..self.repeat_indptr[ur + 1] as usize {
+                let j = self.repeat_items[k] as usize;
+                if j >= n_items {
+                    continue;
+                }
+                let tsl = if self.repeat_last_ts[k].is_finite() {
+                    self.repeat_now_ts - self.repeat_last_ts[k]
+                } else {
+                    f64::NAN
+                };
+                let mult = multiplier_one(
+                    [0.0, 1.0, 0.0, 0.0], // REPLENISH
+                    self.repeat_periods[k],
+                    self.repeat_refractory,
+                    self.repeat_quality[k],
+                    tsl,
+                    self.repeat_epsilon,
+                );
+                exempt.push((j, scores[j] * mult));
+            }
+        }
         // Exclude owned.
         for &o in owned {
             scores[o as usize] = f64::NEG_INFINITY;
+        }
+        // Re-surface repeat-profile items (override the mask).
+        for (j, v) in exempt {
+            scores[j] = v;
         }
         // Retrieve candidate pool.
         let cand = top_indices(&scores, self.retrieval_budget.min(n_items));
