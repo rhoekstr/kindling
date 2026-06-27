@@ -4,14 +4,14 @@ build-backend = "maturin"
 
 [project]
 name = "kindling"
-version = "0.2.0"
+version = "1.0.0"
 description = "A hybrid recommender system that grows with your data"
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.11"
 authors = [{ name = "Robert Hoekstra", email = "rhoekstr@gmail.com" }]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",

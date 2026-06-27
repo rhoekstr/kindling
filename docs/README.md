@@ -14,4 +14,5 @@
 | [LESSONS.md](LESSONS.md) | Synthesized takeaways (incl. the negative results, which are half the value). |
 | [VALIDATION.md](VALIDATION.md) | Real-world generalization vs published GNNs (yelp2018) and trained models ([RetailRocket](VALIDATION-retailrocket.md), [H&M](VALIDATION-hm.md)). |
 | [announcement.md](announcement.md) | The launch write-up / field notes. |
+| [RELEASING.md](RELEASING.md) | How to cut a release — one-time PyPI Trusted Publishing setup + tag-push workflow. |
 | [archive/](archive/) | Historical PRDs + completed plans + superseded findings — not operative. |
