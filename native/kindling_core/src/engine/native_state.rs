@@ -267,6 +267,36 @@ impl EngineState {
         self.transition_alpha = transition_alpha;
     }
 
+    /// Toggle the repeat module on/off (for the held-out repeat gate to compare
+    /// recommend ON vs OFF without a refit).
+    fn set_repeat_active(&mut self, active: bool) {
+        self.repeat_active = active;
+    }
+
+    /// Swap the per-user reorder profile (CSR). Used by the held-out repeat gate
+    /// to install a leak-free profile rebuilt on held-out history, then restore
+    /// the full-train profile after the decision.
+    #[pyo3(signature = (indptr, items, counts, last_ts, periods, quality, now_ts))]
+    fn set_repeat_profile(
+        &mut self,
+        indptr: numpy::PyReadonlyArray1<'_, i64>,
+        items: numpy::PyReadonlyArray1<'_, i64>,
+        counts: numpy::PyReadonlyArray1<'_, f64>,
+        last_ts: numpy::PyReadonlyArray1<'_, f64>,
+        periods: numpy::PyReadonlyArray1<'_, f64>,
+        quality: numpy::PyReadonlyArray1<'_, f64>,
+        now_ts: f64,
+    ) -> PyResult<()> {
+        self.repeat_indptr = indptr.as_slice()?.to_vec();
+        self.repeat_items = items.as_slice()?.to_vec();
+        self.repeat_counts = counts.as_slice()?.to_vec();
+        self.repeat_last_ts = last_ts.as_slice()?.to_vec();
+        self.repeat_periods = periods.as_slice()?.to_vec();
+        self.repeat_quality = quality.as_slice()?.to_vec();
+        self.repeat_now_ts = now_ts;
+        Ok(())
+    }
+
     /// Top-n recommendations for `owned` (engine item indices). `user_row` is
     /// the entity's user-CF row (-1 if unknown); `pop_prior` drives the
     /// new-user popularity addend (0 for known users). Returns
