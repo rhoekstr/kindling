@@ -64,6 +64,8 @@ decision is made from the data at `fit()` time. See
 
 ## Where it stands (full-ranking NDCG@10, engine defaults)
 
+> Full results — discovery growth **and** the repeat-regime dominance — in [`docs/RESULTS.md`](docs/RESULTS.md).
+
 | dataset | NDCG@10 | notes |
 |---|---:|---|
 | movielens-1m | 0.293 | rating-weighted EASE |
@@ -123,8 +125,8 @@ A FastAPI example (`kindling.serving_app`) ships behind the optional
 src/kindling/      library source (engine, serving, Rust bindings, loaders)
 native/kindling_core/  Rust core (EASE, cooccurrence, channel blend, recommend)
 bench/             regression gate (bench/verify.py) + frozen reports + plots
-docs/              REFERENCE.md (architecture) · EXPERIMENTS.md (record) ·
-                   LESSONS.md (what the build taught) · RUST-ENGINE-PLAN.md
+docs/              RESULTS.md (what it brings) · REFERENCE.md (architecture) ·
+                   EXPERIMENTS.md (record) · LESSONS.md (what the build taught)
 tests/             unit, property, integration
 ```
 

@@ -581,8 +581,8 @@ side. Trimming dead Rust is a separate follow-up.)*
    separate lever: raising book's cap 107k→200k buys ~+3pp coverage — a
    cap-size knob, not a policy.)
 2. **Remaining oracle headroom** — re-grounded on the *current* engine
-   with the faithful EASE pool (`bench/run_gap_decomp.py`; the library
-   diagnostic's pool was stale — raw cooc, pre-pivot). The two benchmark
+   with a faithful EASE pool (the gap-decomposition diagnostic, since retired;
+   its earlier pool was stale — raw cooc, pre-pivot). The two benchmark
    datasets are bound by **different** walls:
 
    | dataset | base | pop floor | current | oracle (pool) | pool recall (med) | bound by |

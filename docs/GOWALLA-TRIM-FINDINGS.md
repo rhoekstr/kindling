@@ -36,4 +36,4 @@ interactions per user.
   set" does not hold for Gowalla; the experiment closes that direction.
 
 **Net:** trimming direction closed (negative result). The Gowalla opportunity is
-folded into the repeat-module frequency fix (docs/REPEAT-AWARE-FINDINGS.md).
+folded into the repeat-module frequency fix (docs/archive/REPEAT-AWARE-FINDINGS.md).
