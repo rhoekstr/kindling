@@ -26,7 +26,6 @@ jobs:
         platform:
           - { runner: ubuntu-latest,  target: x86_64,   label: linux-x86_64  }
           - { runner: macos-14,       target: aarch64,  label: macos-arm64   }
-          - { runner: macos-13,       target: x86_64,   label: macos-x86_64  }
           - { runner: windows-latest, target: x86_64,   label: windows-x86_64 }
     steps:
       - uses: actions/checkout@v4
