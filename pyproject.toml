@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "kindling-rec"
-version = "1.0.2"
+version = "1.0.3"
 description = "A hybrid recommender system that grows with your data"
 readme = "README.md"
 license = "Apache-2.0"
@@ -58,7 +58,7 @@ personas = [
 Homepage = "https://github.com/rhoekstr/kindling"
 Issues = "https://github.com/rhoekstr/kindling/issues"
 "Awry Labs" = "https://awrylabs.com"
-"Gravel (network-fragility library)" = "https://awrylabs.com/gravel.html"
+"Gravel" = "https://awrylabs.com/gravel.html"
 
 [tool.maturin]
 # Mixed Python/Rust: ship the pure-Python `kindling` package (from src/)
