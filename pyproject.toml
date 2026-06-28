@@ -8,6 +8,7 @@ version = "1.0.0"
 description = "A hybrid recommender system that grows with your data"
 readme = "README.md"
 license = "Apache-2.0"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 authors = [{ name = "Robert Hoekstra", email = "rhoekstr@gmail.com" }]
 classifiers = [
