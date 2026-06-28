@@ -134,3 +134,9 @@ tests/             unit, property, integration
 ## License
 
 Apache 2.0.
+
+---
+
+**kindling** is an [Awry Labs](https://awrylabs.com) project — independent software, a little off on purpose.
+
+Also from Awry Labs: **[Gravel](https://awrylabs.com/gravel.html)** — a C++/Python network-fragility library for measuring and stress-testing graph resilience. ([GitHub](https://github.com/rhoekstr/gravel))

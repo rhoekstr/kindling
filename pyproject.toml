@@ -4,13 +4,14 @@ build-backend = "maturin"
 
 [project]
 name = "kindling-rec"
-version = "1.0.1"
+version = "1.0.2"
 description = "A hybrid recommender system that grows with your data"
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.11"
 authors = [{ name = "Robert Hoekstra", email = "rhoekstr@gmail.com" }]
+maintainers = [{ name = "Awry Labs", email = "rhoekstr@gmail.com" }]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "License :: OSI Approved :: Apache Software License",
@@ -56,6 +57,8 @@ personas = [
 [project.urls]
 Homepage = "https://github.com/rhoekstr/kindling"
 Issues = "https://github.com/rhoekstr/kindling/issues"
+"Awry Labs" = "https://awrylabs.com"
+"Gravel (network-fragility library)" = "https://awrylabs.com/gravel.html"
 
 [tool.maturin]
 # Mixed Python/Rust: ship the pure-Python `kindling` package (from src/)
