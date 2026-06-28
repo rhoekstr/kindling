@@ -44,6 +44,9 @@ bench/reports/*.local.*
 # macOS/docx artifacts
 ~$*.docx
 .claude/
+
+# Drafts / working notes
+posts/
 native/target/
 recbole_data/
 .venv-recbole/
